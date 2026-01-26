@@ -239,7 +239,7 @@ Continue to next middleware
 │  │                    │                            │ │
 │  │                    ▼                            │ │
 │  │  ┌──────────────────────────────────────────┐  │ │
-│  │  │    Deployment (proxy-server)             │  │ │
+│  │  │    Deployment (flexgate-proxy)             │  │ │
 │  │  │    replicas: 3                           │  │ │
 │  │  │                                           │  │ │
 │  │  │  ┌────────┐  ┌────────┐  ┌────────┐     │  │ │

@@ -21,7 +21,7 @@ All logs are JSON for machine parsing:
   "timestamp": "2026-01-26T10:30:45.123Z",
   "level": "info",
   "correlationId": "req-abc123-xyz789",
-  "service": "proxy-server",
+  "service": "flexgate-proxy",
   "event": "request.completed",
   "http": {
     "method": "GET",

@@ -109,7 +109,7 @@ Use `MASTER_CHECKLIST.md` as your source of truth. Check off tasks as you comple
 
 **Step 2:** Run the Day 1-2 setup script
 ```bash
-cd /Users/tamahant/Documents/GitHub/proxy-server/launch
+cd /Users/tamahant/Documents/GitHub/flexgate-proxy/launch
 chmod +x day-1-2-checklist.sh
 ./day-1-2-checklist.sh
 ```

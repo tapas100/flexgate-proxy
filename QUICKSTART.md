@@ -143,8 +143,8 @@ npm run k8s:delete       # Remove from k8s
 
 ## Getting Help
 
-- **Issues**: https://github.com/tapas100/proxy-server/issues
-- **Docs**: https://github.com/tapas100/proxy-server/tree/main/docs
+- **Issues**: https://github.com/tapas100/flexgate-proxy/issues
+- **Docs**: https://github.com/tapas100/flexgate-proxy/tree/main/docs
 - **Examples**: See `config/proxy.yml` for annotated config
 
 ---

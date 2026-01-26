@@ -92,8 +92,8 @@ Most "proxy tutorials" stop at forwarding requests. This goes further:
 
 ### 1. Install
 ```bash
-git clone https://github.com/tapas100/proxy-server.git
-cd proxy-server
+git clone https://github.com/tapas100/flexgate-proxy.git
+cd flexgate-proxy
 npm install
 ```
 
@@ -339,11 +339,11 @@ CMD ["node", "bin/www"]
 ```
 
 ```bash
-docker build -t proxy-server .
+docker build -t flexgate-proxy .
 docker run -p 3000:3000 \
   -v $(pwd)/config:/app/config \
   -e NODE_ENV=production \
-  proxy-server
+  flexgate-proxy
 ```
 
 ### Kubernetes
@@ -351,20 +351,20 @@ docker run -p 3000:3000 \
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: proxy-server
+  name: flexgate-proxy
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: proxy-server
+      app: flexgate-proxy
   template:
     metadata:
       labels:
-        app: proxy-server
+        app: flexgate-proxy
     spec:
       containers:
       - name: proxy
-        image: proxy-server:latest
+        image: flexgate-proxy:latest
         ports:
         - containerPort: 3000
         resources:
@@ -560,8 +560,8 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Development Setup
 ```bash
-git clone https://github.com/tapas100/proxy-server.git
-cd proxy-server
+git clone https://github.com/tapas100/flexgate-proxy.git
+cd flexgate-proxy
 npm install
 
 # Run tests

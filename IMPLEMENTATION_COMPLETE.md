@@ -267,7 +267,7 @@ You've built something **pin-worthy**. This isn't just a proxy—it's a demonstr
 ---
 
 **Questions?**
-- Open an issue: https://github.com/tapas100/proxy-server/issues
+- Open an issue: https://github.com/tapas100/flexgate-proxy/issues
 - Read the docs: [docs/](docs/)
 - Check examples: [config/proxy.yml](config/proxy.yml)
 
