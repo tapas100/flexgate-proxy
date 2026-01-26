@@ -1,0 +1,113 @@
+proxy:
+  port: 3000
+  timeout: 30000
+  maxBodySize: 10485760  # 10MB
+  
+security:
+  allowedHosts:
+    - "httpbin.org"
+    - "jsonplaceholder.typicode.com"
+  
+  blockedIPs:
+    # AWS metadata
+    - "169.254.169.254"
+    - "169.254.170.2"
+    - "fd00:ec2::254"
+    # Private networks
+    - "10.0.0.0/8"
+    - "172.16.0.0/12"
+    - "192.168.0.0/16"
+    - "127.0.0.0/8"
+  
+  auth:
+    enabled: false  # Set to true in production
+    type: "apiKey"
+    header: "X-API-Key"
+
+rateLimit:
+  enabled: true
+  backend: "local"  # Use "redis" in production
+  
+  global:
+    max: 1000
+    windowMs: 60000
+  
+  perRoute: []
+
+upstreams:
+  - name: "httpbin"
+    url: "https://httpbin.org"
+    timeout: 5000
+    retries: 2
+    http2: false
+    
+    circuitBreaker:
+      enabled: true
+      failureThreshold: 50  # %
+      volumeThreshold: 10
+      windowMs: 10000
+      openDuration: 30000
+      halfOpenRequests: 3
+  
+  - name: "jsonplaceholder"
+    url: "https://jsonplaceholder.typicode.com"
+    timeout: 5000
+    retries: 2
+    circuitBreaker:
+      enabled: true
+
+routes:
+  - path: "/httpbin/*"
+    upstream: "httpbin"
+    stripPath: "/httpbin"
+    auth: optional
+    rateLimit:
+      max: 100
+      windowMs: 60000
+  
+  - path: "/api/*"
+    upstream: "jsonplaceholder"
+    stripPath: "/api"
+    auth: optional
+    rateLimit:
+      max: 200
+      windowMs: 60000
+
+logging:
+  level: "info"
+  format: "json"
+  sampling:
+    enabled: true
+    successRate: 1.0   # Log 100% in dev, use 0.1 in prod
+    errorRate: 1.0
+
+retry:
+  enabled: true
+  maxAttempts: 3
+  backoff:
+    type: "exponential"
+    initialDelay: 100
+    maxDelay: 5000
+    multiplier: 2
+  
+  retryableStatusCodes: [502, 503, 504]
+  retryableErrors: ["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND"]
+
+timeouts:
+  request: 30000
+  connection: 5000
+  dns: 2000
+  header: 10000
+  idle: 60000
+
+connectionPool:
+  maxSockets: 100
+  maxFreeSockets: 10
+  timeout: 60000
+  keepAlive: true
+
+backpressure:
+  enabled: true
+  maxQueueSize: 1000
+  maxConnections: 5000
+  queueTimeout: 5000
