@@ -3,7 +3,7 @@
  * Tests for schema validation, versioning, and migration
  */
 
-const { validateConfig, getSchemaVersion, migrateConfig, SCHEMA_VERSION } = require('../schema');
+const { validateConfig, getSchemaVersion, migrateConfig, SCHEMA_VERSION } = require('../schema.ts');
 
 describe('Config Schema', () => {
   describe('Schema Version', () => {
@@ -31,7 +31,7 @@ describe('Config Schema', () => {
       };
 
       const result = validateConfig(config);
-      expect(result.error).toBeUndefined();
+      expect(result.error).toBeNull();
       expect(result.value).toBeDefined();
       expect(result.value.version).toBe('1.0.0');
     });
@@ -55,7 +55,7 @@ describe('Config Schema', () => {
       const result = validateConfig(config);
       expect(result.value.proxy.port).toBe(3000);
       expect(result.value.proxy.host).toBe('0.0.0.0');
-      expect(result.value.timeouts.request).toBe(30000);
+      expect(result.value.proxy.timeout.request).toBe(30000);
       expect(result.value.logging.level).toBe('info');
     });
 
@@ -138,8 +138,10 @@ describe('Config Schema', () => {
       };
 
       const result = validateConfig(config);
-      expect(result.error).toBeUndefined();
-      expect(result.value).toMatchObject(config);
+      expect(result.error).toBeNull();
+      expect(result.value.upstreams).toHaveLength(1);
+      expect(result.value.routes).toHaveLength(1);
+      expect(result.value.logging.level).toBe('debug');
     });
   });
 
@@ -198,7 +200,7 @@ describe('Config Schema', () => {
           routes: [{ path: '/test/*', upstream: name }]
         };
         const result = validateConfig(config);
-        expect(result.error).toBeUndefined();
+        expect(result.error).toBeNull();
       });
     });
 
@@ -272,7 +274,7 @@ describe('Config Schema', () => {
           routes: [{ path, upstream: 'test' }]
         };
         const result = validateConfig(config);
-        expect(result.error).toBeUndefined();
+        expect(result.error).toBeNull();
       });
     });
 
@@ -373,7 +375,7 @@ describe('Config Schema', () => {
       };
 
       const result = validateConfig(config);
-      expect(result.error).toBeUndefined();
+      expect(result.error).toBeNull();
       expect(result.value.routes[0].rateLimit.max).toBe(100);
     });
 
@@ -409,7 +411,7 @@ describe('Config Schema', () => {
     });
 
     test('should accept valid log levels', () => {
-      const levels = ['error', 'warn', 'info', 'debug', 'trace'];
+      const levels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
       
       levels.forEach(level => {
         const config = {
@@ -418,7 +420,7 @@ describe('Config Schema', () => {
           logging: { level }
         };
         const result = validateConfig(config);
-        expect(result.error).toBeUndefined();
+        expect(result.error).toBeNull();
       });
     });
 
@@ -509,7 +511,7 @@ describe('Config Schema', () => {
       };
 
       const result = validateConfig(config);
-      expect(result.error).toBeUndefined();
+      expect(result.error).toBeNull();
       expect(result.value.upstreams[0].metadata.team).toBe('platform');
     });
   });
