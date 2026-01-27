@@ -1,23 +1,47 @@
 const fs = require('fs');
 const yaml = require('js-yaml');
 const path = require('path');
+const { validateConfig, getSchemaVersion, migrateConfig } = require('./schema');
 
 class Config {
   constructor() {
     this.config = null;
     this.watchers = [];
+    this.schemaVersion = getSchemaVersion();
   }
   
   load(configPath = 'config/proxy.yml') {
     try {
       const fullPath = path.resolve(process.cwd(), configPath);
       const fileContents = fs.readFileSync(fullPath, 'utf8');
-      this.config = yaml.load(fileContents);
+      const rawConfig = yaml.load(fileContents);
       
-      // Validate config
-      this.validate();
+      // Check version and migrate if needed
+      const configVersion = rawConfig.version || '1.0.0';
+      const migratedConfig = migrateConfig(rawConfig, configVersion);
       
-      console.log(`✅ Config loaded from ${fullPath}`);
+      // Validate config against schema
+      const { error, value, warnings } = validateConfig(migratedConfig);
+      
+      if (error) {
+        console.error('❌ Config validation failed:', error.message);
+        if (error.details) {
+          error.details.forEach(detail => {
+            console.error(`  - ${detail.path.join('.')}: ${detail.message}`);
+          });
+        }
+        throw error;
+      }
+      
+      // Show warnings
+      if (warnings && warnings.length > 0) {
+        warnings.forEach(warning => {
+          console.warn(`⚠️  ${warning}`);
+        });
+      }
+      
+      this.config = value;
+      console.log(`✅ Config loaded from ${fullPath} (schema v${this.schemaVersion})`);
       return this.config;
     } catch (error) {
       console.error('❌ Failed to load config:', error.message);
@@ -30,40 +54,18 @@ class Config {
       throw new Error('Config not loaded');
     }
     
-    // Required fields
-    if (!this.config.upstreams || !Array.isArray(this.config.upstreams)) {
-      throw new Error('Config must have upstreams array');
+    // Use schema validation
+    const { error, warnings } = validateConfig(this.config);
+    
+    if (error) {
+      throw error;
     }
     
-    if (!this.config.routes || !Array.isArray(this.config.routes)) {
-      throw new Error('Config must have routes array');
+    if (warnings && warnings.length > 0) {
+      warnings.forEach(warning => {
+        console.warn(`⚠️  ${warning}`);
+      });
     }
-    
-    // Validate upstreams
-    this.config.upstreams.forEach((upstream, idx) => {
-      if (!upstream.name) {
-        throw new Error(`Upstream at index ${idx} missing name`);
-      }
-      if (!upstream.url) {
-        throw new Error(`Upstream ${upstream.name} missing url`);
-      }
-    });
-    
-    // Validate routes
-    this.config.routes.forEach((route, idx) => {
-      if (!route.path) {
-        throw new Error(`Route at index ${idx} missing path`);
-      }
-      if (!route.upstream) {
-        throw new Error(`Route ${route.path} missing upstream`);
-      }
-      
-      // Check upstream exists
-      const upstreamExists = this.config.upstreams.some(u => u.name === route.upstream);
-      if (!upstreamExists) {
-        throw new Error(`Route ${route.path} references unknown upstream: ${route.upstream}`);
-      }
-    });
     
     console.log('✅ Config validation passed');
   }
