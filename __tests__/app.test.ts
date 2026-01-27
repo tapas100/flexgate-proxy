@@ -3,17 +3,17 @@
  * Tests for health endpoints, version info, and middleware
  */
 
-const request = require('supertest');
-const express = require('express');
-const fs = require('fs');
+import request from 'supertest';
+import { Application } from 'express';
+import fs from 'fs';
 
 // Mock fs before requiring app
 jest.mock('fs');
 
 describe('Application Integration Tests', () => {
-  let app;
+  let app: Application;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Mock config file
     const mockConfig = `
 version: "1.0.0"
@@ -27,10 +27,11 @@ routes:
   - path: /test/*
     upstream: test-service
 `;
-    fs.readFileSync.mockReturnValue(mockConfig);
+    (fs.readFileSync as jest.Mock).mockReturnValue(mockConfig);
 
-    // Require app after mocking
-    app = require('../app');
+    // Import app after mocking
+    const appModule = await import('../app');
+    app = appModule.default;
   });
 
   describe('Version Endpoint', () => {
