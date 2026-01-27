@@ -3,7 +3,7 @@
  * Tests for schema validation, versioning, and migration
  */
 
-const { validateConfig, getSchemaVersion, migrateConfig, SCHEMA_VERSION } = require('../../src/config/schema');
+const { validateConfig, getSchemaVersion, migrateConfig, SCHEMA_VERSION } = require('../schema');
 
 describe('Config Schema', () => {
   describe('Schema Version', () => {

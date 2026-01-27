@@ -38,7 +38,7 @@ const rateLimitSchema = Joi.object({
 const upstreamSchema = Joi.object({
   name: Joi.string().required().pattern(/^[a-zA-Z0-9-_]+$/),
   url: Joi.string().uri().required(),
-  timeout: Joi.number().integer().min(100).max(300000),
+  timeout: Joi.number().integer().min(100).max(300000).allow(null).optional(),
   healthCheck: Joi.object({
     enabled: Joi.boolean().default(true),
     path: Joi.string().default('/health'),
@@ -148,7 +148,8 @@ function validateConfig(config) {
   const result = configSchema.validate(config, {
     abortEarly: false,
     allowUnknown: false,
-    stripUnknown: false
+    stripUnknown: true,
+    convert: true
   });
   
   const warnings = [];
