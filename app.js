@@ -12,11 +12,23 @@ const config = require('./src/config/loader');
 const { logger, requestLogger } = require('./src/logger');
 const rateLimiter = require('./src/rateLimiter');
 const CircuitBreaker = require('./src/circuitBreaker');
+const { getSchemaVersion } = require('./src/config/schema');
 
 // Load configuration
 config.load();
 
 const app = express();
+
+// API version
+const API_VERSION = '1.0.0';
+const CONFIG_VERSION = getSchemaVersion();
+
+// Add version headers to all responses
+app.use((req, res, next) => {
+  res.setHeader('X-API-Version', API_VERSION);
+  res.setHeader('X-Config-Version', CONFIG_VERSION);
+  next();
+});
 
 // Prometheus metrics
 const register = new promClient.Registry();
@@ -88,11 +100,33 @@ rateLimiter.initialize().catch(err => {
   logger.error('Failed to initialize rate limiter', { error: err.message });
 });
 
+// Version info endpoint
+app.get('/version', (req, res) => {
+  const pkg = require('./package.json');
+  res.json({
+    name: pkg.name,
+    version: pkg.version,
+    apiVersion: API_VERSION,
+    configVersion: CONFIG_VERSION,
+    node: process.version,
+    uptime: process.uptime()
+  });
+});
+
 // Health endpoints
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'UP',
+    timestamp: new Date().toISOString(),
+    version: API_VERSION
+  });
+});
+
 app.get('/health/live', (req, res) => {
   res.json({
     status: 'UP',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    version: API_VERSION
   });
 });
 
