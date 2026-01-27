@@ -592,7 +592,7 @@ npm run benchmark
 
 ## License
 
-MIT © [Tapas Adhikary](https://github.com/tapas100)
+MIT © [Tapas M](https://github.com/tapas100)
 
 ---
 
