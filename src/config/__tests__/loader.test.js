@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const Config = require('../../src/config/loader');
+const { Config } = require('../loader');
 
 // Mock fs module
 jest.mock('fs');
@@ -287,7 +287,7 @@ routes:
 
       fs.readFileSync.mockReturnValue(initialYaml);
       config.load('test-config.yml');
-      config.onReload(watcher);
+      config.watch(watcher);
 
       config.reload('test-config.yml');
 
@@ -313,7 +313,7 @@ routes:
 
       fs.readFileSync.mockReturnValue(validYaml);
       config.load('test-config.yml');
-      config.onReload(errorWatcher);
+      config.watch(errorWatcher);
 
       // Should not throw, just log error
       expect(() => config.reload('test-config.yml')).not.toThrow();
@@ -323,7 +323,7 @@ routes:
   describe('Config Watchers', () => {
     test('should add config watcher', () => {
       const watcher = jest.fn();
-      config.onReload(watcher);
+      config.watch(watcher);
 
       expect(config.watchers).toContain(watcher);
     });
@@ -332,8 +332,8 @@ routes:
       const watcher1 = jest.fn();
       const watcher2 = jest.fn();
 
-      config.onReload(watcher1);
-      config.onReload(watcher2);
+      config.watch(watcher1);
+      config.watch(watcher2);
 
       expect(config.watchers).toHaveLength(2);
     });
