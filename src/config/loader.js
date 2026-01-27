@@ -117,4 +117,6 @@ class Config {
   }
 }
 
+// Export the class for testing and the singleton for production use
 module.exports = new Config();
+module.exports.Config = Config;
