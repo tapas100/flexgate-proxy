@@ -1,16 +1,21 @@
-const rateLimit = require('express-rate-limit');
-const RedisStore = require('rate-limit-redis');
-const { createClient } = require('redis');
-const config = require('./config/loader.ts');
-const { logger } = require('./logger');
+import rateLimit from 'express-rate-limit';
+import RedisStore from 'rate-limit-redis';
+import { createClient, RedisClientType } from 'redis';
+import config from './config/loader';
+import { logger } from './logger';
+import type { Request, Response, NextFunction } from 'express';
+import type { RateLimiterOptions } from './types';
 
 class RateLimiter {
+  private redisClient: RedisClientType | null;
+  private rateLimitConfig: any;
+
   constructor() {
     this.redisClient = null;
     this.rateLimitConfig = config.get('rateLimit', { enabled: false });
   }
   
-  async initialize() {
+  async initialize(): Promise<void> {
     if (!this.rateLimitConfig.enabled) {
       logger.info('Rate limiting disabled');
       return;
@@ -21,24 +26,26 @@ class RateLimiter {
       try {
         const redisUrl = process.env.REDIS_URL || this.rateLimitConfig.redis?.url;
         if (redisUrl) {
-          this.redisClient = createClient({ url: redisUrl });
+          this.redisClient = createClient({ url: redisUrl }) as RedisClientType;
           await this.redisClient.connect();
           logger.info('✅ Redis connected for rate limiting');
         }
-      } catch (error) {
-        logger.warn('⚠️  Redis connection failed, falling back to local rate limiting', { error: error.message });
+      } catch (error: any) {
+        logger.warn('⚠️  Redis connection failed, falling back to local rate limiting', { 
+          error: error.message 
+        });
         this.rateLimitConfig.backend = 'local';
       }
     }
   }
   
-  createLimiter(options = {}) {
+  createLimiter(options: Partial<RateLimiterOptions> = {}) {
     if (!this.rateLimitConfig.enabled) {
-      return (req, res, next) => next();
+      return (_req: Request, _res: Response, next: NextFunction) => next();
     }
     
     const globalConfig = this.rateLimitConfig.global || {};
-    const limiterOptions = {
+    const limiterOptions: any = {
       windowMs: options.windowMs || globalConfig.windowMs || 60000,
       max: options.max || globalConfig.max || 100,
       message: options.message || {
@@ -47,7 +54,7 @@ class RateLimiter {
       },
       standardHeaders: true,
       legacyHeaders: false,
-      handler: (req, res) => {
+      handler: (req: Request, res: Response) => {
         logger.warn('rate_limit.exceeded', {
           correlationId: req.correlationId,
           event: 'rate_limit.exceeded',
@@ -64,7 +71,7 @@ class RateLimiter {
         
         res.status(429).json({
           error: 'Rate limit exceeded',
-          retryAfter: Math.ceil(res.getHeader('Retry-After'))
+          retryAfter: Math.ceil(Number(res.getHeader('Retry-After')))
         });
       }
     };
@@ -72,6 +79,7 @@ class RateLimiter {
     // Use Redis store if available
     if (this.redisClient && this.rateLimitConfig.backend === 'redis') {
       limiterOptions.store = new RedisStore({
+        // @ts-ignore - RedisStore typing issue
         client: this.redisClient,
         prefix: 'ratelimit:'
       });
@@ -80,9 +88,9 @@ class RateLimiter {
     return rateLimit(limiterOptions);
   }
   
-  getRouteLimit(route) {
+  getRouteLimit(route: string): any {
     const routeLimits = this.rateLimitConfig.perRoute || [];
-    const routeLimit = routeLimits.find(rl => {
+    const routeLimit = routeLimits.find((rl: any) => {
       if (rl.path === route) return true;
       if (rl.path.endsWith('/*')) {
         const prefix = rl.path.slice(0, -2);
@@ -94,11 +102,11 @@ class RateLimiter {
     return routeLimit;
   }
   
-  async close() {
+  async close(): Promise<void> {
     if (this.redisClient) {
       await this.redisClient.quit();
     }
   }
 }
 
-module.exports = new RateLimiter();
+export default new RateLimiter();

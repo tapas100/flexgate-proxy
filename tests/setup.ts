@@ -20,10 +20,38 @@ global.console = {
   error: console.error,
 };
 
+// Define global test helpers type
+declare global {
+  var testHelpers: {
+    waitFor: (condition: () => boolean, timeout?: number) => Promise<void>;
+    mockRequest: (options?: Partial<MockRequest>) => MockRequest;
+    mockResponse: () => MockResponse;
+  };
+}
+
+interface MockRequest {
+  method: string;
+  path: string;
+  headers: Record<string, any>;
+  query: Record<string, any>;
+  body: any;
+}
+
+interface MockResponse {
+  statusCode: number;
+  headers: Record<string, any>;
+  body: any;
+  status: jest.Mock;
+  json: jest.Mock;
+  send: jest.Mock;
+  setHeader: jest.Mock;
+  set: jest.Mock;
+}
+
 // Global test utilities
 global.testHelpers = {
   // Wait for a condition to be true
-  waitFor: async (condition, timeout = 5000) => {
+  waitFor: async (condition: () => boolean, timeout: number = 5000): Promise<void> => {
     const start = Date.now();
     while (!condition() && Date.now() - start < timeout) {
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -34,7 +62,7 @@ global.testHelpers = {
   },
   
   // Create a mock request object
-  mockRequest: (options = {}) => ({
+  mockRequest: (options: Partial<MockRequest> = {}): MockRequest => ({
     method: 'GET',
     path: '/',
     headers: {},
@@ -44,28 +72,30 @@ global.testHelpers = {
   }),
   
   // Create a mock response object
-  mockResponse: () => {
-    const res = {
+  mockResponse: (): MockResponse => {
+    const res: any = {
       statusCode: 200,
       headers: {},
       body: null
     };
-    res.status = jest.fn((code) => {
+    res.status = jest.fn((code: number) => {
       res.statusCode = code;
       return res;
     });
-    res.json = jest.fn((data) => {
+    res.json = jest.fn((data: any) => {
       res.body = data;
       return res;
     });
-    res.send = jest.fn((data) => {
+    res.send = jest.fn((data: any) => {
       res.body = data;
       return res;
     });
-    res.setHeader = jest.fn((key, value) => {
+    res.setHeader = jest.fn((key: string, value: any) => {
       res.headers[key] = value;
     });
     res.set = res.setHeader;
-    return res;
+    return res as MockResponse;
   }
 };
+
+export {};
