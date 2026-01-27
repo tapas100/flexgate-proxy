@@ -1,5 +1,7 @@
-const { createLogger, format, transports } = require('winston');
-const config = require('./config/loader.ts');
+import { createLogger, format, transports } from 'winston';
+import * as os from 'os';
+import config from './config/loader';
+import type { Request, Response, NextFunction } from 'express';
 
 const logConfig = config.get('logging', {
   level: 'info',
@@ -12,17 +14,16 @@ const logConfig = config.get('logging', {
 });
 
 // Sampling logic
-let requestCounter = 0;
-const shouldSample = (level, statusCode) => {
+const shouldSample = (level: string, statusCode?: number): boolean => {
   if (!logConfig.sampling?.enabled) return true;
   
   // Always log errors
-  if (level === 'error' || statusCode >= 500) {
+  if (level === 'error' || (statusCode && statusCode >= 500)) {
     return Math.random() < logConfig.sampling.errorRate;
   }
   
   // Sample success logs
-  if (statusCode >= 200 && statusCode < 300) {
+  if (statusCode && statusCode >= 200 && statusCode < 300) {
     return Math.random() < logConfig.sampling.successRate;
   }
   
@@ -43,7 +44,7 @@ const logger = createLogger({
   defaultMeta: { 
     service: 'proxy-server',
     pid: process.pid,
-    hostname: require('os').hostname()
+    hostname: os.hostname()
   },
   transports: [
     new transports.Console({
@@ -68,9 +69,9 @@ const logger = createLogger({
 });
 
 // Request logger middleware
-const requestLogger = (req, res, next) => {
+const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
   const startTime = Date.now();
-  const correlationId = req.headers['x-correlation-id'] || `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const correlationId = req.headers['x-correlation-id'] as string || `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   req.correlationId = correlationId;
   res.setHeader('X-Correlation-ID', correlationId);
@@ -83,14 +84,14 @@ const requestLogger = (req, res, next) => {
       method: req.method,
       path: req.path,
       query: req.query,
-      clientIp: req.ip || req.connection.remoteAddress,
+      clientIp: req.ip || req.socket.remoteAddress,
       userAgent: req.get('user-agent')
     }
   });
   
   // Capture response
   const originalSend = res.send;
-  res.send = function(data) {
+  res.send = function(data: any) {
     res.send = originalSend;
     const duration = Date.now() - startTime;
     
@@ -103,12 +104,12 @@ const requestLogger = (req, res, next) => {
           method: req.method,
           path: req.path,
           statusCode: res.statusCode,
-          clientIp: req.ip || req.connection.remoteAddress
+          clientIp: req.ip || req.socket.remoteAddress
         },
         duration,
         metadata: {
           route: req.route?.path,
-          upstream: req.upstream
+          upstream: (req as any).upstream
         }
       });
     }
@@ -119,7 +120,7 @@ const requestLogger = (req, res, next) => {
   next();
 };
 
-module.exports = {
+export {
   logger,
   requestLogger
 };

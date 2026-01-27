@@ -1,9 +1,34 @@
-const { logger } = require('./logger');
+import { logger } from './logger';
+import type { CircuitBreakerState, CircuitBreakerStats } from './types';
+
+interface CircuitBreakerOptions {
+  failureThreshold?: number;
+  volumeThreshold?: number;
+  windowMs?: number;
+  openDuration?: number;
+  halfOpenRequests?: number;
+}
+
+interface RequestRecord {
+  timestamp: number;
+  success: boolean;
+}
 
 class CircuitBreaker {
-  constructor(name, options = {}) {
+  private name: string;
+  public state: CircuitBreakerState;
+  private failureThreshold: number;
+  private volumeThreshold: number;
+  private windowMs: number;
+  public openDuration: number;
+  private halfOpenRequests: number;
+  private requests: RequestRecord[];
+  private halfOpenAttempts: number;
+  private openedAt: number | null;
+
+  constructor(name: string, options: CircuitBreakerOptions = {}) {
     this.name = name;
-    this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
+    this.state = 'CLOSED';
     
     // Configuration
     this.failureThreshold = options.failureThreshold || 50; // %
@@ -14,16 +39,15 @@ class CircuitBreaker {
     
     // State
     this.requests = [];
-    this.failures = [];
     this.halfOpenAttempts = 0;
     this.openedAt = null;
   }
   
-  async execute(fn) {
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
     // Check if circuit is open
     if (this.state === 'OPEN') {
       // Check if timeout has elapsed
-      if (Date.now() - this.openedAt >= this.openDuration) {
+      if (this.openedAt && Date.now() - this.openedAt >= this.openDuration) {
         this.state = 'HALF_OPEN';
         this.halfOpenAttempts = 0;
         logger.info('circuit_breaker.half_open', {
@@ -31,7 +55,7 @@ class CircuitBreaker {
           circuitBreaker: this.name
         });
       } else {
-        const error = new Error('Circuit breaker is OPEN');
+        const error: any = new Error('Circuit breaker is OPEN');
         error.circuitBreakerOpen = true;
         throw error;
       }
@@ -40,14 +64,12 @@ class CircuitBreaker {
     // Half-open: limit trial requests
     if (this.state === 'HALF_OPEN') {
       if (this.halfOpenAttempts >= this.halfOpenRequests) {
-        const error = new Error('Circuit breaker HALF_OPEN trial limit reached');
+        const error: any = new Error('Circuit breaker HALF_OPEN trial limit reached');
         error.circuitBreakerOpen = true;
         throw error;
       }
       this.halfOpenAttempts++;
     }
-    
-    const startTime = Date.now();
     
     try {
       const result = await fn();
@@ -59,7 +81,7 @@ class CircuitBreaker {
     }
   }
   
-  onSuccess() {
+  private onSuccess(): void {
     this.recordRequest(true);
     
     if (this.state === 'HALF_OPEN') {
@@ -78,7 +100,7 @@ class CircuitBreaker {
     }
   }
   
-  onFailure() {
+  public onFailure(): void {
     this.recordRequest(false);
     
     if (this.state === 'HALF_OPEN') {
@@ -116,7 +138,7 @@ class CircuitBreaker {
     }
   }
   
-  recordRequest(success) {
+  private recordRequest(success: boolean): void {
     const now = Date.now();
     this.requests.push({ timestamp: now, success });
     
@@ -124,21 +146,24 @@ class CircuitBreaker {
     this.requests = this.requests.filter(r => now - r.timestamp < this.windowMs);
   }
   
-  getRecentRequests() {
+  private getRecentRequests(): RequestRecord[] {
     const now = Date.now();
     return this.requests.filter(r => now - r.timestamp < this.windowMs);
   }
   
-  getState() {
+  getState(): CircuitBreakerStats {
     return {
-      name: this.name,
       state: this.state,
-      failureRate: this.getFailureRate(),
-      totalRequests: this.requests.length
+      failures: this.getRecentRequests().filter(r => !r.success).length,
+      successes: this.getRecentRequests().filter(r => r.success).length,
+      lastFailureTime: this.openedAt || undefined,
+      nextAttemptTime: this.openedAt && this.state === 'OPEN' 
+        ? this.openedAt + this.openDuration 
+        : undefined
     };
   }
   
-  getFailureRate() {
+  getFailureRate(): number {
     const recentRequests = this.getRecentRequests();
     if (recentRequests.length === 0) return 0;
     
@@ -146,13 +171,12 @@ class CircuitBreaker {
     return (failures / recentRequests.length) * 100;
   }
   
-  reset() {
+  reset(): void {
     this.state = 'CLOSED';
     this.requests = [];
-    this.failures = [];
     this.halfOpenAttempts = 0;
     this.openedAt = null;
   }
 }
 
-module.exports = CircuitBreaker;
+export default CircuitBreaker;
