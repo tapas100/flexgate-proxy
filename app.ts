@@ -4,7 +4,6 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import cors from 'cors';
 import { createProxyMiddleware, Options as ProxyOptions } from 'http-proxy-middleware';
-import promClient from 'prom-client';
 
 // Internal modules
 import config from './src/config/loader';
@@ -13,6 +12,7 @@ import rateLimiter from './src/rateLimiter';
 import CircuitBreaker from './src/circuitBreaker';
 import { getSchemaVersion } from './src/config/schema';
 import { ProxyRoute, Upstream, RateLimitConfig } from './src/types';
+import metricsRegistry, { metrics } from './src/metrics';
 
 // Extend Express Request type
 declare global {
@@ -40,25 +40,8 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Prometheus metrics
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
-
-// Custom metrics
-const httpRequestsTotal = new promClient.Counter({
-  name: 'http_requests_total',
-  help: 'Total number of HTTP requests',
-  labelNames: ['method', 'route', 'status'],
-  registers: [register]
-});
-
-const httpRequestDuration = new promClient.Histogram({
-  name: 'http_request_duration_ms',
-  help: 'HTTP request duration in milliseconds',
-  labelNames: ['method', 'route', 'status'],
-  buckets: [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
-  registers: [register]
-});
+// Metrics are initialized in the metrics module
+// No need to manually create collectors here
 
 // Circuit breakers for upstreams
 const circuitBreakers = new Map<string, CircuitBreaker>();
@@ -81,25 +64,60 @@ app.use(cors());
 // Request logging with correlation IDs
 app.use(requestLogger);
 
-// Metrics middleware
+// Metrics middleware - track all HTTP requests
 app.use((req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
+  const route = req.route?.path || req.path;
+  
+  // Increment in-flight requests
+  metrics.httpRequestsInFlight.inc({ method: req.method, route });
+  
+  // Track request size if available
+  const contentLength = req.get('content-length');
+  if (contentLength) {
+    metrics.httpRequestSizeBytes.observe(
+      { method: req.method, route },
+      parseInt(contentLength, 10)
+    );
+  }
   
   res.on('finish', () => {
     const duration = Date.now() - startTime;
-    const route = req.route?.path || req.path;
+    const statusCode = res.statusCode.toString();
+    const statusFamily = `${Math.floor(res.statusCode / 100)}xx` as '2xx' | '3xx' | '4xx' | '5xx';
     
-    httpRequestsTotal.inc({
+    // Decrement in-flight requests
+    metrics.httpRequestsInFlight.dec({ method: req.method, route });
+    
+    // Record total requests
+    metrics.httpRequestsTotal.inc({
       method: req.method,
       route,
-      status: res.statusCode.toString()
+      status: statusCode
     });
     
-    httpRequestDuration.observe({
+    // Record requests by status family
+    metrics.httpRequestsByStatusFamily.inc({
       method: req.method,
       route,
-      status: res.statusCode.toString()
+      status_family: statusFamily
+    });
+    
+    // Record request duration
+    metrics.httpRequestDuration.observe({
+      method: req.method,
+      route,
+      status: statusCode
     }, duration);
+    
+    // Record response size if available
+    const responseLength = res.get('content-length');
+    if (responseLength) {
+      metrics.httpResponseSizeBytes.observe(
+        { method: req.method, route, status: statusCode },
+        parseInt(responseLength, 10)
+      );
+    }
   });
   
   next();
@@ -187,8 +205,13 @@ app.get('/health/deep', (_req: Request, res: Response) => {
 
 // Metrics endpoint
 app.get('/metrics', async (_req: Request, res: Response) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
+  try {
+    res.set('Content-Type', metricsRegistry.getContentType());
+    res.end(await metricsRegistry.getMetrics());
+  } catch (error) {
+    logger.error('Failed to collect metrics', { error });
+    res.status(500).json({ error: 'Failed to collect metrics' });
+  }
 });
 
 // Setup proxy routes
