@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { Config } = require('../loader');
+const { Config } = require('../loader.ts');
 
 // Mock fs module
 jest.mock('fs');

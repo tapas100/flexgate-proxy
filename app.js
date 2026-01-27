@@ -8,11 +8,11 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const promClient = require('prom-client');
 
 // Internal modules
-const config = require('./src/config/loader');
+const config = require('./src/config/loader.ts');
 const { logger, requestLogger } = require('./src/logger');
 const rateLimiter = require('./src/rateLimiter');
 const CircuitBreaker = require('./src/circuitBreaker');
-const { getSchemaVersion } = require('./src/config/schema');
+const { getSchemaVersion } = require('./src/config/schema.ts');
 
 // Load configuration
 config.load();
