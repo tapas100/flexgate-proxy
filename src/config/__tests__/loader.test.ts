@@ -3,15 +3,16 @@
  * Tests for config loading, validation, and reloading
  */
 
-const fs = require('fs');
-const path = require('path');
-const { Config } = require('../loader.ts');
+import * as fs from 'fs';
+import * as path from 'path';
+import { Config } from '../loader';
 
 // Mock fs module
 jest.mock('fs');
+const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('Config Loader', () => {
-  let config;
+  let config: Config;
 
   beforeEach(() => {
     config = new Config();
@@ -30,7 +31,7 @@ routes:
     upstream: test-service
 `;
 
-      fs.readFileSync.mockReturnValue(validYaml);
+      mockedFs.readFileSync as any.mockReturnValue(validYaml);
 
       const result = config.load('test-config.yml');
 
@@ -41,13 +42,13 @@ routes:
     });
 
     test('should throw error for invalid YAML', () => {
-      fs.readFileSync.mockReturnValue('invalid: yaml: content:');
+      mockedFs.readFileSync as any.mockReturnValue('invalid: yaml: content:');
 
       expect(() => config.load('test-config.yml')).toThrow();
     });
 
     test('should throw error for missing file', () => {
-      fs.readFileSync.mockImplementation(() => {
+      mockedFs.readFileSync as any.mockImplementation(() => {
         throw new Error('ENOENT: no such file or directory');
       });
 
@@ -63,7 +64,7 @@ routes:
     upstream: nonexistent
 `;
 
-      fs.readFileSync.mockReturnValue(invalidYaml);
+      mockedFs.readFileSync as any.mockReturnValue(invalidYaml);
 
       expect(() => config.load('test-config.yml')).toThrow();
     });
@@ -78,7 +79,7 @@ routes:
     upstream: test
 `;
 
-      fs.readFileSync.mockReturnValue(minimalYaml);
+      mockedFs.readFileSync as any.mockReturnValue(minimalYaml);
       const result = config.load('test-config.yml');
 
       expect(result.proxy.port).toBe(3000);
@@ -97,7 +98,7 @@ routes:
     upstream: test
 `;
 
-      fs.readFileSync.mockReturnValue(yamlWithDuplicates);
+      mockedFs.readFileSync as any.mockReturnValue(yamlWithDuplicates);
       const warnSpy = jest.spyOn(console, 'warn');
 
       config.load('test-config.yml');
@@ -118,7 +119,7 @@ routes:
     upstream: test
 `;
 
-      fs.readFileSync.mockReturnValue(yamlWithVersion);
+      mockedFs.readFileSync as any.mockReturnValue(yamlWithVersion);
       const result = config.load('test-config.yml');
 
       expect(result.version).toBe('1.0.0');
@@ -134,7 +135,7 @@ routes:
     upstream: test
 `;
 
-      fs.readFileSync.mockReturnValue(yamlWithoutVersion);
+      mockedFs.readFileSync as any.mockReturnValue(yamlWithoutVersion);
       const result = config.load('test-config.yml');
 
       expect(result.version).toBe('1.0.0');
@@ -162,7 +163,7 @@ logging:
   level: debug
 `;
 
-      fs.readFileSync.mockReturnValue(validYaml);
+      mockedFs.readFileSync as any.mockReturnValue(validYaml);
       config.load('test-config.yml');
     });
 
@@ -201,7 +202,7 @@ routes:
   - path: /api/*
     upstream: test
 `;
-      fs.readFileSync.mockReturnValue(validYaml);
+      mockedFs.readFileSync as any.mockReturnValue(validYaml);
 
       const result = newConfig.get('upstreams');
       expect(result).toBeDefined();
@@ -220,7 +221,7 @@ routes:
     upstream: test
 `;
 
-      fs.readFileSync.mockReturnValue(validYaml);
+      mockedFs.readFileSync as any.mockReturnValue(validYaml);
       config.load('test-config.yml');
 
       expect(() => config.validate()).not.toThrow();
@@ -239,7 +240,7 @@ routes:
     upstream: test
 `;
 
-      fs.readFileSync.mockReturnValue(invalidYaml);
+      mockedFs.readFileSync as any.mockReturnValue(invalidYaml);
 
       expect(() => config.load('test-config.yml')).toThrow();
     });
@@ -265,11 +266,11 @@ routes:
     upstream: service2
 `;
 
-      fs.readFileSync.mockReturnValueOnce(initialYaml);
+      mockedFs.readFileSync as any.mockReturnValueOnce(initialYaml);
       config.load('test-config.yml');
       expect(config.get('upstreams.0.name')).toBe('service1');
 
-      fs.readFileSync.mockReturnValueOnce(updatedYaml);
+      mockedFs.readFileSync as any.mockReturnValueOnce(updatedYaml);
       config.reload('test-config.yml');
       expect(config.get('upstreams.0.name')).toBe('service2');
     });
@@ -285,7 +286,7 @@ routes:
     upstream: service1
 `;
 
-      fs.readFileSync.mockReturnValue(initialYaml);
+      mockedFs.readFileSync as any.mockReturnValue(initialYaml);
       config.load('test-config.yml');
       config.watch(watcher);
 
@@ -311,7 +312,7 @@ routes:
     upstream: test
 `;
 
-      fs.readFileSync.mockReturnValue(validYaml);
+      mockedFs.readFileSync as any.mockReturnValue(validYaml);
       config.load('test-config.yml');
       config.watch(errorWatcher);
 
@@ -341,13 +342,13 @@ routes:
 
   describe('Edge Cases', () => {
     test('should handle empty YAML file', () => {
-      fs.readFileSync.mockReturnValue('');
+      mockedFs.readFileSync as any.mockReturnValue('');
 
       expect(() => config.load('test-config.yml')).toThrow();
     });
 
     test('should handle YAML with only comments', () => {
-      fs.readFileSync.mockReturnValue('# Just a comment');
+      mockedFs.readFileSync as any.mockReturnValue('# Just a comment');
 
       expect(() => config.load('test-config.yml')).toThrow();
     });
@@ -365,7 +366,7 @@ routes:
     upstream: test
 `;
 
-      fs.readFileSync.mockReturnValue(validYaml);
+      mockedFs.readFileSync as any.mockReturnValue(validYaml);
       config.load('test-config.yml');
 
       expect(config.get('upstreams.0.circuitBreaker.failureThreshold')).toBe(5);
@@ -382,7 +383,7 @@ routes:
     upstream: test
 `;
 
-      fs.readFileSync.mockReturnValue(yamlWithNull);
+      mockedFs.readFileSync as any.mockReturnValue(yamlWithNull);
       const result = config.load('test-config.yml');
 
       // Joi should apply default for null timeout
