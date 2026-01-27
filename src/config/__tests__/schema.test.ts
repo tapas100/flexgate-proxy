@@ -3,7 +3,8 @@
  * Tests for schema validation, versioning, and migration
  */
 
-const { validateConfig, getSchemaVersion, migrateConfig, SCHEMA_VERSION } = require('../schema.ts');
+import { validateConfig, getSchemaVersion, migrateConfig, SCHEMA_VERSION } from '../schema';
+import type { ProxyConfig } from '../../types';
 
 describe('Config Schema', () => {
   describe('Schema Version', () => {
@@ -33,7 +34,7 @@ describe('Config Schema', () => {
       const result = validateConfig(config);
       expect(result.error).toBeNull();
       expect(result.value).toBeDefined();
-      expect(result.value.version).toBe('1.0.0');
+      expect(result.value!.version).toBe('1.0.0');
     });
 
     test('should apply defaults to config', () => {
@@ -53,10 +54,10 @@ describe('Config Schema', () => {
       };
 
       const result = validateConfig(config);
-      expect(result.value.proxy.port).toBe(3000);
-      expect(result.value.proxy.host).toBe('0.0.0.0');
-      expect(result.value.proxy.timeout.request).toBe(30000);
-      expect(result.value.logging.level).toBe('info');
+      expect(result.value!.proxy.port).toBe(3000);
+      expect(result.value!.proxy.host).toBe('0.0.0.0');
+      expect(result.value!.proxy.timeout.request).toBe(30000);
+      expect(result.value!.logging.level).toBe('info');
     });
 
     test('should validate complete config with all options', () => {
@@ -139,9 +140,9 @@ describe('Config Schema', () => {
 
       const result = validateConfig(config);
       expect(result.error).toBeNull();
-      expect(result.value.upstreams).toHaveLength(1);
-      expect(result.value.routes).toHaveLength(1);
-      expect(result.value.logging.level).toBe('debug');
+      expect(result.value!.upstreams).toHaveLength(1);
+      expect(result.value!.routes).toHaveLength(1);
+      expect(result.value!.logging.level).toBe('debug');
     });
   });
 
@@ -158,7 +159,7 @@ describe('Config Schema', () => {
 
       const result = validateConfig(config);
       expect(result.error).toBeDefined();
-      expect(result.error.message).toContain('name');
+      expect(result.error!.message).toContain('name');
     });
 
     test('should require upstream url', () => {
@@ -173,7 +174,7 @@ describe('Config Schema', () => {
 
       const result = validateConfig(config);
       expect(result.error).toBeDefined();
-      expect(result.error.message).toContain('url');
+      expect(result.error!.message).toContain('url');
     });
 
     test('should validate upstream name pattern', () => {
@@ -215,7 +216,7 @@ describe('Config Schema', () => {
 
       const result = validateConfig(config);
       expect(result.error).toBeDefined();
-      expect(result.error.message).toContain('Duplicate upstream names');
+      expect(result.error!.message).toContain('Duplicate upstream names');
     });
   });
 
@@ -232,7 +233,7 @@ describe('Config Schema', () => {
 
       const result = validateConfig(config);
       expect(result.error).toBeDefined();
-      expect(result.error.message).toContain('path');
+      expect(result.error!.message).toContain('path');
     });
 
     test('should require route upstream', () => {
@@ -247,7 +248,7 @@ describe('Config Schema', () => {
 
       const result = validateConfig(config);
       expect(result.error).toBeDefined();
-      expect(result.error.message).toContain('upstream');
+      expect(result.error!.message).toContain('upstream');
     });
 
     test('should validate route path pattern', () => {
@@ -307,7 +308,7 @@ describe('Config Schema', () => {
 
       const result = validateConfig(config);
       expect(result.error).toBeDefined();
-      expect(result.error.message).toContain('Invalid upstream references');
+      expect(result.error!.message).toContain('Invalid upstream references');
     });
 
     test('should warn about duplicate route paths', () => {
@@ -353,9 +354,9 @@ describe('Config Schema', () => {
       };
 
       const result = validateConfig(config);
-      expect(result.value.upstreams[0].circuitBreaker).toBeDefined();
-      expect(result.value.upstreams[0].circuitBreaker.enabled).toBe(true);
-      expect(result.value.upstreams[0].circuitBreaker.failureThreshold).toBe(5);
+      expect(result.value!.upstreams[0].circuitBreaker).toBeDefined();
+      expect(result.value!.upstreams[0].circuitBreaker.enabled).toBe(true);
+      expect(result.value!.upstreams[0].circuitBreaker.failureThreshold).toBe(5);
     });
   });
 
@@ -376,7 +377,7 @@ describe('Config Schema', () => {
 
       const result = validateConfig(config);
       expect(result.error).toBeNull();
-      expect(result.value.routes[0].rateLimit.max).toBe(100);
+      expect(result.value!.routes[0].rateLimit.max).toBe(100);
     });
 
     test('should reject negative rate limits', () => {
@@ -449,7 +450,7 @@ describe('Config Schema', () => {
 
     test('should handle missing version as v1.0.0', () => {
       const config = { test: 'value' };
-      const migrated = migrateConfig(config, undefined);
+      const migrated = migrateConfig(config, '' as any);
       expect(migrated).toEqual(config);
     });
 
@@ -512,7 +513,7 @@ describe('Config Schema', () => {
 
       const result = validateConfig(config);
       expect(result.error).toBeNull();
-      expect(result.value.upstreams[0].metadata.team).toBe('platform');
+      expect(result.value!.upstreams[0].metadata.team).toBe('platform');
     });
   });
 });
