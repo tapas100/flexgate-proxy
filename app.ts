@@ -245,8 +245,17 @@ routes.forEach((route: ProxyRoute) => {
         proxyReq.setHeader('X-Correlation-ID', req.correlationId);
       }
       
-      // Store upstream name for logging
+      // Store upstream name and start time for metrics
       req.upstream = upstream.name;
+      req.upstreamStartTime = Date.now();
+      
+      // Record upstream request metric
+      metrics.upstreamRequestsTotal.inc({
+        upstream: upstream.name,
+        upstream_host: new URL(upstream.url).host,
+        route: route.path,
+        status: 'pending'
+      });
       
       logger.debug('proxy.request', {
         correlationId: req.correlationId,
@@ -256,18 +265,71 @@ routes.forEach((route: ProxyRoute) => {
     },
     
     onProxyRes: (proxyRes: any, req: any, _res: any) => {
+      const duration = Date.now() - (req.upstreamStartTime || Date.now());
+      
+      // Record upstream metrics
+      metrics.upstreamRequestsTotal.inc({
+        upstream: upstream.name,
+        upstream_host: new URL(upstream.url).host,
+        route: route.path,
+        status: proxyRes.statusCode.toString()
+      });
+      
+      metrics.upstreamRequestDuration.observe({
+        upstream: upstream.name,
+        upstream_host: new URL(upstream.url).host,
+        route: route.path
+      }, duration);
+      
+      // Mark upstream as available
+      metrics.upstreamAvailability.set({
+        upstream: upstream.name,
+        upstream_host: new URL(upstream.url).host
+      }, 1);
+      
       logger.debug('proxy.response', {
         correlationId: req.correlationId,
         upstream: upstream.name,
-        statusCode: proxyRes.statusCode
+        statusCode: proxyRes.statusCode,
+        duration
       });
     },
     
     onError: (err: Error, req: any, res: any) => {
+      const duration = Date.now() - (req.upstreamStartTime || Date.now());
+      const errorType = err.message.includes('timeout') ? 'timeout' : 
+                       err.message.includes('ECONNREFUSED') ? 'connection_refused' :
+                       err.message.includes('ENOTFOUND') ? 'dns_error' : 'unknown';
+      
+      // Record upstream error metrics
+      metrics.upstreamErrorsTotal.inc({
+        upstream: upstream.name,
+        upstream_host: new URL(upstream.url).host,
+        route: route.path,
+        error_type: errorType
+      });
+      
+      // Record timeout metric if applicable
+      if (errorType === 'timeout') {
+        metrics.upstreamTimeoutsTotal.inc({
+          upstream: upstream.name,
+          upstream_host: new URL(upstream.url).host,
+          route: route.path
+        });
+      }
+      
+      // Mark upstream as potentially unavailable
+      metrics.upstreamAvailability.set({
+        upstream: upstream.name,
+        upstream_host: new URL(upstream.url).host
+      }, 0);
+      
       logger.error('proxy.error', {
         correlationId: req.correlationId,
         upstream: upstream.name,
-        error: err.message
+        error: err.message,
+        errorType,
+        duration
       });
       
       // Record circuit breaker failure
