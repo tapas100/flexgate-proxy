@@ -30,7 +30,7 @@ routes:
     fs.readFileSync.mockReturnValue(mockConfig);
 
     // Require app after mocking
-    app = require('../../app');
+    app = require('../app');
   });
 
   describe('Version Endpoint', () => {
