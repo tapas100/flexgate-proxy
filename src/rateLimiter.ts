@@ -3,6 +3,7 @@ import RedisStore from 'rate-limit-redis';
 import { createClient, RedisClientType } from 'redis';
 import config from './config/loader';
 import { logger } from './logger';
+import { metrics } from './metrics';
 import type { Request, Response, NextFunction } from 'express';
 import type { RateLimiterOptions } from './types';
 
@@ -31,6 +32,9 @@ class RateLimiter {
           logger.info('✅ Redis connected for rate limiting');
         }
       } catch (error: any) {
+        // Record Redis error metric
+        metrics.rateLimitRedisErrorsTotal.inc({ error_type: 'connection_failed' });
+        
         logger.warn('⚠️  Redis connection failed, falling back to local rate limiting', { 
           error: error.message 
         });
@@ -55,6 +59,16 @@ class RateLimiter {
       standardHeaders: true,
       legacyHeaders: false,
       handler: (req: Request, res: Response) => {
+        const route = req.route?.path || req.path;
+        const limitType = options.max ? 'route' : 'global';
+        
+        // Record rate limit rejection metrics
+        metrics.rateLimitRequestsRejected.inc({
+          route,
+          limit_type: limitType,
+          client_id: req.ip || 'unknown'
+        });
+        
         logger.warn('rate_limit.exceeded', {
           correlationId: req.correlationId,
           event: 'rate_limit.exceeded',
@@ -73,7 +87,20 @@ class RateLimiter {
           error: 'Rate limit exceeded',
           retryAfter: Math.ceil(Number(res.getHeader('Retry-After')))
         });
-      }
+      },
+      // Add skip success handler to track allowed requests
+      skip: (req: Request) => {
+        const route = req.route?.path || req.path;
+        const limitType = options.max ? 'route' : 'global';
+        
+        // Record total requests checked
+        metrics.rateLimitRequestsTotal.inc({ route, limit_type: limitType });
+        
+        // This will be called for every request, we return false to not skip
+        return false;
+      },
+      // Custom request handler wrapper to track allowed requests
+      onLimitReached: undefined as any
     };
     
     // Use Redis store if available
