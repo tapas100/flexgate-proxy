@@ -1,11 +1,13 @@
 {
+  "preset": "ts-jest",
   "testEnvironment": "node",
   "coverageDirectory": "coverage",
   "collectCoverageFrom": [
-    "src/**/*.js",
-    "app.js",
-    "!src/**/*.test.js",
-    "!src/**/__tests__/**"
+    "src/**/*.{js,ts}",
+    "app.{js,ts}",
+    "!src/**/*.test.{js,ts}",
+    "!src/**/__tests__/**",
+    "!**/*.d.ts"
   ],
   "coverageThreshold": {
     "global": {
@@ -16,17 +18,24 @@
     }
   },
   "testMatch": [
-    "**/__tests__/**/*.test.js",
-    "**/?(*.)+(spec|test).js"
+    "**/__tests__/**/*.test.{js,ts}",
+    "**/?(*.)+(spec|test).{js,ts}"
   ],
   "testPathIgnorePatterns": [
     "/node_modules/",
-    "/coverage/"
+    "/coverage/",
+    "/dist/"
   ],
   "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+  "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
+  "transform": {
+    "^.+\\.tsx?$": ["ts-jest", {
+      "tsconfig": "tsconfig.json"
+    }]
+  },
   "verbose": true,
   "bail": false,
   "clearMocks": true,
   "resetMocks": true,
-  "restoreMocks": true
+  "collectCoverage": false
 }

@@ -1,5 +1,5 @@
 const { createLogger, format, transports } = require('winston');
-const config = require('./config/loader');
+const config = require('./config/loader.ts');
 
 const logConfig = config.get('logging', {
   level: 'info',
