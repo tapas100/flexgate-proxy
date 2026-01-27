@@ -1,4 +1,6 @@
 import { logger } from './logger';
+import { metrics } from './metrics';
+import { CircuitBreakerMetricState } from './metrics/types';
 import type { CircuitBreakerState, CircuitBreakerStats } from './types';
 
 interface CircuitBreakerOptions {
@@ -48,13 +50,14 @@ class CircuitBreaker {
     if (this.state === 'OPEN') {
       // Check if timeout has elapsed
       if (this.openedAt && Date.now() - this.openedAt >= this.openDuration) {
-        this.state = 'HALF_OPEN';
-        this.halfOpenAttempts = 0;
-        logger.info('circuit_breaker.half_open', {
-          event: 'circuit_breaker.half_open',
-          circuitBreaker: this.name
-        });
+        this.transitionTo('HALF_OPEN');
       } else {
+        // Record rejected request
+        metrics.circuitBreakerRejectedTotal.inc({
+          upstream: this.name,
+          route: this.name
+        });
+        
         const error: any = new Error('Circuit breaker is OPEN');
         error.circuitBreakerOpen = true;
         throw error;
@@ -64,6 +67,12 @@ class CircuitBreaker {
     // Half-open: limit trial requests
     if (this.state === 'HALF_OPEN') {
       if (this.halfOpenAttempts >= this.halfOpenRequests) {
+        // Record rejected request
+        metrics.circuitBreakerRejectedTotal.inc({
+          upstream: this.name,
+          route: this.name
+        });
+        
         const error: any = new Error('Circuit breaker HALF_OPEN trial limit reached');
         error.circuitBreakerOpen = true;
         throw error;
@@ -84,18 +93,19 @@ class CircuitBreaker {
   private onSuccess(): void {
     this.recordRequest(true);
     
+    // Record success metric
+    metrics.circuitBreakerSuccessesTotal.inc({
+      upstream: this.name,
+      route: this.name
+    });
+    
     if (this.state === 'HALF_OPEN') {
       // Check if we've had enough successful trial requests
       const recentRequests = this.getRecentRequests();
       const successfulTrials = recentRequests.filter(r => r.success).length;
       
       if (successfulTrials >= this.halfOpenRequests) {
-        this.state = 'CLOSED';
-        this.openedAt = null;
-        logger.info('circuit_breaker.closed', {
-          event: 'circuit_breaker.closed',
-          circuitBreaker: this.name
-        });
+        this.transitionTo('CLOSED');
       }
     }
   }
@@ -103,14 +113,15 @@ class CircuitBreaker {
   public onFailure(): void {
     this.recordRequest(false);
     
+    // Record failure metric
+    metrics.circuitBreakerFailuresTotal.inc({
+      upstream: this.name,
+      route: this.name
+    });
+    
     if (this.state === 'HALF_OPEN') {
       // Any failure in half-open returns to open
-      this.state = 'OPEN';
-      this.openedAt = Date.now();
-      logger.warn('circuit_breaker.reopened', {
-        event: 'circuit_breaker.reopened',
-        circuitBreaker: this.name
-      });
+      this.transitionTo('OPEN');
       return;
     }
     
@@ -121,9 +132,14 @@ class CircuitBreaker {
         const failures = recentRequests.filter(r => !r.success).length;
         const failureRate = (failures / recentRequests.length) * 100;
         
+        // Update failure rate metric
+        metrics.circuitBreakerFailureRate.set(
+          { upstream: this.name, route: this.name },
+          failureRate
+        );
+        
         if (failureRate >= this.failureThreshold) {
-          this.state = 'OPEN';
-          this.openedAt = Date.now();
+          this.transitionTo('OPEN');
           logger.error('circuit_breaker.opened', {
             event: 'circuit_breaker.opened',
             circuitBreaker: this.name,
@@ -149,6 +165,61 @@ class CircuitBreaker {
   private getRecentRequests(): RequestRecord[] {
     const now = Date.now();
     return this.requests.filter(r => now - r.timestamp < this.windowMs);
+  }
+  
+  /**
+   * Transition circuit breaker to a new state with metrics recording
+   */
+  private transitionTo(newState: CircuitBreakerState): void {
+    const oldState = this.state;
+    
+    if (oldState === newState) {
+      return;
+    }
+    
+    // Record state transition metric
+    metrics.circuitBreakerTransitionsTotal.inc({
+      upstream: this.name,
+      route: this.name,
+      from_state: oldState,
+      to_state: newState
+    });
+    
+    // Update state
+    this.state = newState;
+    
+    // Update state gauge
+    const stateValue = newState === 'CLOSED' ? CircuitBreakerMetricState.CLOSED
+      : newState === 'HALF_OPEN' ? CircuitBreakerMetricState.HALF_OPEN
+      : CircuitBreakerMetricState.OPEN;
+    
+    metrics.circuitBreakerState.set(
+      { upstream: this.name, route: this.name },
+      stateValue
+    );
+    
+    // Update timestamps
+    if (newState === 'OPEN') {
+      this.openedAt = Date.now();
+      logger.warn('circuit_breaker.reopened', {
+        event: 'circuit_breaker.reopened',
+        circuitBreaker: this.name,
+        from: oldState
+      });
+    } else if (newState === 'CLOSED') {
+      this.openedAt = null;
+      logger.info('circuit_breaker.closed', {
+        event: 'circuit_breaker.closed',
+        circuitBreaker: this.name,
+        from: oldState
+      });
+    } else if (newState === 'HALF_OPEN') {
+      this.halfOpenAttempts = 0;
+      logger.info('circuit_breaker.half_open', {
+        event: 'circuit_breaker.half_open',
+        circuitBreaker: this.name
+      });
+    }
   }
   
   getState(): CircuitBreakerStats {
