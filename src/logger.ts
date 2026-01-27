@@ -11,7 +11,15 @@ const logConfig = config.get('logging', {
     successRate: 1.0,
     errorRate: 1.0
   }
-});
+}) || {
+  level: 'info',
+  format: 'json',
+  sampling: {
+    enabled: false,
+    successRate: 1.0,
+    errorRate: 1.0
+  }
+};
 
 // Sampling logic
 const shouldSample = (level: string, statusCode?: number): boolean => {
@@ -19,12 +27,12 @@ const shouldSample = (level: string, statusCode?: number): boolean => {
   
   // Always log errors
   if (level === 'error' || (statusCode && statusCode >= 500)) {
-    return Math.random() < logConfig.sampling.errorRate;
+    return Math.random() < (logConfig.sampling.errorRate || 1.0);
   }
   
   // Sample success logs
   if (statusCode && statusCode >= 200 && statusCode < 300) {
-    return Math.random() < logConfig.sampling.successRate;
+    return Math.random() < (logConfig.sampling.successRate || 1.0);
   }
   
   // Log warnings and client errors
@@ -39,7 +47,7 @@ const structuredFormat = format.combine(
 );
 
 const logger = createLogger({
-  level: logConfig.level,
+  level: logConfig.level || 'info',
   format: structuredFormat,
   defaultMeta: { 
     service: 'proxy-server',
@@ -48,7 +56,7 @@ const logger = createLogger({
   },
   transports: [
     new transports.Console({
-      format: logConfig.format === 'json' 
+      format: (logConfig.format === 'json' || !logConfig.format) 
         ? structuredFormat 
         : format.combine(format.colorize(), format.simple())
     }),

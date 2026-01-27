@@ -62,7 +62,7 @@ const httpRequestDuration = new promClient.Histogram({
 
 // Circuit breakers for upstreams
 const circuitBreakers = new Map<string, CircuitBreaker>();
-const upstreams = config.get<Upstream[]>('upstreams', []);
+const upstreams = config.get<Upstream[]>('upstreams', []) || [];
 upstreams.forEach((upstream: Upstream) => {
   if (upstream.circuitBreaker?.enabled !== false) {
     const cb = new CircuitBreaker(upstream.name, upstream.circuitBreaker || {});
@@ -73,8 +73,8 @@ upstreams.forEach((upstream: Upstream) => {
 
 // Basic middleware
 app.use(morgan('combined', { stream: { write: (message: string) => logger.info(message.trim()) } }));
-app.use(express.json({ limit: config.get<string>('proxy.maxBodySize', '10mb') }));
-app.use(express.urlencoded({ extended: false, limit: config.get<string>('proxy.maxBodySize', '10mb') }));
+app.use(express.json({ limit: config.get<string>('proxy.maxBodySize', '10mb') || '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: config.get<string>('proxy.maxBodySize', '10mb') || '10mb' }));
 app.use(cookieParser());
 app.use(cors());
 
@@ -192,7 +192,7 @@ app.get('/metrics', async (_req: Request, res: Response) => {
 });
 
 // Setup proxy routes
-const routes = config.get<ProxyRoute[]>('routes', []);
+const routes = config.get<ProxyRoute[]>('routes', []) || [];
 routes.forEach((route: ProxyRoute) => {
   const upstream = upstreams.find((u: Upstream) => u.name === route.upstream);
   if (!upstream) {
@@ -214,7 +214,7 @@ routes.forEach((route: ProxyRoute) => {
     pathRewrite: route.stripPath ? {
       [`^${route.stripPath}`]: ''
     } : undefined,
-    timeout: route.timeout || upstream.timeout || config.get<number>('timeouts.request', 30000),
+    timeout: route.timeout || upstream.timeout || config.get<number>('timeouts.request', 30000) || 30000,
     
     onProxyReq: (proxyReq: any, req: any, _res: any) => {
       // Add correlation ID
