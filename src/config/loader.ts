@@ -99,9 +99,15 @@ class Config implements IConfigLoader {
    * @param defaultValue - Default value if path not found
    * @returns Configuration value or default
    */
-  get<T = any>(path: string, defaultValue?: T): T {
+  get<T = any>(path: string, defaultValue?: T): T | null {
+    // Auto-load config if not loaded
     if (!this.config) {
-      return defaultValue as T;
+      try {
+        this.load();
+      } catch (error) {
+        // If auto-load fails, return default or null
+        return defaultValue !== undefined ? defaultValue as T : null;
+      }
     }
     
     const keys = path.split('.');
@@ -111,7 +117,7 @@ class Config implements IConfigLoader {
       if (value && typeof value === 'object' && key in value) {
         value = value[key];
       } else {
-        return defaultValue as T;
+        return defaultValue !== undefined ? defaultValue as T : null;
       }
     }
     

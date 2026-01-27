@@ -61,8 +61,12 @@ export interface Route {
   methods?: HttpMethod[];
   rateLimit?: RateLimitConfig;
   timeout?: number;
+  stripPath?: string;
   metadata?: Record<string, any>;
 }
+
+// Type alias for proxy routes
+export type ProxyRoute = Route;
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
 
@@ -218,7 +222,7 @@ export interface ConfigLoader {
   schemaVersion: string;
   load(configPath?: string): ProxyConfig;
   reload(configPath?: string): boolean;
-  get<T = any>(path: string, defaultValue?: T): T;
+  get<T = any>(path: string, defaultValue?: T): T | null;
   watch(callback: ConfigWatcher): void;
 }
 
