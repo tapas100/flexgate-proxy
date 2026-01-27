@@ -1,6 +1,5 @@
 import promClient, { Registry } from 'prom-client';
 import { MetricCollectors } from './types';
-import { logger } from '../logger';
 
 /**
  * Central metrics registry
@@ -20,8 +19,6 @@ export class MetricsRegistry {
 
     // Initialize all custom metric collectors
     this.collectors = this.initializeCollectors();
-
-    logger.info('Metrics registry initialized with all collectors');
   }
 
   /**
@@ -247,7 +244,7 @@ export class MetricsRegistry {
     try {
       return await this.registry.metrics();
     } catch (error) {
-      logger.error('Failed to get metrics', { error });
+      console.error('[Metrics] Failed to get metrics', error);
       throw error;
     }
   }
@@ -264,7 +261,6 @@ export class MetricsRegistry {
    */
   resetMetrics(): void {
     this.registry.resetMetrics();
-    logger.debug('All metrics reset');
   }
 
   /**
@@ -272,7 +268,6 @@ export class MetricsRegistry {
    */
   clear(): void {
     this.registry.clear();
-    logger.debug('Metrics registry cleared');
   }
 }
 

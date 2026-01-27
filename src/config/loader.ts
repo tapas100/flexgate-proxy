@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
 import { validateConfig, getSchemaVersion, migrateConfig } from './schema';
+import { metrics } from '../metrics';
 import type { ProxyConfig, ConfigWatcher, ConfigLoader as IConfigLoader } from '../types';
 
 class Config implements IConfigLoader {
@@ -56,10 +57,26 @@ class Config implements IConfigLoader {
       }
       
       this.config = value as ProxyConfig;
+      
+      // Record successful config load metrics
+      metrics.configReloadTotal.inc({ status: 'success' });
+      metrics.configLastReloadTimestamp.set(Date.now());
+      metrics.configVersionInfo.set(
+        { version: configVersion, config_file: configPath },
+        1
+      );
+      
       console.log(`✅ Config loaded from ${fullPath} (schema v${this.schemaVersion})`);
       return this.config;
     } catch (error) {
       const err = error as Error;
+      
+      // Record config load failure metrics
+      metrics.configReloadTotal.inc({ status: 'failure' });
+      metrics.configReloadFailuresTotal.inc({ 
+        error_type: err.name || 'unknown'
+      });
+      
       console.error('❌ Failed to load config:', err.message);
       throw error;
     }
