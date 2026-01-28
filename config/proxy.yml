@@ -106,6 +106,7 @@ routes:
       windowMs: 60000
       message: "Too many requests to API"
 
+http:
   maxFreeSockets: 10
   timeout: 60000
   keepAlive: true
