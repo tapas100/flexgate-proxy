@@ -1,0 +1,129 @@
+# ============================================
+# FlexGate Proxy - Render Deployment Config
+# ============================================
+# This file configures both the API Gateway and Admin UI
+# on Render.com without Docker.
+#
+# Deploy: Push to main branch or connect in Render dashboard
+# ============================================
+
+services:
+  # ============================================
+  # API Gateway Backend (Node.js)
+  # ============================================
+  - type: web
+    name: flexgate-api
+    env: node
+    region: oregon  # Change to: oregon, frankfurt, singapore
+    plan: starter   # Free tier: starter | Paid: standard, pro
+    branch: main
+    
+    # Build configuration
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    
+    # Health checks
+    healthCheckPath: /health/live
+    
+    # Auto-deploy on push
+    autoDeploy: true
+    
+    # Environment variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+      
+      - key: PORT
+        value: "3000"
+      
+      - key: REDIS_URL
+        fromDatabase:
+          name: flexgate-redis
+          property: connectionString
+      
+      - key: JWT_SECRET
+        generateValue: true
+        sync: false
+      
+      - key: ADMIN_JWT_SECRET
+        generateValue: true
+        sync: false
+      
+      - key: METRICS_PORT
+        value: "9090"
+      
+      - key: LOG_LEVEL
+        value: info
+    
+    # Custom domains (add after deployment)
+    # domains:
+    #   - api.flexgate.io
+
+  # ============================================
+  # Admin UI Frontend (React Static Site)
+  # ============================================
+  - type: web
+    name: flexgate-admin
+    env: static
+    region: oregon
+    plan: starter
+    branch: main
+    
+    # Build configuration for React app
+    buildCommand: cd admin-ui && npm ci && npm run build
+    staticPublishPath: admin-ui/build
+    
+    # Routing for SPA
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    
+    # Environment variables for React
+    envVars:
+      - key: REACT_APP_API_URL
+        fromService:
+          type: web
+          name: flexgate-api
+          property: host
+      
+      - key: REACT_APP_VERSION
+        value: "1.1.0"
+      
+      - key: REACT_APP_ENV
+        value: production
+    
+    # Auto-deploy
+    autoDeploy: true
+    
+    # Custom domains (add after deployment)
+    # domains:
+    #   - admin.flexgate.io
+
+# ============================================
+# Databases
+# ============================================
+databases:
+  - name: flexgate-redis
+    databaseName: flexgate
+    plan: starter  # Free tier: starter | Paid: standard
+    region: oregon
+    ipAllowList: []  # Empty = allow from any Render service
+
+# ============================================
+# Cron Jobs (for maintenance tasks)
+# ============================================
+# Uncomment when needed
+# jobs:
+#   - type: cron
+#     name: cleanup-old-metrics
+#     env: node
+#     schedule: "0 0 * * *"  # Daily at midnight
+#     buildCommand: npm ci && npm run build
+#     startCommand: node dist/scripts/cleanup.js
+
+# ============================================
+# Preview Environments
+# ============================================
+# Render auto-creates preview deployments for PRs
+# No configuration needed!
