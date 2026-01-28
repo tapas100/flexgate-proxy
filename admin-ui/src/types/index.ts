@@ -50,12 +50,69 @@ export interface MetricsDashboard {
   timestamp: string;
 }
 
+// Legacy LogEntry (kept for backward compatibility)
 export interface LogEntry {
   id: string;
   timestamp: string;
   level: 'info' | 'warn' | 'error' | 'debug';
   message: string;
   metadata?: Record<string, any>;
+}
+
+// Feature 4: Advanced Log Types
+export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+export type LogSource = 'proxy' | 'auth' | 'metrics' | 'admin' | 'system';
+
+export interface DetailedLogEntry {
+  id: string;
+  timestamp: number;
+  level: LogLevel;
+  source: LogSource;
+  message: string;
+  metadata?: Record<string, any>;
+  correlationId?: string;
+  requestId?: string;
+  userId?: string;
+  error?: {
+    stack?: string;
+    code?: string;
+    details?: any;
+  };
+  request?: {
+    method: string;
+    path: string;
+    headers?: Record<string, string>;
+    query?: Record<string, string>;
+  };
+  response?: {
+    statusCode: number;
+    latency: number;
+    size?: number;
+  };
+}
+
+export interface LogFilter {
+  levels: LogLevel[];
+  sources: LogSource[];
+  timeRange: TimeRange;
+  searchQuery: string;
+  isRegex: boolean;
+  startTime?: number;
+  endTime?: number;
+}
+
+export interface LogStats {
+  total: number;
+  byLevel: Record<LogLevel, number>;
+  bySource: Record<LogSource, number>;
+  errorRate: number;
+  avgLatency: number;
+}
+
+export interface LogExportOptions {
+  format: 'json' | 'csv';
+  filters: LogFilter;
+  limit?: number;
 }
 
 export interface ApiResponse<T = any> {
