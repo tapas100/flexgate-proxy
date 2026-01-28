@@ -10,6 +10,7 @@ import RoutesPage from './pages/Routes';
 import Metrics from './pages/Metrics';
 import Logs from './pages/Logs';
 import OAuthProviders from './pages/OAuthProviders';
+import Webhooks from './pages/Webhooks';
 import Settings from './pages/Settings';
 
 const theme = createTheme({
@@ -81,6 +82,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <OAuthProviders />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/webhooks"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Webhooks />
                 </Layout>
               </ProtectedRoute>
             }
