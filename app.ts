@@ -15,6 +15,7 @@ import { ProxyRoute, Upstream, RateLimitConfig } from './src/types';
 import metricsRegistry, { metrics } from './src/metrics';
 import { initializeAuth } from './src/auth';
 import authRoutes from './routes/auth';
+import webhookRoutes from './routes/webhooks';
 
 // Extend Express Request type
 declare global {
@@ -98,6 +99,9 @@ app.use(cors());
 
 // Mount authentication routes
 app.use('/api/auth', authRoutes);
+
+// Mount webhook routes
+app.use('/api/webhooks', webhookRoutes);
 
 // Request logging with correlation IDs
 app.use(requestLogger);
