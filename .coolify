@@ -1,0 +1,32 @@
+# ============================================
+# FlexGate Proxy - Coolify Configuration
+# ============================================
+# Open-source self-hosted deployment platform
+# Website: https://coolify.io
+# License: Apache 2.0
+# ============================================
+
+# This file is auto-detected by Coolify
+# No manual configuration needed!
+
+# Build settings are configured in Coolify dashboard:
+# - Build Command: npm ci && npm run build
+# - Start Command: npm start
+# - Port: 3000
+
+# Environment variables (set in Coolify UI):
+# NODE_ENV=production
+# PORT=3000
+# REDIS_URL=${COOLIFY_REDIS_URL}
+# JWT_SECRET=${COOLIFY_AUTO_SECRET_1}
+# ADMIN_JWT_SECRET=${COOLIFY_AUTO_SECRET_2}
+
+# Health check endpoint (auto-detected):
+# /health/live
+
+# Coolify automatically handles:
+# ✅ SSL certificates (Let's Encrypt)
+# ✅ Zero-downtime deployments
+# ✅ Auto-restart on crash
+# ✅ Git auto-deploy on push
+# ✅ Preview deployments for PRs
