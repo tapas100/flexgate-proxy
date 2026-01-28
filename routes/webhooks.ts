@@ -9,7 +9,7 @@ const router = Router();
  * Create a new webhook
  * POST /api/webhooks
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response): Promise<any> => {
   try {
     const { url, events, headers, timeout, retryConfig } = req.body;
 
@@ -62,7 +62,7 @@ router.post('/', async (req: Request, res: Response) => {
       events,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       id: registered.id,
       url: registered.url,
       events: registered.events,
@@ -75,7 +75,7 @@ router.post('/', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error('Failed to create webhook', { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -83,12 +83,12 @@ router.post('/', async (req: Request, res: Response) => {
  * List all webhooks
  * GET /api/webhooks
  */
-router.get('/', (_req: Request, res: Response) => {
+router.get('/', (_req: Request, res: Response): any => {
   try {
     const webhooks = webhookManager.getAllWebhooks();
 
-    res.json({
-      webhooks: webhooks.map(w => ({
+    return res.json({
+      webhooks: webhooks.map((w: WebhookConfig) => ({
         id: w.id,
         url: w.url,
         events: w.events,
@@ -101,7 +101,7 @@ router.get('/', (_req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error('Failed to list webhooks', { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -109,19 +109,19 @@ router.get('/', (_req: Request, res: Response) => {
  * Get webhook details
  * GET /api/webhooks/:id
  */
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', (req: Request, res: Response): any => {
   try {
     const { id } = req.params;
-    const webhook = webhookManager.getWebhook(id);
+    const webhook = webhookManager.getWebhook(id as string);
 
     if (!webhook) {
       return res.status(404).json({ error: 'Webhook not found' });
     }
 
-    res.json(webhook);
+    return res.json(webhook);
   } catch (error: any) {
     logger.error('Failed to get webhook', { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -129,12 +129,12 @@ router.get('/:id', (req: Request, res: Response) => {
  * Update webhook
  * PUT /api/webhooks/:id
  */
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', (req: Request, res: Response): any => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
-    const webhook = webhookManager.getWebhook(id);
+    const webhook = webhookManager.getWebhook(id as string);
     if (!webhook) {
       return res.status(404).json({ error: 'Webhook not found' });
     }
@@ -144,14 +144,14 @@ router.put('/:id', (req: Request, res: Response) => {
     delete updates.secret;
     delete updates.createdAt;
 
-    const updated = webhookManager.updateWebhook(id, updates);
+    const updated = webhookManager.updateWebhook(id as string, updates);
 
     logger.info('Webhook updated via API', { webhookId: id, updates: Object.keys(updates) });
 
-    res.json(updated);
+    return res.json(updated);
   } catch (error: any) {
     logger.error('Failed to update webhook', { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -159,11 +159,11 @@ router.put('/:id', (req: Request, res: Response) => {
  * Delete webhook
  * DELETE /api/webhooks/:id
  */
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', (req: Request, res: Response): any => {
   try {
     const { id } = req.params;
 
-    const deleted = webhookManager.unregisterWebhook(id);
+    const deleted = webhookManager.unregisterWebhook(id as string);
 
     if (!deleted) {
       return res.status(404).json({ error: 'Webhook not found' });
@@ -171,10 +171,10 @@ router.delete('/:id', (req: Request, res: Response) => {
 
     logger.info('Webhook deleted via API', { webhookId: id });
 
-    res.json({ success: true, message: 'Webhook deleted' });
+    return res.json({ success: true, message: 'Webhook deleted' });
   } catch (error: any) {
     logger.error('Failed to delete webhook', { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -182,21 +182,21 @@ router.delete('/:id', (req: Request, res: Response) => {
  * Test webhook
  * POST /api/webhooks/:id/test
  */
-router.post('/:id/test', async (req: Request, res: Response) => {
+router.post('/:id/test', async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
-    const delivery = await webhookManager.testWebhook(id);
+    const delivery = await webhookManager.testWebhook(id as string);
 
     logger.info('Webhook test triggered via API', {
       webhookId: id,
       status: delivery.status,
     });
 
-    res.json(delivery);
+    return res.json(delivery);
   } catch (error: any) {
     logger.error('Failed to test webhook', { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -204,26 +204,26 @@ router.post('/:id/test', async (req: Request, res: Response) => {
  * Get webhook delivery logs
  * GET /api/webhooks/:id/logs
  */
-router.get('/:id/logs', (req: Request, res: Response) => {
+router.get('/:id/logs', (req: Request, res: Response): any => {
   try {
     const { id } = req.params;
     const limit = parseInt(req.query.limit as string) || 100;
 
-    const webhook = webhookManager.getWebhook(id);
+    const webhook = webhookManager.getWebhook(id as string);
     if (!webhook) {
       return res.status(404).json({ error: 'Webhook not found' });
     }
 
-    const logs = webhookManager.getDeliveryLogs(id, limit);
+    const logs = webhookManager.getDeliveryLogs(id as string, limit);
 
-    res.json({
+    return res.json({
       webhookId: id,
       logs,
       total: logs.length,
     });
   } catch (error: any) {
     logger.error('Failed to get webhook logs', { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -231,13 +231,13 @@ router.get('/:id/logs', (req: Request, res: Response) => {
  * Get webhook statistics
  * GET /api/webhooks/stats
  */
-router.get('/stats/all', (_req: Request, res: Response) => {
+router.get('/stats/all', (_req: Request, res: Response): any => {
   try {
     const stats = webhookManager.getStats();
-    res.json(stats);
+    return res.json(stats);
   } catch (error: any) {
     logger.error('Failed to get webhook stats', { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
