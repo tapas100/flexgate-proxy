@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import RoutesPage from './pages/Routes';
 import Metrics from './pages/Metrics';
 import Logs from './pages/Logs';
+import OAuthProviders from './pages/OAuthProviders';
 import Settings from './pages/Settings';
 
 const theme = createTheme({
@@ -68,6 +69,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Logs />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/oauth"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <OAuthProviders />
                 </Layout>
               </ProtectedRoute>
             }
