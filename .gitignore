@@ -109,3 +109,8 @@ dump.rdb
 # Temporary files
 tmp/
 temp/
+
+# TypeScript build output
+dist/
+*.d.ts
+*.js.map
