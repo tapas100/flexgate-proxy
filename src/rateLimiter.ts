@@ -4,6 +4,7 @@ import { createClient, RedisClientType } from 'redis';
 import config from './config/loader';
 import { logger } from './logger';
 import { metrics } from './metrics';
+import { eventBus, EventType, RateLimitEventPayload } from './events/EventBus';
 import type { Request, Response, NextFunction } from 'express';
 import type { RateLimiterOptions } from './types';
 
@@ -61,6 +62,8 @@ class RateLimiter {
       handler: (req: Request, res: Response) => {
         const route = req.route?.path || req.path;
         const limitType = options.max ? 'route' : 'global';
+        const maxRequests = options.max || globalConfig.max || 100;
+        const windowSeconds = (options.windowMs || globalConfig.windowMs || 60000) / 1000;
         
         // Record rate limit rejection metrics
         metrics.rateLimitRequestsRejected.inc({
@@ -68,6 +71,20 @@ class RateLimiter {
           limit_type: limitType,
           client_id: req.ip || 'unknown'
         });
+        
+        // Emit rate limit exceeded event
+        const eventPayload: RateLimitEventPayload = {
+          timestamp: new Date().toISOString(),
+          source: 'rate_limiter',
+          routeId: route,
+          routePath: route,
+          clientId: req.ip || 'unknown',
+          limit: maxRequests,
+          current: maxRequests, // At limit
+          windowSeconds,
+          percentUsed: 100,
+        };
+        eventBus.emitEvent(EventType.RATE_LIMIT_EXCEEDED, eventPayload);
         
         logger.warn('rate_limit.exceeded', {
           correlationId: req.correlationId,

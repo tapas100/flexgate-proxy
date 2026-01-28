@@ -2,6 +2,7 @@ import { logger } from './logger';
 import { metrics } from './metrics';
 import { CircuitBreakerMetricState } from './metrics/types';
 import type { CircuitBreakerState, CircuitBreakerStats } from './types';
+import { eventBus, EventType, CircuitBreakerEventPayload } from './events/EventBus';
 
 interface CircuitBreakerOptions {
   failureThreshold?: number;
@@ -198,7 +199,26 @@ class CircuitBreaker {
       stateValue
     );
     
-    // Update timestamps
+    // Get current stats for event payload
+    const recentRequests = this.getRecentRequests();
+    const failureCount = recentRequests.filter(r => !r.success).length;
+    const failureRate = this.getFailureRate();
+    
+    // Emit webhook events for state changes
+    const eventPayload: CircuitBreakerEventPayload = {
+      timestamp: new Date().toISOString(),
+      source: 'circuit_breaker',
+      routeId: this.name,
+      routePath: this.name,
+      target: this.name,
+      errorRate: failureRate / 100,
+      threshold: this.failureThreshold / 100,
+      failureCount,
+      windowSize: recentRequests.length,
+      state: newState.toLowerCase() as 'open' | 'closed' | 'half_open',
+    };
+    
+    // Update timestamps and emit events
     if (newState === 'OPEN') {
       this.openedAt = Date.now();
       logger.warn('circuit_breaker.reopened', {
@@ -206,6 +226,10 @@ class CircuitBreaker {
         circuitBreaker: this.name,
         from: oldState
       });
+      
+      // Emit CIRCUIT_BREAKER_OPENED event
+      eventBus.emitEvent(EventType.CIRCUIT_BREAKER_OPENED, eventPayload);
+      
     } else if (newState === 'CLOSED') {
       this.openedAt = null;
       logger.info('circuit_breaker.closed', {
@@ -213,12 +237,19 @@ class CircuitBreaker {
         circuitBreaker: this.name,
         from: oldState
       });
+      
+      // Emit CIRCUIT_BREAKER_CLOSED event
+      eventBus.emitEvent(EventType.CIRCUIT_BREAKER_CLOSED, eventPayload);
+      
     } else if (newState === 'HALF_OPEN') {
       this.halfOpenAttempts = 0;
       logger.info('circuit_breaker.half_open', {
         event: 'circuit_breaker.half_open',
         circuitBreaker: this.name
       });
+      
+      // Emit CIRCUIT_BREAKER_HALF_OPEN event
+      eventBus.emitEvent(EventType.CIRCUIT_BREAKER_HALF_OPEN, eventPayload);
     }
   }
   
