@@ -185,3 +185,74 @@ export interface MetricsData {
 
 export type TimeRange = '1h' | '6h' | '24h' | '7d' | '30d';
 export type RefreshInterval = '30s' | '1m' | '5m' | 'off';
+
+// OAuth Provider Types
+export type OAuthProviderType = 'google' | 'github' | 'microsoft' | 'generic';
+
+export interface OAuthProvider {
+  id: string;
+  name: string;
+  type: OAuthProviderType;
+  enabled: boolean;
+  clientId: string;
+  clientSecret?: string; // Never sent to frontend for existing providers
+  redirectUri: string;
+  scopes: string[];
+  authorizationEndpoint?: string; // For generic OAuth2
+  tokenEndpoint?: string; // For generic OAuth2
+  userInfoEndpoint?: string; // For generic OAuth2
+  createdAt: number;
+  updatedAt: number;
+  stats?: OAuthProviderStats;
+}
+
+export interface OAuthProviderStats {
+  totalLogins: number;
+  lastLogin: number | null;
+  errorRate: number; // Percentage
+  avgResponseTime: number; // Milliseconds
+  successfulLogins24h: number;
+  failedLogins24h: number;
+}
+
+export interface OAuthProviderConfig {
+  name: string;
+  type: OAuthProviderType;
+  clientId: string;
+  clientSecret: string;
+  scopes: string[];
+  redirectUri?: string;
+  authorizationEndpoint?: string;
+  tokenEndpoint?: string;
+  userInfoEndpoint?: string;
+}
+
+export interface OAuthUserMapping {
+  emailField: string;
+  nameField: string;
+  pictureField?: string;
+  roleMapping?: Record<string, string>;
+}
+
+export interface OAuthTestResult {
+  success: boolean;
+  error?: string;
+  details?: {
+    authEndpointReachable?: boolean;
+    tokenEndpointReachable?: boolean;
+    userInfoEndpointReachable?: boolean;
+    responseTime?: number;
+  };
+}
+
+export interface OAuthLoginLog {
+  id: string;
+  providerId: string;
+  providerName: string;
+  userId?: string;
+  userEmail?: string;
+  success: boolean;
+  errorMessage?: string;
+  responseTime: number;
+  timestamp: number;
+}
