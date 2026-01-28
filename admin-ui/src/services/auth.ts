@@ -74,7 +74,7 @@ class AuthService {
   /**
    * Handle SAML callback
    */
-  async handleSSOCallback(samlResponse: string, relayState?: string | null): Promise<void> {
+  async handleSSOCallback(samlResponse: string, relayState?: string | null): Promise<SSOCallbackResponse> {
     // We need to make a direct axios call for form-encoded data
     const formData = new URLSearchParams({
       SAMLResponse: samlResponse,
@@ -104,6 +104,8 @@ class AuthService {
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     localStorage.setItem('sessionId', data.sessionId);
+    
+    return data;
   }
 
   logout(): void {

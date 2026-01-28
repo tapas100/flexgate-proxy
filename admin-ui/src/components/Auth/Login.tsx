@@ -9,6 +9,7 @@ import {
   Typography,
   Alert,
   CircularProgress,
+  Divider,
 } from '@mui/material';
 import { authService } from '../../services/auth';
 
@@ -17,6 +18,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +39,22 @@ const Login: React.FC = () => {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSSOLogin = async () => {
+    setError(null);
+    setSsoLoading(true);
+
+    try {
+      const returnUrl = window.location.origin + '/auth/callback';
+      const ssoResponse = await authService.initiateSSOLogin(returnUrl);
+
+      // Redirect to IdP login page
+      window.location.href = ssoResponse.redirectUrl;
+    } catch (err: any) {
+      setError(err.message || 'Failed to initiate SSO login');
+      setSsoLoading(false);
     }
   };
 
@@ -95,11 +113,24 @@ const Login: React.FC = () => {
               variant="contained"
               size="large"
               sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
+              disabled={loading || ssoLoading}
             >
               {loading ? <CircularProgress size={24} /> : 'Sign In'}
             </Button>
           </form>
+
+          <Divider sx={{ my: 2 }}>OR</Divider>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            size="large"
+            onClick={handleSSOLogin}
+            disabled={loading || ssoLoading}
+            sx={{ mb: 2 }}
+          >
+            {ssoLoading ? <CircularProgress size={24} /> : 'Login with Enterprise SSO'}
+          </Button>
 
           <Typography variant="body2" color="text.secondary" align="center">
             Demo credentials: admin@flexgate.dev / admin123
