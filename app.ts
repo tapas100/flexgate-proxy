@@ -16,6 +16,7 @@ import metricsRegistry, { metrics } from './src/metrics';
 import { initializeAuth } from './src/auth';
 import authRoutes from './routes/auth';
 import webhookRoutes from './routes/webhooks';
+import routeRoutes from './routes/routes';
 
 // Extend Express Request type
 declare global {
@@ -99,6 +100,9 @@ app.use(cors());
 
 // Mount authentication routes
 app.use('/api/auth', authRoutes);
+
+// Mount routes management API
+app.use('/api/routes', routeRoutes);
 
 // Mount webhook routes
 app.use('/api/webhooks', webhookRoutes);
