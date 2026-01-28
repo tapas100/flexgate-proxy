@@ -13,6 +13,8 @@ import CircuitBreaker from './src/circuitBreaker';
 import { getSchemaVersion } from './src/config/schema';
 import { ProxyRoute, Upstream, RateLimitConfig } from './src/types';
 import metricsRegistry, { metrics } from './src/metrics';
+import { initializeAuth } from './src/auth';
+import authRoutes from './routes/auth';
 
 // Extend Express Request type
 declare global {
@@ -26,6 +28,39 @@ declare global {
 
 // Load configuration
 config.load();
+
+// Initialize Einstrust authentication (optional, based on environment variables)
+if (process.env.EINSTRUST_API_URL) {
+  try {
+    const einstrustConfig = {
+      apiUrl: process.env.EINSTRUST_API_URL,
+      tenantId: process.env.EINSTRUST_TENANT_ID,
+      sessionValidation: {
+        enabled: true,
+        cacheTTL: parseInt(process.env.EINSTRUST_SESSION_CACHE_TTL || '300'),
+      },
+      sso: {
+        enabled: true,
+        idpId: process.env.EINSTRUST_IDP_ID || '',
+        returnUrl: process.env.EINSTRUST_RETURN_URL || 'http://localhost:3000/auth/callback',
+      },
+      fallbackAuth: {
+        enabled: process.env.FLEXGATE_FALLBACK_AUTH === 'true',
+        methods: ['basic' as const, 'apiKey' as const],
+      },
+    };
+
+    initializeAuth(einstrustConfig);
+    logger.info('Einstrust authentication enabled', {
+      apiUrl: einstrustConfig.apiUrl,
+      ssoEnabled: einstrustConfig.sso.enabled,
+    });
+  } catch (error) {
+    logger.error('Failed to initialize Einstrust authentication', { 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
 
 const app: Application = express();
 
@@ -60,6 +95,9 @@ app.use(express.json({ limit: config.get<string>('proxy.maxBodySize', '10mb') ||
 app.use(express.urlencoded({ extended: false, limit: config.get<string>('proxy.maxBodySize', '10mb') || '10mb' }));
 app.use(cookieParser());
 app.use(cors());
+
+// Mount authentication routes
+app.use('/api/auth', authRoutes);
 
 // Request logging with correlation IDs
 app.use(requestLogger);
