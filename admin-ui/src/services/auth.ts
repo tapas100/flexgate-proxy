@@ -17,6 +17,19 @@ export interface RegisterData {
   name: string;
 }
 
+export interface SSOInitiateResponse {
+  redirectUrl: string;
+  relayState: string;
+}
+
+export interface SSOCallbackResponse {
+  success: boolean;
+  token: string;
+  user: User;
+  sessionId: string;
+  expiresAt: string;
+}
+
 class AuthService {
   async login(credentials: LoginCredentials): Promise<ApiResponse<LoginResponse>> {
     const response = await apiService.post<LoginResponse>('/api/auth/login', credentials);
@@ -42,13 +55,85 @@ class AuthService {
     return response;
   }
 
+  /**
+   * Initiate SAML SSO login flow
+   */
+  async initiateSSOLogin(returnUrl: string): Promise<SSOInitiateResponse> {
+    const response = await apiService.post<SSOInitiateResponse>(
+      '/api/auth/saml/initiate',
+      { returnUrl }
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to initiate SSO login');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Handle SAML callback
+   */
+  async handleSSOCallback(samlResponse: string, relayState?: string | null): Promise<void> {
+    // We need to make a direct axios call for form-encoded data
+    const formData = new URLSearchParams({
+      SAMLResponse: samlResponse,
+      RelayState: relayState || '',
+    });
+
+    const response = await fetch('/api/auth/saml/callback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'SAML callback failed' }));
+      throw new Error(error.message || 'SAML callback failed');
+    }
+
+    const data: SSOCallbackResponse = await response.json();
+
+    if (!data.success || !data.token) {
+      throw new Error('SAML callback failed');
+    }
+
+    // Store token and user
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('sessionId', data.sessionId);
+  }
+
   logout(): void {
     // Clear localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('sessionId');
     
     // Redirect to login
     window.location.href = '/login';
+  }
+
+  async logoutWithSLO(): Promise<void> {
+    try {
+      const response = await apiService.post<{ success: boolean; sloUrl?: string }>(
+        '/api/auth/logout',
+        {}
+      );
+
+      // Clear localStorage
+      this.logout();
+
+      // Redirect to IdP logout if SLO URL provided
+      if (response.success && response.data?.sloUrl) {
+        window.location.href = response.data.sloUrl;
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+      this.logout();
+    }
   }
 
   getToken(): string | null {
