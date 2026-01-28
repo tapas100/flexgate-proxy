@@ -1,0 +1,99 @@
+groups:
+  - name: proxy_alerts
+    interval: 30s
+    rules:
+      # Critical alerts
+      - alert: ProxyDown
+        expr: up{job="proxy-server"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Proxy server is down"
+          description: "Proxy instance {{ $labels.instance }} is down for more than 1 minute"
+      
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+      
+      - alert: UpstreamCompletelyDown
+        expr: sum(upstream_errors_total{error="connection_refused"}) > 100
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Upstream is completely unreachable"
+          description: "Upstream {{ $labels.upstream }} has refused {{ $value }} connections"
+      
+      # Warning alerts
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_ms_bucket[5m])) by (le, route)
+          ) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High P99 latency detected"
+          description: "P99 latency for route {{ $labels.route }} is {{ $value }}ms (threshold: 1000ms)"
+      
+      - alert: MemoryUsageHigh
+        expr: |
+          (
+            process_memory_bytes{job="proxy-server"}
+            /
+            (512 * 1024 * 1024)
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} of limit (threshold: 80%)"
+      
+      - alert: RateLimitHitFrequently
+        expr: rate(rate_limit_exceeded_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Frequent rate limit hits"
+          description: "Rate limit exceeded {{ $value }} times per second on route {{ $labels.route }}"
+      
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state{state="open"} == 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Circuit breaker is open"
+          description: "Circuit breaker for upstream {{ $labels.upstream }} has been open for 2+ minutes"
+      
+      - alert: EventLoopLagHigh
+        expr: event_loop_lag_ms > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High event loop lag"
+          description: "Event loop lag is {{ $value }}ms (threshold: 100ms)"
+      
+      # Info alerts
+      - alert: ConfigReloaded
+        expr: increase(config_reload_total[1m]) > 0
+        labels:
+          severity: info
+        annotations:
+          summary: "Configuration reloaded"
+          description: "Proxy configuration was reloaded {{ $value }} times in the last minute"
