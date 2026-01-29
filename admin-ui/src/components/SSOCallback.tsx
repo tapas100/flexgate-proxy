@@ -27,17 +27,11 @@ const SSOCallback: React.FC = () => {
         // Send SAML response to backend for validation
         const response = await authService.handleSSOCallback(samlResponse, relayState || undefined);
 
-        if (response.success) {
-          // Store session token
-          localStorage.setItem('authToken', response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
-
-          // Redirect to original destination or dashboard
-          const redirectTo = relayState || '/';
-          navigate(redirectTo);
-        } else {
-          setError(response.message || 'Authentication failed');
-        }
+        // Response is SSOCallbackResponse with token and user
+        // Token and user are already stored by the auth service
+        // Just redirect to destination
+        const redirectTo = relayState || '/dashboard';
+        navigate(redirectTo);
       } catch (err: any) {
         console.error('SSO callback error:', err);
         setError(err.message || 'An unexpected error occurred during authentication');

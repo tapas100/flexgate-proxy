@@ -13,6 +13,57 @@ import { getAuthStatus } from '../src/auth';
 const router: Router = express.Router();
 
 /**
+ * POST /api/auth/login
+ * Simple login for development/testing (bypasses SAML)
+ * TODO: Remove in production
+ */
+router.post('/login', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    // Simple validation for demo credentials
+    if (email === 'admin@flexgate.dev' && password === 'admin123') {
+      const token = `demo-token-${Date.now()}`;
+      const sessionId = `session-${Date.now()}`;
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const sessionCache = getSessionCache();
+      
+      const user = {
+        id: 'demo-admin-001',
+        email: email,
+        name: 'Demo Admin',
+        role: 'admin',
+      };
+
+      // Create a demo session (token, user, sessionId, expiresAt)
+      sessionCache.set(token, user, sessionId, expiresAt);
+
+      logger.info('Demo login successful', { email });
+
+      res.json({
+        token,
+        user,
+      });
+      return;
+    }
+
+    // Invalid credentials
+    res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid credentials',
+    });
+  } catch (error) {
+    logger.error('Login failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Login failed',
+    });
+  }
+});
+
+/**
  * GET /api/auth/status
  * Get authentication system status
  */
