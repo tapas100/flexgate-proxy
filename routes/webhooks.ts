@@ -1,243 +1,322 @@
 import { Router, Request, Response } from 'express';
-import { webhookManager, WebhookConfig } from '../src/webhooks/WebhookManager';
-import { EventType } from '../src/events';
+import { z } from 'zod';
 import { logger } from '../src/logger';
+import webhooksRepository from '../src/database/repositories/webhooksRepository';
 
 const router = Router();
 
-/**
- * Create a new webhook
- * POST /api/webhooks
- */
-router.post('/', async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { url, events, headers, timeout, retryConfig } = req.body;
-
-    // Validation
-    if (!url) {
-      return res.status(400).json({ error: 'URL is required' });
-    }
-
-    if (!events || !Array.isArray(events) || events.length === 0) {
-      return res.status(400).json({ error: 'Events array is required' });
-    }
-
-    // Validate event types
-    const validEvents = Object.values(EventType);
-    const invalidEvents = events.filter(e => !validEvents.includes(e) && e !== '*');
-    if (invalidEvents.length > 0) {
-      return res.status(400).json({
-        error: 'Invalid event types',
-        invalidEvents,
-        validEvents,
-      });
-    }
-
-    // Generate webhook ID
-    const webhookId = `wh_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-    // Create webhook configuration
-    const webhook: WebhookConfig = {
-      id: webhookId,
-      url,
-      events,
-      enabled: true,
-      secret: '', // Will be auto-generated
-      retryConfig: retryConfig || {
-        maxRetries: 3,
-        backoffMultiplier: 2,
-        initialDelay: 1000,
-      },
-      headers: headers || {},
-      timeout: timeout || 5000,
-    };
-
-    webhookManager.registerWebhook(webhook);
-
-    const registered = webhookManager.getWebhook(webhookId)!;
-
-    logger.info('Webhook created via API', {
-      webhookId,
-      url,
-      events,
-    });
-
-    return res.status(201).json({
-      id: registered.id,
-      url: registered.url,
-      events: registered.events,
-      enabled: registered.enabled,
-      secret: registered.secret,
-      retryConfig: registered.retryConfig,
-      headers: registered.headers,
-      timeout: registered.timeout,
-      createdAt: registered.createdAt,
-    });
-  } catch (error: any) {
-    logger.error('Failed to create webhook', { error: error.message });
-    return res.status(500).json({ error: error.message });
-  }
+// Validation schemas
+const CreateWebhookSchema = z.object({
+  name: z.string().min(1),
+  url: z.string().url(),
+  events: z.array(z.string()).min(1),
+  enabled: z.boolean().optional().default(true),
+  headers: z.record(z.string(), z.string()).optional(),
+  timeout: z.number().min(1000).max(60000).optional(),
+  retry_count: z.number().min(0).max(10).optional(),
+  retry_delay: z.number().min(100).max(10000).optional(),
+  secret: z.string().optional(),
 });
 
-/**
- * List all webhooks
- * GET /api/webhooks
- */
-router.get('/', (_req: Request, res: Response): any => {
-  try {
-    const webhooks = webhookManager.getAllWebhooks();
+const UpdateWebhookSchema = CreateWebhookSchema.partial();
 
+/**
+ * GET /api/webhooks
+ * List all webhooks from database
+ */
+router.get('/', async (_req: Request, res: Response): Promise<any> => {
+  try {
+    const webhooks = await webhooksRepository.findAll();
+    
+    logger.info('Fetched webhooks from database', { count: webhooks.length });
+    
     return res.json({
-      webhooks: webhooks.map((w: WebhookConfig) => ({
-        id: w.id,
+      success: true,
+      data: webhooks.map(w => ({
+        id: w.webhook_id,
+        name: w.name,
         url: w.url,
         events: w.events,
         enabled: w.enabled,
+        headers: w.headers,
         timeout: w.timeout,
-        createdAt: w.createdAt,
-        updatedAt: w.updatedAt,
+        retry_count: w.retry_count,
+        retry_delay: w.retry_delay,
+        createdAt: w.created_at,
+        updatedAt: w.updated_at,
       })),
-      total: webhooks.length,
     });
-  } catch (error: any) {
-    logger.error('Failed to list webhooks', { error: error.message });
-    return res.status(500).json({ error: error.message });
+  } catch (error) {
+    logger.error('Failed to fetch webhooks from database', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch webhooks',
+    });
   }
 });
 
 /**
- * Get webhook details
  * GET /api/webhooks/:id
+ * Get a single webhook by ID from database
  */
-router.get('/:id', (req: Request, res: Response): any => {
+router.get('/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const webhook = webhookManager.getWebhook(id as string);
-
+    
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid webhook ID',
+      });
+    }
+    
+    const webhook = await webhooksRepository.findByWebhookId(id);
+    
     if (!webhook) {
-      return res.status(404).json({ error: 'Webhook not found' });
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: `Webhook with ID '${id}' not found`,
+      });
     }
-
-    return res.json(webhook);
-  } catch (error: any) {
-    logger.error('Failed to get webhook', { error: error.message });
-    return res.status(500).json({ error: error.message });
+    
+    logger.info('Fetched webhook from database', { webhookId: id });
+    
+    return res.json({
+      success: true,
+      data: {
+        id: webhook.webhook_id,
+        name: webhook.name,
+        url: webhook.url,
+        events: webhook.events,
+        enabled: webhook.enabled,
+        headers: webhook.headers,
+        timeout: webhook.timeout,
+        retry_count: webhook.retry_count,
+        retry_delay: webhook.retry_delay,
+        secret: webhook.secret,
+        createdAt: webhook.created_at,
+        updatedAt: webhook.updated_at,
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to fetch webhook from database', {
+      webhookId: req.params.id,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch webhook',
+    });
   }
 });
 
 /**
- * Update webhook
- * PUT /api/webhooks/:id
+ * POST /api/webhooks
+ * Create a new webhook in database
  */
-router.put('/:id', (req: Request, res: Response): any => {
+router.post('/', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    const webhook = webhookManager.getWebhook(id as string);
-    if (!webhook) {
-      return res.status(404).json({ error: 'Webhook not found' });
+    // Validate request body
+    const validation = CreateWebhookSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid webhook data',
+        details: validation.error.issues,
+      });
     }
 
-    // Prevent updating certain fields
-    delete updates.id;
-    delete updates.secret;
-    delete updates.createdAt;
+    const webhookData = validation.data;
 
-    const updated = webhookManager.updateWebhook(id as string, updates);
+    // Create webhook in database
+    const webhook = await webhooksRepository.create(webhookData);
 
-    logger.info('Webhook updated via API', { webhookId: id, updates: Object.keys(updates) });
-
-    return res.json(updated);
-  } catch (error: any) {
-    logger.error('Failed to update webhook', { error: error.message });
-    return res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * Delete webhook
- * DELETE /api/webhooks/:id
- */
-router.delete('/:id', (req: Request, res: Response): any => {
-  try {
-    const { id } = req.params;
-
-    const deleted = webhookManager.unregisterWebhook(id as string);
-
-    if (!deleted) {
-      return res.status(404).json({ error: 'Webhook not found' });
-    }
-
-    logger.info('Webhook deleted via API', { webhookId: id });
-
-    return res.json({ success: true, message: 'Webhook deleted' });
-  } catch (error: any) {
-    logger.error('Failed to delete webhook', { error: error.message });
-    return res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * Test webhook
- * POST /api/webhooks/:id/test
- */
-router.post('/:id/test', async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params;
-
-    const delivery = await webhookManager.testWebhook(id as string);
-
-    logger.info('Webhook test triggered via API', {
-      webhookId: id,
-      status: delivery.status,
+    logger.info('Webhook created in database', {
+      webhookId: webhook.webhook_id,
+      name: webhook.name,
+      url: webhook.url,
     });
 
-    return res.json(delivery);
-  } catch (error: any) {
-    logger.error('Failed to test webhook', { error: error.message });
-    return res.status(500).json({ error: error.message });
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: webhook.webhook_id,
+        name: webhook.name,
+        url: webhook.url,
+        events: webhook.events,
+        enabled: webhook.enabled,
+        headers: webhook.headers,
+        timeout: webhook.timeout,
+        retry_count: webhook.retry_count,
+        retry_delay: webhook.retry_delay,
+        secret: webhook.secret,
+        createdAt: webhook.created_at,
+        updatedAt: webhook.updated_at,
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to create webhook in database', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to create webhook',
+    });
   }
 });
 
 /**
- * Get webhook delivery logs
- * GET /api/webhooks/:id/logs
+ * PUT /api/webhooks/:id
+ * Update an existing webhook in database
  */
-router.get('/:id/logs', (req: Request, res: Response): any => {
+router.put('/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const limit = parseInt(req.query.limit as string) || 100;
 
-    const webhook = webhookManager.getWebhook(id as string);
-    if (!webhook) {
-      return res.status(404).json({ error: 'Webhook not found' });
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid webhook ID',
+      });
     }
 
-    const logs = webhookManager.getDeliveryLogs(id as string, limit);
+    // Validate request body
+    const validation = UpdateWebhookSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid webhook data',
+        details: validation.error.issues,
+      });
+    }
+
+    const updateData = validation.data;
+
+    // Update webhook in database
+    const webhook = await webhooksRepository.update(id, updateData);
+    
+    if (!webhook) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: `Webhook with ID '${id}' not found`,
+      });
+    }
+
+    logger.info('Webhook updated in database', {
+      webhookId: id,
+      changes: Object.keys(updateData),
+    });
 
     return res.json({
-      webhookId: id,
-      logs,
-      total: logs.length,
+      success: true,
+      data: {
+        id: webhook.webhook_id,
+        name: webhook.name,
+        url: webhook.url,
+        events: webhook.events,
+        enabled: webhook.enabled,
+        headers: webhook.headers,
+        timeout: webhook.timeout,
+        retry_count: webhook.retry_count,
+        retry_delay: webhook.retry_delay,
+        secret: webhook.secret,
+        createdAt: webhook.created_at,
+        updatedAt: webhook.updated_at,
+      },
     });
-  } catch (error: any) {
-    logger.error('Failed to get webhook logs', { error: error.message });
-    return res.status(500).json({ error: error.message });
+  } catch (error) {
+    logger.error('Failed to update webhook in database', {
+      webhookId: req.params.id,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to update webhook',
+    });
   }
 });
 
 /**
- * Get webhook statistics
- * GET /api/webhooks/stats
+ * DELETE /api/webhooks/:id
+ * Delete a webhook from database
  */
-router.get('/stats/all', (_req: Request, res: Response): any => {
+router.delete('/:id', async (req: Request, res: Response): Promise<any> => {
   try {
-    const stats = webhookManager.getStats();
-    return res.json(stats);
-  } catch (error: any) {
-    logger.error('Failed to get webhook stats', { error: error.message });
-    return res.status(500).json({ error: error.message });
+    const { id } = req.params;
+
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid webhook ID',
+      });
+    }
+
+    // Get webhook before deleting
+    const webhook = await webhooksRepository.findByWebhookId(id);
+    
+    if (!webhook) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: `Webhook with ID '${id}' not found`,
+      });
+    }
+
+    // Delete from database
+    const deleted = await webhooksRepository.delete(id);
+    
+    if (!deleted) {
+      return res.status(500).json({
+        success: false,
+        error: 'Internal Server Error',
+        message: 'Failed to delete webhook',
+      });
+    }
+
+    logger.info('Webhook deleted from database', {
+      webhookId: id,
+      name: webhook.name,
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        id: webhook.webhook_id,
+        name: webhook.name,
+        url: webhook.url,
+        events: webhook.events,
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to delete webhook from database', {
+      webhookId: req.params.id,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to delete webhook',
+    });
   }
 });
 
