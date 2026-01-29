@@ -3,6 +3,7 @@ import express, { Request, Response, NextFunction, Application } from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import cors from 'cors';
+import path from 'path';
 import { createProxyMiddleware, Options as ProxyOptions } from 'http-proxy-middleware';
 
 // Internal modules
@@ -444,6 +445,25 @@ routes.forEach((route: ProxyRoute) => {
   }
   
   logger.info(`Route configured: ${route.path} -> ${upstream.name} (${upstream.url})`);
+});
+
+// Serve admin UI static files
+// Note: __dirname in compiled JS is 'dist/', so we need to go up one level
+const adminUIPath = path.join(__dirname, '..', 'admin-ui', 'build');
+app.use(express.static(adminUIPath));
+
+// Handle client-side routing - send all non-API requests to index.html
+app.get('*', (req: Request, res: Response, next: NextFunction) => {
+  // Skip API routes and health endpoints
+  if (req.path.startsWith('/api/') || 
+      req.path.startsWith('/health') || 
+      req.path.startsWith('/metrics') ||
+      req.path.startsWith('/httpbin/') ||
+      req.path.startsWith('/external/')) {
+    return next();
+  }
+  
+  res.sendFile(path.join(adminUIPath, 'index.html'));
 });
 
 // Catch 404 and forward to error handler
