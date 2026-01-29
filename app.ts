@@ -17,6 +17,9 @@ import { initializeAuth } from './src/auth';
 import authRoutes from './routes/auth';
 import webhookRoutes from './routes/webhooks';
 import routeRoutes from './routes/routes';
+import metricsRoutes from './routes/metrics';
+import logsRoutes from './routes/logs';
+import database from './src/database/index';
 
 // Extend Express Request type
 declare global {
@@ -107,6 +110,12 @@ app.use('/api/routes', routeRoutes);
 // Mount webhook routes
 app.use('/api/webhooks', webhookRoutes);
 
+// Mount metrics API
+app.use('/api/metrics', metricsRoutes);
+
+// Mount logs API
+app.use('/api/logs', logsRoutes);
+
 // Request logging with correlation IDs
 app.use(requestLogger);
 
@@ -172,6 +181,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Initialize rate limiter
 rateLimiter.initialize().catch((err: Error) => {
   logger.error('Failed to initialize rate limiter', { error: err.message });
+});
+
+// Initialize database connection
+database.initialize().catch((err: Error) => {
+  logger.warn('Database initialization failed - continuing without persistence', { error: err.message });
 });
 
 // Version info endpoint
@@ -458,6 +472,9 @@ const gracefulShutdown = async (): Promise<void> => {
   
   // Close rate limiter
   await rateLimiter.close();
+  
+  // Close database connections
+  await database.close();
   
   logger.info('Server shut down complete');
   process.exit(0);
