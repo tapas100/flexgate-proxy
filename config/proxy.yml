@@ -91,7 +91,7 @@ routes:
       windowMs: 60000
       message: "Too many requests to httpbin"
   
-  - path: "/api/*"
+  - path: "/external/api/*"
     upstream: "jsonplaceholder"
     methods:
       - "GET"
@@ -99,13 +99,14 @@ routes:
       - "PUT"
       - "DELETE"
       - "PATCH"
-    stripPath: "/api"
+    stripPath: "/external/api"
     rateLimit:
       enabled: true
       max: 200
       windowMs: 60000
       message: "Too many requests to API"
 
+http:
   maxFreeSockets: 10
   timeout: 60000
   keepAlive: true
