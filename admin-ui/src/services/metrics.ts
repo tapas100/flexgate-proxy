@@ -26,40 +26,13 @@ const getTimeRangeMs = (range: TimeRange): number => {
   return ranges[range];
 };
 
-// Helper to generate mock time series data
-const generateMockTimeSeries = (
-  range: TimeRange,
-  baseValue: number,
-  variance: number,
-  unit: string
-): TimeSeriesMetric => {
-  const now = Date.now();
-  const rangeMs = getTimeRangeMs(range);
-  const points = 50; // Number of data points
-  const interval = rangeMs / points;
-
-  const data: MetricPoint[] = [];
-  for (let i = 0; i < points; i++) {
-    const timestamp = now - rangeMs + i * interval;
-    const randomVariance = (Math.random() - 0.5) * variance * 2;
-    const value = Math.max(0, baseValue + randomVariance);
-    data.push({ timestamp, value });
-  }
-
-  return {
-    name: unit,
-    data,
-    unit,
-  };
-};
-
-// Mock SLO data
+// Fallback mock SLO data (in case backend doesn't provide it)
 const generateMockSLO = (): SLOMetrics => {
   return {
     availability: {
       current: 99.95,
       target: 99.9,
-      budget: 0.05, // 0.05% error budget remaining
+      budget: 0.05,
     },
     latency: {
       p50: 45,
@@ -75,56 +48,15 @@ const generateMockSLO = (): SLOMetrics => {
   };
 };
 
-// Mock summary data
-const generateMockSummary = (): MetricsSummary => {
-  return {
-    totalRequests: 1234567,
-    avgLatency: 78,
-    errorRate: 0.05,
-    uptime: 99.95,
-  };
-};
-
 class MetricsService {
   /**
    * Fetch metrics data for a given time range
    */
   async fetchMetrics(timeRange: TimeRange = '24h'): Promise<ApiResponse<MetricsData>> {
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // const response = await apiService.get<MetricsData>(`/api/metrics?range=${timeRange}`);
-      // return response;
-
-      // Mock data for development
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
-
-      const mockData: MetricsData = {
-        summary: generateMockSummary(),
-        requestRate: generateMockTimeSeries(timeRange, 150, 50, 'req/s'),
-        latency: {
-          p50: generateMockTimeSeries(timeRange, 45, 15, 'ms'),
-          p95: generateMockTimeSeries(timeRange, 185, 30, 'ms'),
-          p99: generateMockTimeSeries(timeRange, 420, 80, 'ms'),
-        },
-        errorRate: generateMockTimeSeries(timeRange, 0.05, 0.02, '%'),
-        statusCodes: {
-          '2xx': 98234,
-          '3xx': 1256,
-          '4xx': 423,
-          '5xx': 87,
-        },
-        slo: generateMockSLO(),
-        circuitBreakers: {
-          open: 0,
-          halfOpen: 1,
-          closed: 12,
-        },
-      };
-
-      return {
-        success: true,
-        data: mockData,
-      };
+      // Fetch real metrics from backend API
+      const response = await apiService.get<MetricsData>(`/api/metrics?range=${timeRange}`);
+      return response;
     } catch (error) {
       console.error('Failed to fetch metrics:', error);
       return {
@@ -139,12 +71,16 @@ class MetricsService {
    */
   async fetchSLO(): Promise<ApiResponse<SLOMetrics>> {
     try {
-      // TODO: Replace with actual API call
-      // const response = await apiService.get<SLOMetrics>('/api/metrics/slo');
-      // return response;
-
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
+      // SLO data is included in the main metrics response
+      const response = await this.fetchMetrics();
+      if (response.success && response.data?.slo) {
+        return {
+          success: true,
+          data: response.data.slo,
+        };
+      }
+      
+      // Fallback to mock data if SLO not available
       return {
         success: true,
         data: generateMockSLO(),
