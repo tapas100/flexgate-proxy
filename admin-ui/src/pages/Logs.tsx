@@ -52,9 +52,12 @@ const Logs: React.FC = () => {
       });
 
       if (response.success && response.data) {
-        setLogs(response.data.logs);
+        // Ensure logs is an array
+        const logsData = Array.isArray(response.data.logs) ? response.data.logs : [];
+        setLogs(logsData);
       } else {
         setError(response.error || 'Failed to fetch logs');
+        setLogs([]); // Set empty array on error
       }
 
       // Fetch stats
@@ -79,6 +82,38 @@ const Logs: React.FC = () => {
     if (streaming) {
       logService.connectWebSocket((newLog) => {
         setLogs((prevLogs) => [newLog, ...prevLogs].slice(0, 1000));
+
+        // Keep the stats panel in sync with streaming logs.
+        // Backend stats endpoint is currently not filter-aware and is fetched only on refresh;
+        // so we increment locally when new events arrive.
+        setStats((prev) => {
+          if (!prev) return prev;
+
+          const nextTotal = (prev.total || 0) + 1;
+          const byLevel = {
+            ...prev.byLevel,
+            [newLog.level]: (prev.byLevel?.[newLog.level] || 0) + 1,
+          } as any;
+          const bySource = {
+            ...prev.bySource,
+            [newLog.source]: (prev.bySource?.[newLog.source] || 0) + 1,
+          } as any;
+
+          const nextErrorRate = nextTotal > 0 ? (((byLevel.ERROR || 0) + (byLevel.FATAL || 0)) / nextTotal) * 100 : 0;
+
+          const newLatency = (newLog as any)?.response?.latency;
+          const hasLatency = typeof newLatency === 'number' && Number.isFinite(newLatency);
+          const nextAvgLatency = hasLatency ? ((prev.avgLatency || 0) + newLatency) / 2 : (prev.avgLatency || 0);
+
+          return {
+            ...prev,
+            total: nextTotal,
+            byLevel,
+            bySource,
+            errorRate: nextErrorRate,
+            avgLatency: nextAvgLatency,
+          };
+        });
       });
     } else {
       logService.disconnectWebSocket();
