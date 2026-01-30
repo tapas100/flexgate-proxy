@@ -26,6 +26,9 @@
     "/coverage/",
     "/dist/"
   ],
+  "transformIgnorePatterns": [
+    "node_modules/(?!(uuid)/)"
+  ],
   "setupFilesAfterEnv": ["<rootDir>/tests/setup.ts"],
   "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
   "transform": {
