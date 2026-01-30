@@ -85,7 +85,7 @@ const Login: React.FC = () => {
     try {
       // Redirect to OAuth provider authorization URL
       const returnUrl = window.location.origin + '/auth/callback';
-      const authUrl = `${provider.authorizationUrl}?client_id=${provider.clientId}&redirect_uri=${provider.redirectUri}&response_type=code&state=${returnUrl}`;
+      const authUrl = `${provider.authorizationEndpoint}?client_id=${provider.clientId}&redirect_uri=${provider.redirectUri}&response_type=code&state=${returnUrl}`;
       
       window.location.href = authUrl;
     } catch (err: any) {

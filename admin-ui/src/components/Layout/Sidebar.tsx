@@ -15,7 +15,6 @@ import {
   Route as RouteIcon,
   ShowChart as MetricsIcon,
   Description as LogsIcon,
-  VpnKey as OAuthIcon,
   Webhook as WebhookIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material';
@@ -33,7 +32,6 @@ const menuItems: MenuItem[] = [
   { text: 'Routes', icon: <RouteIcon />, path: '/routes' },
   { text: 'Metrics', icon: <MetricsIcon />, path: '/metrics' },
   { text: 'Logs', icon: <LogsIcon />, path: '/logs' },
-  { text: 'OAuth', icon: <OAuthIcon />, path: '/oauth' },
   { text: 'Webhooks', icon: <WebhookIcon />, path: '/webhooks' },
 ];
 
