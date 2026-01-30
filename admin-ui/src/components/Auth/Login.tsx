@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -10,8 +10,11 @@ import {
   Alert,
   CircularProgress,
   Divider,
+  Stack,
 } from '@mui/material';
 import { authService } from '../../services/auth';
+import { oauthService } from '../../services/oauth';
+import type { OAuthProvider } from '../../types';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +23,23 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [oauthProviders, setOAuthProviders] = useState<OAuthProvider[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch enabled OAuth providers
+    const fetchProviders = async () => {
+      const result = await oauthService.fetchProviders();
+      if (result.success && result.data) {
+        // Only show enabled providers
+        const enabledProviders = result.data.filter(p => p.enabled);
+        setOAuthProviders(enabledProviders);
+      }
+      setProvidersLoading(false);
+    };
+
+    fetchProviders();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +76,34 @@ const Login: React.FC = () => {
       setError(err.message || 'Failed to initiate SSO login');
       setSsoLoading(false);
     }
+  };
+
+  const handleOAuthLogin = async (provider: OAuthProvider) => {
+    setError(null);
+    setSsoLoading(true);
+
+    try {
+      // Redirect to OAuth provider authorization URL
+      const returnUrl = window.location.origin + '/auth/callback';
+      const authUrl = `${provider.authorizationUrl}?client_id=${provider.clientId}&redirect_uri=${provider.redirectUri}&response_type=code&state=${returnUrl}`;
+      
+      window.location.href = authUrl;
+    } catch (err: any) {
+      setError(err.message || `Failed to login with ${provider.name}`);
+      setSsoLoading(false);
+    }
+  };
+
+  const getProviderIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      google: '🔵',
+      github: '⚫',
+      microsoft: '🔷',
+      okta: '🔶',
+      auth0: '🔴',
+      keycloak: '🟢',
+    };
+    return icons[type.toLowerCase()] || '🔐';
   };
 
   return (
@@ -119,8 +167,41 @@ const Login: React.FC = () => {
             </Button>
           </form>
 
-          <Divider sx={{ my: 2 }}>OR</Divider>
+          {/* OAuth Providers Section */}
+          {!providersLoading && oauthProviders.length > 0 && (
+            <>
+              <Divider sx={{ my: 2 }}>OR</Divider>
 
+              <Stack spacing={1.5}>
+                {oauthProviders.map((provider) => (
+                  <Button
+                    key={provider.id}
+                    fullWidth
+                    variant="outlined"
+                    size="large"
+                    onClick={() => handleOAuthLogin(provider)}
+                    disabled={loading || ssoLoading}
+                    startIcon={
+                      <span style={{ fontSize: '1.2em' }}>
+                        {getProviderIcon(provider.type)}
+                      </span>
+                    }
+                    sx={{
+                      justifyContent: 'flex-start',
+                      px: 2,
+                      textTransform: 'none',
+                    }}
+                  >
+                    Continue with {provider.name}
+                  </Button>
+                ))}
+              </Stack>
+
+              <Divider sx={{ my: 2 }} />
+            </>
+          )}
+
+          {/* Legacy Enterprise SSO Button */}
           <Button
             fullWidth
             variant="outlined"
