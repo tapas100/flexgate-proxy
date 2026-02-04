@@ -1,6 +1,6 @@
 {
   "name": "flexgate-proxy",
-  "version": "1.0.0",
+  "version": "0.1.0-beta.1",
   "description": "FlexGate - Production-grade API Gateway with built-in observability, security, and reliability. The flexible alternative to Kong and AWS API Gateway.",
   "main": "dist/app.js",
   "types": "dist/app.d.ts",
@@ -33,11 +33,12 @@
     "db:seed": "ts-node migrations/seed.ts",
     "db:reset": "docker-compose -f docker-compose.dev.yml down -v && docker-compose -f docker-compose.dev.yml up -d postgres && sleep 3 && npm run db:migrate && npm run db:seed",
     "db:start": "docker-compose -f docker-compose.dev.yml up -d postgres",
-    "db:stop": "docker-compose -f docker-compose.dev.yml down"
-    ,
-    "metrics:poll": "node scripts/testing/poll-live-metrics.js"
-    ,
-    "metrics:stream": "node scripts/testing/stream-live-metrics.js"
+    "db:stop": "docker-compose -f docker-compose.dev.yml down",
+    "metrics:poll": "node scripts/testing/poll-live-metrics.js",
+    "metrics:stream": "node scripts/testing/stream-live-metrics.js",
+    "prepublishOnly": "npm run build && npm test",
+    "prepack": "npm run build",
+    "postinstall": "node scripts/npm/postinstall.js || true"
   },
   "keywords": [
     "api-gateway",
@@ -51,15 +52,36 @@
     "api-management",
     "flexgate"
   ],
-  "author": "Tapas Adhikary <tapas.adhikary@example.com>",
+  "author": {
+    "name": "tapas100",
+    "email": "mahanta.tapas9@gmail.com",
+    "url": "https://github.com/tapas100"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tapas100/flexgate-proxy.git"
+    "url": "git+https://github.com/tapas100/flexgate-proxy.git"
   },
-  "homepage": "https://flexgate.dev",
+  "homepage": "https://github.com/tapas100/flexgate-proxy#readme",
   "bugs": {
     "url": "https://github.com/tapas100/flexgate-proxy/issues"
+  },
+  "bin": {
+    "flexgate": "./scripts/npm/cli.js"
+  },
+  "files": [
+    "dist/",
+    "config/",
+    "migrations/",
+    "scripts/npm/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "QUICK_START.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "engines": {
     "node": ">=18.0.0",
