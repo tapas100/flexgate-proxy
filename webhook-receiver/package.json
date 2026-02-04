@@ -1,0 +1,16 @@
+{
+  "name": "flexgate-webhook-receiver",
+  "version": "1.0.0",
+  "description": "Simple webhook receiver for testing FlexGate webhooks",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["webhook", "testing", "flexgate"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
