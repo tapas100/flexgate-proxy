@@ -1,5 +1,8 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
+import database from '../src/database/index';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { MetricsPublisher } = require('../src/services/metricsPublisher');
 
 const router = express.Router();
 
@@ -96,6 +99,37 @@ router.get('/', async (req: Request, res: Response) => {
       success: false,
       error: 'Failed to fetch metrics',
       message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/metrics/live
+ * @desc Get live metrics derived from the database (same data shape as SSE stream payload)
+ *
+ * This is the easiest public JSON endpoint to validate that routes are generating metrics
+ * without needing an SSE client.
+ */
+router.get('/live', async (_req: Request, res: Response) => {
+  try {
+    // Reuse the running publisher if present, otherwise create a short-lived instance.
+    const globalPublisher = (global as any).metricsPublisher;
+    if (globalPublisher && typeof globalPublisher.getMetrics === 'function') {
+      const metrics = await globalPublisher.getMetrics();
+      return res.json({ success: true, data: metrics });
+    }
+
+    // Ensure DB is initialized (safe to call multiple times)
+    await database.initialize();
+
+    const publisher = new MetricsPublisher(database.getPool());
+    const metrics = await publisher.getMetrics();
+    return res.json({ success: true, data: metrics });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch live metrics',
+      message: error?.message,
     });
   }
 });

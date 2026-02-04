@@ -4,7 +4,10 @@
  * Module dependencies.
  */
 
-var app = require('../app');
+// In dev we run this file via ts-node, so import the TS Express app directly.
+// app.ts uses ESM-style default export, so unwrap .default when present.
+var appModule = require('../app.ts');
+var app = appModule && appModule.default ? appModule.default : appModule;
 var debug = require('debug')('proxy-server:server');
 var http = require('http');
 

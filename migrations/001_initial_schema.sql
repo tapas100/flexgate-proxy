@@ -257,6 +257,14 @@ VALUES (
 -- Add some example routes (from config)
 -- These will be managed by the application
 
+-- Demo routes for quick proxy + metrics verification
+-- NOTE: These are NON-API paths (not /api/*) so they won't conflict with built-in endpoints.
+INSERT INTO routes (route_id, path, upstream, methods, enabled, description, created_at, updated_at)
+VALUES
+  ('httpbin-api', '/httpbin/*', 'https://httpbin.org', ARRAY['GET','POST','PUT','DELETE'], true, 'Demo route for testing proxying and metrics', NOW(), NOW()),
+  ('jsonplaceholder-api', '/external/api/*', 'https://jsonplaceholder.typicode.com', ARRAY['GET','POST','PUT','DELETE'], true, 'Demo route for testing proxying and metrics', NOW(), NOW())
+ON CONFLICT (route_id) DO NOTHING;
+
 COMMENT ON TABLE routes IS 'Dynamic proxy routes configuration';
 COMMENT ON TABLE webhooks IS 'Webhook subscriptions for events';
 COMMENT ON TABLE webhook_deliveries IS 'Audit log of webhook deliveries';

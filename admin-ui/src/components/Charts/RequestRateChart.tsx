@@ -10,7 +10,7 @@ interface RequestRateChartProps {
 }
 
 const RequestRateChart: React.FC<RequestRateChartProps> = ({ data, height = 300 }) => {
-  const chartData = data.data.map((point) => ({
+  const chartData = (data?.data || []).map((point) => ({
     time: point.timestamp,
     value: point.value,
   }));

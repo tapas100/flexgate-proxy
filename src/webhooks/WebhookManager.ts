@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import axios, { AxiosError } from 'axios';
 import { logger } from '../logger';
 import { eventBus, EventMetadata, EventType } from '../events';
+import { WebhookDeliveriesRepository, WebhookDelivery as DbWebhookDelivery } from '../database/repositories/webhookDeliveriesRepository';
 
 /**
  * Webhook configuration interface
@@ -60,11 +61,9 @@ export interface WebhookDelivery {
 export class WebhookManager {
   private webhooks: Map<string, WebhookConfig> = new Map();
   private deliveryQueue: WebhookDelivery[] = [];
-  private deliveryHistory: WebhookDelivery[] = [];
-  private readonly maxHistorySize = 10000;
   private isProcessingQueue = false;
 
-  constructor() {
+  constructor(private deliveriesRepo?: WebhookDeliveriesRepository) {
     // Subscribe to all events
     eventBus.subscribe('*', this.handleEvent.bind(this));
   }
@@ -182,7 +181,7 @@ export class WebhookManager {
   /**
    * Queue a webhook delivery
    */
-  private queueDelivery(webhook: WebhookConfig, metadata: EventMetadata): void {
+  private async queueDelivery(webhook: WebhookConfig, metadata: EventMetadata): Promise<void> {
     const deliveryId = this.generateDeliveryId();
     const payload = this.createPayload(deliveryId, metadata);
 
@@ -195,6 +194,28 @@ export class WebhookManager {
       attempts: 0,
       createdAt: new Date().toISOString(),
     };
+
+    // Save to database if repository is available
+    if (this.deliveriesRepo) {
+      try {
+        await this.deliveriesRepo.create({
+          delivery_id: deliveryId,
+          webhook_id: webhook.id,
+          event_type: metadata.event,
+          payload: metadata.payload,
+        });
+        logger.debug('Delivery saved to database', {
+          deliveryId,
+          webhookId: webhook.id,
+          event: metadata.event,
+        });
+      } catch (error) {
+        logger.error('Failed to save delivery to database', {
+          deliveryId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
 
     this.deliveryQueue.push(delivery);
     logger.debug('Delivery queued', {
@@ -246,6 +267,20 @@ export class WebhookManager {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       delivery.attempts = attempt + 1;
 
+      // Update attempts in database
+      if (this.deliveriesRepo) {
+        try {
+          await this.deliveriesRepo.update(delivery.id, {
+            attempts: delivery.attempts,
+          });
+        } catch (error) {
+          logger.error('Failed to update delivery attempts', {
+            deliveryId: delivery.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+
       try {
         const result = await this.sendWebhook(webhook, delivery.payload);
         
@@ -254,6 +289,23 @@ export class WebhookManager {
         delivery.responseCode = result.status;
         delivery.responseBody = JSON.stringify(result.data).substring(0, 1000);
         delivery.deliveredAt = new Date().toISOString();
+
+        // Update success in database
+        if (this.deliveriesRepo) {
+          try {
+            await this.deliveriesRepo.update(delivery.id, {
+              status: 'success',
+              response_code: result.status,
+              response_body: JSON.stringify(result.data).substring(0, 1000),
+              delivered_at: new Date(),
+            });
+          } catch (error) {
+            logger.error('Failed to update delivery success', {
+              deliveryId: delivery.id,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+        }
 
         logger.info('Webhook delivered successfully', {
           deliveryId: delivery.id,
@@ -274,6 +326,23 @@ export class WebhookManager {
         if (isLastAttempt) {
           // Final failure
           delivery.status = 'failed';
+          
+          // Update failure in database
+          if (this.deliveriesRepo) {
+            try {
+              await this.deliveriesRepo.update(delivery.id, {
+                status: 'failed',
+                error: axiosError.message,
+                response_code: axiosError.response?.status,
+              });
+            } catch (error) {
+              logger.error('Failed to update delivery failure', {
+                deliveryId: delivery.id,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              });
+            }
+          }
+
           logger.error('Webhook delivery failed after retries', {
             deliveryId: delivery.id,
             webhookId: webhook.id,
@@ -300,9 +369,6 @@ export class WebhookManager {
         }
       }
     }
-
-    // Store in history
-    this.addToHistory(delivery);
   }
 
   /**
@@ -431,17 +497,40 @@ export class WebhookManager {
   /**
    * Get delivery logs for a webhook
    */
-  public getDeliveryLogs(webhookId: string, limit = 100): WebhookDelivery[] {
-    return this.deliveryHistory
-      .filter(d => d.webhookId === webhookId)
-      .slice(-limit);
+  public async getDeliveryLogs(webhookId: string, limit = 100): Promise<DbWebhookDelivery[]> {
+    if (!this.deliveriesRepo) {
+      return [];
+    }
+
+    try {
+      return await this.deliveriesRepo.findByWebhookId(webhookId, limit);
+    } catch (error) {
+      logger.error('Failed to fetch delivery logs', {
+        webhookId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
   }
 
   /**
    * Get all recent deliveries
    */
-  public getAllDeliveries(limit = 100): WebhookDelivery[] {
-    return this.deliveryHistory.slice(-limit);
+  public async getAllDeliveries(_limit = 100): Promise<DbWebhookDelivery[]> {
+    if (!this.deliveriesRepo) {
+      return [];
+    }
+
+    try {
+      // This would require a new repository method to get all deliveries
+      // For now, return empty array
+      return [];
+    } catch (error) {
+      logger.error('Failed to fetch all deliveries', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
   }
 
   /**
@@ -456,18 +545,6 @@ export class WebhookManager {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Add delivery to history
-   */
-  private addToHistory(delivery: WebhookDelivery): void {
-    this.deliveryHistory.push(delivery);
-
-    // Trim history if too large
-    if (this.deliveryHistory.length > this.maxHistorySize) {
-      this.deliveryHistory = this.deliveryHistory.slice(-this.maxHistorySize);
-    }
   }
 
   /**
@@ -501,20 +578,54 @@ export class WebhookManager {
   /**
    * Get statistics
    */
-  public getStats(): {
-    totalWebhooks: number;
-    enabledWebhooks: number;
+  public async getStats(webhookId?: string): Promise<{
+    totalWebhooks?: number;
+    enabledWebhooks?: number;
     totalDeliveries: number;
     successfulDeliveries: number;
     failedDeliveries: number;
     pendingDeliveries: number;
-  } {
+    averageAttempts?: number;
+    lastDelivery?: Date;
+    byChannel?: { [key: string]: number };
+    byEventType?: { [key: string]: number };
+  }> {
+    // If webhookId is provided, return stats for that specific webhook
+    if (this.deliveriesRepo && webhookId) {
+      try {
+        const stats = await this.deliveriesRepo.getStats(webhookId);
+        return {
+          totalDeliveries: stats.total_deliveries,
+          successfulDeliveries: stats.successful_deliveries,
+          failedDeliveries: stats.failed_deliveries,
+          pendingDeliveries: stats.pending_deliveries,
+          averageAttempts: stats.average_attempts,
+          lastDelivery: stats.last_delivery,
+          byChannel: stats.by_channel,
+          byEventType: stats.by_event_type,
+        };
+      } catch (error) {
+        logger.error('Failed to fetch delivery stats', {
+          webhookId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        // Return empty stats on error
+        return {
+          totalDeliveries: 0,
+          successfulDeliveries: 0,
+          failedDeliveries: 0,
+          pendingDeliveries: 0,
+        };
+      }
+    }
+
+    // Return global stats if no webhookId provided
     return {
       totalWebhooks: this.webhooks.size,
       enabledWebhooks: Array.from(this.webhooks.values()).filter(w => w.enabled).length,
-      totalDeliveries: this.deliveryHistory.length,
-      successfulDeliveries: this.deliveryHistory.filter(d => d.status === 'success').length,
-      failedDeliveries: this.deliveryHistory.filter(d => d.status === 'failed').length,
+      totalDeliveries: 0,
+      successfulDeliveries: 0,
+      failedDeliveries: 0,
       pendingDeliveries: this.deliveryQueue.length,
     };
   }

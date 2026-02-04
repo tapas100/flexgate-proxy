@@ -77,6 +77,9 @@ Most "proxy tutorials" stop at forwarding requests. This goes further:
 - **Metrics**: Prometheus-compatible (RPS, latency histograms, error rates)
 - **Health Checks**: Liveness, readiness, deep health
 - **Tracing**: Request flow across services (correlation IDs)
+- **Real-Time Metrics**: NATS JetStream streaming with SSE
+- **Metrics Database**: PostgreSQL storage for historical analysis
+- **Admin Dashboard**: React-based UI with live metrics visualization
 
 [**See observability docs →**](docs/observability.md)
 
@@ -85,6 +88,9 @@ Most "proxy tutorials" stop at forwarding requests. This goes further:
 - **Graceful Shutdown**: Drain connections before exit
 - **Error Handling**: Fail fast on bad config (don't serve traffic)
 - **Kubernetes-Ready**: Health probes, resource limits, signals
+- **Admin UI**: Web-based management console
+- **Webhook System**: Event-driven notifications with retry logic
+- **Database-Backed Config**: PostgreSQL for routes, API keys, webhooks
 
 ---
 
@@ -97,7 +103,51 @@ cd flexgate-proxy
 npm install
 ```
 
-### 2. Configure
+### 2. Setup Database
+```bash
+# Install PostgreSQL (if not already installed)
+brew install postgresql  # macOS
+# or
+sudo apt-get install postgresql  # Linux
+
+# Create database
+createdb flexgate
+
+# Run migrations
+psql -d flexgate -f migrations/001_initial_schema.sql
+psql -d flexgate -f migrations/002_audit_logs.sql
+psql -d flexgate -f migrations/003_requests_table.sql
+```
+
+### 3. Setup NATS JetStream (for real-time metrics)
+```bash
+# Using Docker
+docker run -d --name nats-jetstream \
+  -p 4222:4222 -p 8222:8222 \
+  nats:latest -js
+
+# Or using Podman
+podman run -d --name flexgate-nats \
+  -p 4222:4222 -p 8222:8222 -p 6222:6222 \
+  -v ~/flexgate-data/nats:/data:Z \
+  nats:2.10-alpine -js -sd /data
+```
+
+### 4. Environment Variables
+```bash
+# Copy example .env
+cp .env.example .env
+
+# Edit .env with your settings
+DATABASE_URL=postgresql://localhost/flexgate
+DATABASE_USER=flexgate
+DATABASE_PASSWORD=your-password
+REDIS_URL=redis://localhost:6379
+NATS_URL=nats://localhost:4222
+PORT=3000
+```
+
+### 5. Configure Routes
 ```yaml
 # config/proxy.yml
 upstreams:
@@ -121,7 +171,15 @@ security:
     - "169.254.169.254"  # AWS metadata
 ```
 
-### 3. Run
+### 6. Build Admin UI
+```bash
+cd admin-ui
+npm install
+npm run build
+cd ..
+```
+
+### 7. Run
 ```bash
 # Development
 npm run dev
@@ -130,10 +188,108 @@ npm run dev
 npm start
 ```
 
-### 4. Test
+### 8. Access Admin UI
+```bash
+# Open in browser
+open http://localhost:3000/dashboard
+
+# Available pages:
+# http://localhost:3000/dashboard  - Real-time metrics
+# http://localhost:3000/routes     - Route management
+# http://localhost:3000/webhooks   - Webhook configuration
+# http://localhost:3000/logs       - Audit logs
+# http://localhost:3000/settings   - System settings
+```
+
+### 9. Test the Proxy
 ```bash
 curl http://localhost:3000/api/users
 ```
+
+---
+
+## 🎨 Features Overview
+
+### 🖥️ Admin UI
+Modern React-based dashboard for managing your proxy:
+
+- **📊 Real-Time Dashboard**: Live metrics with SSE streaming
+  - Request rate, latency percentiles (P50, P95, P99)
+  - Success/error rates, status code distribution
+  - Auto-refreshing charts and gauges
+
+- **🛣️ Route Management**: Visual interface for proxy routes
+  - Create, edit, delete routes without config files
+  - Enable/disable routes on-the-fly
+  - Configure rate limits and circuit breakers per route
+
+- **🔑 API Key Management**: Secure access control
+  - Generate and revoke API keys
+  - Set expiration dates and permissions
+  - Usage tracking per key
+
+- **🪝 Webhook Configuration**: Event-driven notifications
+  - Subscribe to proxy events (errors, rate limits, circuit breaker trips)
+  - Configure retry logic and backoff strategies
+  - Monitor webhook delivery status
+
+- **📝 Audit Logs**: Complete activity history
+  - Track all configuration changes
+  - User actions and system events
+  - Searchable and filterable logs
+
+[**See Admin UI docs →**](docs/features/01-admin-ui.md)
+
+### ⚡ Real-Time Metrics (NATS JetStream)
+High-performance streaming metrics powered by NATS JetStream:
+
+- **Server-Sent Events (SSE)**: Real-time metric updates
+- **Message Persistence**: Historical metrics storage
+- **Scalable Architecture**: Handle millions of events
+- **Event Consumers**: Durable consumers for reliability
+- **Multiple Streams**: Separate METRICS and ALERTS channels
+
+**Endpoints:**
+- `GET /api/stream/metrics` - Real-time metrics SSE stream
+- `GET /api/stream/alerts` - Real-time alerts SSE stream
+- `GET /api/metrics` - HTTP polling fallback
+
+### 📊 Database-Backed Metrics
+PostgreSQL storage for comprehensive analytics:
+
+- **Request Logging**: Every proxy request recorded
+  - Method, path, status code, response time
+  - Upstream, client IP, user agent
+  - Request/response sizes, correlation IDs
+
+- **Metrics Aggregation**: Pre-computed summaries
+  - Hourly, daily, weekly rollups
+  - Percentile calculations (P50, P95, P99)
+  - Error rate trends and availability metrics
+
+- **Data Retention**: Configurable retention policies
+  - Auto-cleanup of old data
+  - Partitioning for performance
+  - Efficient indexing for fast queries
+
+### 🪝 Webhook System
+Event-driven architecture for integrations:
+
+**Supported Events:**
+- `request.error` - Failed requests
+- `rate_limit.exceeded` - Rate limit violations
+- `circuit_breaker.opened` - Circuit breaker trips
+- `upstream.failure` - Upstream service failures
+- `auth.failure` - Authentication failures
+
+**Features:**
+- **Automatic Retries**: Exponential backoff with jitter
+- **Delivery Tracking**: Monitor success/failure rates
+- **Custom Headers**: Authentication, signatures
+- **Payload Filtering**: Subscribe to specific events
+- **HMAC Signatures**: Webhook payload verification
+
+[**See Webhooks docs →**](docs/features/07-webhooks.md)
 
 ---
 
@@ -145,24 +301,33 @@ curl http://localhost:3000/api/users
 └──────┬──────┘
        │ HTTP/HTTPS
        ▼
-┌─────────────────────────────────────┐
-│         Proxy Server                │
-│  ┌────────────────────────────┐    │
-│  │  1. Authentication         │    │
-│  │  2. Rate Limiting          │    │
-│  │  3. Request Validation     │    │
-│  │  4. Circuit Breaker Check  │    │
-│  │  5. Route Resolution       │    │
-│  └────────────────────────────┘    │
-└─────────────┬───────────────────────┘
+┌──────────────────────────────────────────────┐
+│         FlexGate Proxy Server                │
+│  ┌────────────────────────────────┐          │
+│  │  1. Authentication (API Keys)  │          │
+│  │  2. Rate Limiting (Redis)      │          │
+│  │  3. Request Validation         │          │
+│  │  4. Circuit Breaker Check      │          │
+│  │  5. Route Resolution           │          │
+│  │  6. Metrics Recording          │          │
+│  └────────────────────────────────┘          │
+└─────────────┬────────────────────────────────┘
               │
               ▼
-     ┌────────────────┐
-     │ Redis (State)  │
-     │ - Rate limits  │
-     │ - CB state     │
-     └────────────────┘
+     ┌─────────────────────┐
+     │  Infrastructure     │
+     │  ┌────────────┐     │
+     │  │ PostgreSQL │     │  ← Config, Metrics, Logs
+     │  └────────────┘     │
+     │  ┌────────────┐     │
+     │  │   Redis    │     │  ← Rate Limits, Cache
+     │  └────────────┘     │
+     │  ┌────────────┐     │
+     │  │ JetStream  │     │  ← Real-time Streams
+     │  └────────────┘     │
+     └─────────────────────┘
               │
+````
               ▼
 ┌─────────────────────────────────────┐
 │       Backend Services              │
@@ -291,12 +456,22 @@ logging:
 
 ### Health Endpoints
 
+#### `GET /health`
+Basic health check.
+```json
+{
+  "status": "UP",
+  "timestamp": "2026-01-29T10:30:45.123Z",
+  "version": "1.0.0"
+}
+```
+
 #### `GET /health/live`
 Kubernetes liveness probe.
 ```json
 {
   "status": "UP",
-  "timestamp": "2026-01-26T10:30:45.123Z"
+  "timestamp": "2026-01-29T10:30:45.123Z"
 }
 ```
 
@@ -306,18 +481,146 @@ Kubernetes readiness probe.
 {
   "status": "UP",
   "checks": {
-    "config": "UP",
-    "upstreams": "UP",
-    "redis": "UP"
+    "database": "UP",
+    "redis": "UP",
+    "jetstream": "UP"
   }
 }
 ```
 
-#### `GET /metrics`
-Prometheus metrics.
+### Metrics Endpoints
+
+#### `GET /api/metrics`
+Get current metrics (HTTP polling).
+```json
+{
+  "summary": {
+    "totalRequests": 12543,
+    "avgLatency": "23.45",
+    "errorRate": "0.0012",
+    "availability": "99.9988",
+    "p50Latency": "18.00",
+    "p95Latency": "45.00",
+    "p99Latency": "67.00"
+  },
+  "requestRate": {
+    "name": "Request Rate",
+    "data": [
+      { "timestamp": "2026-01-29T13:00:00.000Z", "value": "234.5" }
+    ],
+    "unit": "req/s"
+  },
+  "statusCodes": [
+    { "code": 200, "count": 12000 },
+    { "code": 404, "count": 543 }
+  ]
+}
+```
+
+#### `GET /api/stream/metrics`
+Real-time metrics stream (SSE).
+```
+event: connected
+data: {"type":"connected","clientId":"abc123"}
+
+event: message
+data: {"summary":{"totalRequests":12543,...},"timestamp":"2026-01-29T13:00:00.123Z"}
+
+event: message
+data: {"summary":{"totalRequests":12544,...},"timestamp":"2026-01-29T13:00:05.456Z"}
+```
+
+#### `GET /api/stream/alerts`
+Real-time alerts stream (SSE).
+```
+event: message
+data: {"type":"circuit_breaker.opened","upstream":"api-backend","timestamp":"..."}
+```
+
+### Route Management
+
+#### `GET /api/routes`
+List all routes.
+```json
+[
+  {
+    "id": 1,
+    "path": "/api/users",
+    "upstream": "https://api.example.com",
+    "methods": ["GET", "POST"],
+    "enabled": true,
+    "rateLimit": { "requests": 100, "window": "60s" },
+    "circuitBreaker": { "enabled": true, "threshold": 5 }
+  }
+]
+```
+
+#### `POST /api/routes`
+Create a new route.
+```json
+{
+  "path": "/api/products",
+  "upstream": "https://products.example.com",
+  "methods": ["GET"],
+  "rateLimit": { "requests": 50, "window": "60s" }
+}
+```
+
+#### `PUT /api/routes/:id`
+Update a route.
+
+#### `DELETE /api/routes/:id`
+Delete a route.
+
+### Webhook Management
+
+#### `GET /api/webhooks`
+List all webhooks.
+
+#### `POST /api/webhooks`
+Create a webhook subscription.
+```json
+{
+  "url": "https://your-app.com/webhook",
+  "events": ["request.error", "rate_limit.exceeded"],
+  "enabled": true,
+  "maxRetries": 3,
+  "initialDelay": 1000,
+  "backoffMultiplier": 2
+}
+```
+
+#### `DELETE /api/webhooks/:id`
+Delete a webhook.
+
+### Log Endpoints
+
+#### `GET /api/logs`
+Get audit logs with pagination.
+```json
+{
+  "logs": [
+    {
+      "id": 1,
+      "timestamp": "2026-01-29T13:00:00.123Z",
+      "level": "info",
+      "message": "Route created",
+      "metadata": { "routeId": 5, "path": "/api/users" }
+    }
+  ],
+  "total": 1234,
+  "page": 1,
+  "pageSize": 10
+}
+```
+
+#### `GET /prometheus/metrics`
+Prometheus-compatible metrics endpoint.
 ```
 http_requests_total{method="GET",route="/api/users",status="200"} 12543
 http_request_duration_ms_bucket{route="/api/users",le="50"} 12000
+http_request_duration_ms_sum{route="/api/users"} 295430
+http_request_duration_ms_count{route="/api/users"} 12543
 ```
 
 ---
@@ -581,12 +884,28 @@ npm run benchmark
 
 ## Roadmap
 
+### ✅ Completed
+- [x] **Admin UI**: Web UI for config management (React + Material-UI)
+- [x] **Real-Time Metrics**: NATS JetStream with SSE streaming
+- [x] **Webhooks**: Event-driven notifications with retry logic
+- [x] **Database Storage**: PostgreSQL for config and metrics
+- [x] **API Key Auth**: HMAC-SHA256 authentication
+- [x] **Circuit Breakers**: Per-route circuit breaking
+- [x] **Rate Limiting**: Redis-backed token bucket
+- [x] **Metrics Recording**: Request logging to database
+
+### 🚧 In Progress
+- [ ] **OAuth 2.0 / OIDC**: Social login for Admin UI
+- [ ] **OpenTelemetry**: Distributed tracing integration
+- [ ] **Metrics Export**: Prometheus /metrics endpoint
+
+### 📋 Planned
 - [ ] **mTLS Support**: Mutual TLS to backends
-- [ ] **OpenTelemetry**: Distributed tracing
 - [ ] **GraphQL Federation**: GraphQL proxy support
 - [ ] **WebAssembly Plugins**: Custom logic in Wasm
 - [ ] **gRPC Support**: Proxy gRPC services
-- [ ] **Admin UI**: Web UI for config management
+- [ ] **Service Mesh**: Kubernetes integration with sidecars
+- [ ] **Multi-tenancy**: Isolated environments per tenant
 
 ---
 
