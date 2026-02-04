@@ -1,2 +1,141 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# ==============================================================================
+# Line Endings - Normalize line endings for consistent cross-platform development
+# ==============================================================================
+* text=auto eol=lf
+
+# Source code
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Scripts
+*.sh text eol=lf
+*.bash text eol=lf
+
+# SQL
+*.sql text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Config files
+.gitignore text eol=lf
+.gitattributes text eol=lf
+tsconfig*.json text eol=lf
+package*.json text eol=lf
+
+# ==============================================================================
+# GitHub Linguist - Language detection and repository display
+# ==============================================================================
+
+# Mark TypeScript as the primary language
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+
+# Exclude generated files from language statistics
+coverage/** linguist-generated
+build/** linguist-generated
+dist/** linguist-generated
+admin-ui/build/** linguist-generated
+*.min.js linguist-generated
+*.min.css linguist-generated
+package-lock.json linguist-generated
+*.map linguist-generated
+
+# Exclude vendor/dependency files
+node_modules/** linguist-vendored
+**/node_modules/** linguist-vendored
+
+# Exclude documentation and markdown from language stats
+*.md linguist-documentation
+docs/** linguist-documentation
+LICENSE linguist-documentation
+CHANGELOG.md linguist-documentation
+CONTRIBUTING.md linguist-documentation
+README.md linguist-documentation
+
+# Exclude test files from language stats (keep them visible but not primary)
+**/__tests__/** linguist-detectable=false
+**/*.test.ts linguist-detectable=false
+**/*.test.tsx linguist-detectable=false
+**/*.spec.ts linguist-detectable=false
+**/tests/** linguist-detectable=false
+test-files-to-copy/** linguist-vendored
+
+# Exclude config/meta files
+*.config.js linguist-language=JSON
+jest.config.json linguist-language=JSON
+tsconfig.json linguist-language=JSON
+tsconfig.build.json linguist-language=JSON
+
+# Exclude logs and temporary files
+logs/** linguist-generated
+*.log linguist-generated
+server.log linguist-generated
+
+# Exclude benchmark and script files from main stats
+benchmarks/** linguist-detectable=false
+scripts/** linguist-detectable=false
+
+# ==============================================================================
+# Git Diff Settings - Better diff display for specific file types
+# ==============================================================================
+
+# TypeScript/JavaScript
+*.ts diff=typescript
+*.tsx diff=typescript
+*.js diff=javascript
+*.jsx diff=javascript
+
+# JSON - Use built-in JSON diff
+*.json diff=json
+
+# SQL
+*.sql diff=sql
+
+# Markdown - Use built-in markdown diff
+*.md diff=markdown
+
+# ==============================================================================
+# Binary Files - Prevent diff attempts on binary files
+# ==============================================================================
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+*.tgz binary
+
+# Fonts
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+*.otf binary
+
+# ==============================================================================
+# Export-ignore - Files excluded from git archive
+# ==============================================================================
+
+.gitignore export-ignore
+.gitattributes export-ignore
+.github/ export-ignore
+.vscode/ export-ignore
+coverage/ export-ignore
+**/__tests__/ export-ignore
+*.test.ts export-ignore
+*.test.tsx export-ignore
+*.spec.ts export-ignore
