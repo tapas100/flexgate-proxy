@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { logger } from '../src/logger';
 import webhooksRepository from '../src/database/repositories/webhooksRepository';
+import { WebhookDelivery } from '../src/database/repositories/webhookDeliveriesRepository';
 
 const router = Router();
 
@@ -316,6 +317,136 @@ router.delete('/:id', async (req: Request, res: Response): Promise<any> => {
       success: false,
       error: 'Internal Server Error',
       message: 'Failed to delete webhook',
+    });
+  }
+});
+
+/**
+ * GET /api/webhooks/:id/logs
+ * Get delivery logs for a webhook (filtered by subscribed events)
+ */
+router.get('/:id/logs', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Webhook ID is required',
+      });
+    }
+    
+    const limit = parseInt(req.query.limit as string) || 100;
+
+    // Get webhook configuration first
+    const webhook = await webhooksRepository.findByWebhookId(id);
+    
+    if (!webhook) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: `Webhook with ID '${id}' not found`,
+      });
+    }
+
+    // Get webhook manager from global
+    const webhookManager = (global as any).webhookManager;
+    
+    if (!webhookManager) {
+      return res.status(503).json({
+        success: false,
+        error: 'Service Unavailable',
+        message: 'Webhook manager not initialized',
+      });
+    }
+
+    // Get delivery logs from database
+    const allLogs = await webhookManager.getDeliveryLogs(id, limit);
+    
+    // Filter logs by events the webhook is subscribed to
+    const subscribedEvents = webhook.events || [];
+    const filteredLogs = allLogs.filter((log: WebhookDelivery) => 
+      subscribedEvents.includes(log.event_type) || subscribedEvents.includes('*')
+    );
+
+    logger.info('Fetched delivery logs', { 
+      webhookId: id, 
+      totalLogs: allLogs.length,
+      filteredLogs: filteredLogs.length,
+      subscribedEvents: subscribedEvents 
+    });
+
+    return res.json({
+      success: true,
+      data: filteredLogs.map((log: WebhookDelivery) => ({
+        id: log.delivery_id,
+        webhookId: log.webhook_id,
+        eventType: log.event_type,
+        payload: log.payload,
+        responseStatus: log.response_code,
+        responseBody: log.response_body,
+        attempt: log.attempts,
+        success: log.status === 'success',
+        error: log.error,
+        timestamp: log.created_at,
+        duration: log.delivered_at 
+          ? new Date(log.delivered_at).getTime() - new Date(log.created_at).getTime()
+          : undefined,
+      })),
+    });
+  } catch (error) {
+    logger.error('Failed to fetch delivery logs', {
+      webhookId: req.params.id,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch delivery logs',
+    });
+  }
+});
+
+/**
+ * GET /api/webhooks/:id/stats
+ * Get delivery statistics for a webhook
+ */
+router.get('/:id/stats', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+
+    // Get webhook manager from global
+    const webhookManager = (global as any).webhookManager;
+    
+    if (!webhookManager) {
+      return res.status(503).json({
+        success: false,
+        error: 'Service Unavailable',
+        message: 'Webhook manager not initialized',
+      });
+    }
+
+    // Get stats from database
+    const stats = await webhookManager.getStats(id);
+
+    logger.info('Fetched delivery stats', { webhookId: id });
+
+    return res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    logger.error('Failed to fetch delivery stats', {
+      webhookId: req.params.id,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch delivery stats',
     });
   }
 });

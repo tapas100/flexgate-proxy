@@ -138,9 +138,16 @@ const RouteDialog: React.FC<RouteDialogProps> = ({ open, route, onClose }) => {
   };
 
   return (
-    <Dialog open={open} onClose={() => onClose(false)} maxWidth="md" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={() => onClose(false)} 
+      maxWidth="md" 
+      fullWidth
+      scroll="paper"
+      data-testid="route-dialog"
+    >
       <DialogTitle>{route ? 'Edit Route' : 'Create Route'}</DialogTitle>
-      <DialogContent>
+      <DialogContent dividers>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -258,11 +265,20 @@ const RouteDialog: React.FC<RouteDialogProps> = ({ open, route, onClose }) => {
           )}
         </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={() => onClose(false)} disabled={saving}>
+      <DialogActions sx={{ p: 2 }}>
+        <Button 
+          onClick={() => onClose(false)} 
+          disabled={saving}
+          data-testid="cancel-button"
+        >
           Cancel
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button 
+          onClick={handleSave} 
+          variant="contained" 
+          disabled={saving}
+          data-testid="save-button"
+        >
           {saving ? 'Saving...' : route ? 'Update' : 'Create'}
         </Button>
       </DialogActions>

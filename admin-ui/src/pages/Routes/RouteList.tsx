@@ -50,9 +50,12 @@ const RouteList: React.FC = () => {
     const response = await routeService.getRoutes();
 
     if (response.success && response.data) {
-      setRoutes(response.data);
+      // Ensure data is an array
+      const routesData = Array.isArray(response.data) ? response.data : [];
+      setRoutes(routesData);
     } else {
       setError(response.error || 'Failed to load routes');
+      setRoutes([]); // Set empty array on error
     }
 
     setLoading(false);
@@ -106,10 +109,12 @@ const RouteList: React.FC = () => {
   };
 
   // Filter routes by search term
-  const filteredRoutes = routes.filter(route =>
-    route.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    route.upstream.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRoutes = Array.isArray(routes) 
+    ? routes.filter(route =>
+        route.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        route.upstream.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : [];
 
   if (loading) {
     return (
@@ -120,13 +125,14 @@ const RouteList: React.FC = () => {
   }
 
   return (
-    <Box>
+    <Box data-testid="routes-page">
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Routes</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleCreate}
+          data-testid="create-route-button"
         >
           Create Route
         </Button>

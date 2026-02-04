@@ -11,6 +11,7 @@ import Metrics from './pages/Metrics';
 import Logs from './pages/Logs';
 import OAuthProviders from './pages/OAuthProviders';
 import Webhooks from './pages/Webhooks';
+import WebhookDetails from './pages/WebhookDetails';
 import Settings from './pages/Settings';
 
 const theme = createTheme({
@@ -92,6 +93,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Webhooks />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/webhooks/:id/details"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <WebhookDetails />
                 </Layout>
               </ProtectedRoute>
             }

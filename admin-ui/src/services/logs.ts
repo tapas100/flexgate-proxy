@@ -1,6 +1,45 @@
 import { DetailedLogEntry, LogFilter, LogStats, LogLevel, LogSource, ApiResponse } from '../types';
 import { apiService } from './api';
 
+function normalizeSource(raw: any): LogSource {
+  const svc = (raw?.source ?? raw?.service ?? '').toString().toLowerCase();
+  if (svc.includes('proxy')) return 'proxy';
+  if (svc.includes('auth')) return 'auth';
+  if (svc.includes('metric')) return 'metrics';
+  if (svc.includes('admin')) return 'admin';
+  return 'system';
+}
+
+function normalizeLevel(raw: any): LogLevel {
+  const lvl = (raw?.level ?? 'INFO').toString().toUpperCase();
+  if (lvl === 'DEBUG' || lvl === 'INFO' || lvl === 'WARN' || lvl === 'ERROR' || lvl === 'FATAL') return lvl;
+  return 'INFO';
+}
+
+function normalizeTimestamp(raw: any): number {
+  const ts = raw?.timestamp;
+  if (typeof ts === 'number') return ts;
+  if (typeof ts === 'string') {
+    const parsed = Date.parse(ts);
+    return Number.isFinite(parsed) ? parsed : Date.now();
+  }
+  return Date.now();
+}
+
+function normalizeLogEntry(raw: any): DetailedLogEntry {
+  return {
+    id: raw?.id ?? `log-${Date.now()}`,
+    timestamp: normalizeTimestamp(raw),
+    level: normalizeLevel(raw),
+    source: normalizeSource(raw),
+    message: raw?.message ?? '',
+    metadata: raw?.metadata ?? raw,
+    correlationId: raw?.correlationId,
+    requestId: raw?.requestId,
+    userId: raw?.userId,
+  };
+}
+
 class LogService {
   private ws: WebSocket | null = null;
   private listeners: ((log: DetailedLogEntry) => void)[] = [];
@@ -28,11 +67,20 @@ class LogService {
         params.append('search', filter.searchQuery);
       }
 
-      const response = await apiService.get<{ logs: DetailedLogEntry[]; total: number }>(
-        `/api/logs?${params.toString()}`
-      );
+      // Backend returns envelope: { success: true, data: { logs, total, ... } }
+      const response = await apiService.get<any>(`/api/logs?${params.toString()}`);
+      const payload = (response as any).data;
+      const unwrapped = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload;
 
-      return response;
+      if (unwrapped && Array.isArray((unwrapped as any).logs)) {
+        (unwrapped as any).logs = (unwrapped as any).logs.map(normalizeLogEntry);
+      }
+
+      return {
+        success: !!response.success,
+        data: unwrapped,
+        error: response.error,
+      } as ApiResponse<{ logs: DetailedLogEntry[]; total: number }>;
     } catch (error) {
       console.error('Failed to fetch logs:', error);
       return {
@@ -47,8 +95,15 @@ class LogService {
    */
   async fetchLogById(id: string): Promise<ApiResponse<DetailedLogEntry>> {
     try {
-      const response = await apiService.get<DetailedLogEntry>(`/api/logs/${id}`);
-      return response;
+      const response = await apiService.get<any>(`/api/logs/${id}`);
+      const payload = (response as any).data;
+      const unwrapped = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload;
+
+      return {
+        success: !!response.success,
+        data: unwrapped,
+        error: response.error,
+      } as ApiResponse<DetailedLogEntry>;
     } catch (error) {
       console.error('Failed to fetch log:', error);
       return {
@@ -65,8 +120,20 @@ class LogService {
     try {
       // Backend /api/logs/stats/summary doesn't support filters yet
       // TODO: Add filter support to backend endpoint
-      const response = await apiService.get<LogStats>('/api/logs/stats/summary');
-      return response;
+      const response = await apiService.get<any>('/api/logs/stats/summary');
+      const payload = (response as any).data;
+      const unwrapped = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload;
+
+      // Backend doesn't currently provide avgLatency; keep UI stable.
+      if (unwrapped && typeof (unwrapped as any).avgLatency !== 'number') {
+        (unwrapped as any).avgLatency = 0;
+      }
+
+      return {
+        success: !!response.success,
+        data: unwrapped,
+        error: response.error,
+      } as ApiResponse<LogStats>;
     } catch (error) {
       console.error('Failed to fetch log stats:', error);
       return {
@@ -113,9 +180,10 @@ class LogService {
     const interval = setInterval(async () => {
       try {
         const response = await this.fetchLogs(10, 0); // Get latest 10 logs
-        if (response.success && response.data?.logs.length) {
+        const logs = Array.isArray(response.data?.logs) ? response.data!.logs : [];
+        if (response.success && logs.length > 0) {
           // Emit the most recent log
-          this.listeners.forEach(listener => listener(response.data!.logs[0]));
+          this.listeners.forEach(listener => listener(logs[0]));
         }
       } catch (error) {
         console.error('Failed to fetch new logs:', error);

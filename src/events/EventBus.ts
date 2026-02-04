@@ -12,18 +12,29 @@ export enum EventType {
 
   // Rate Limit Events
   RATE_LIMIT_EXCEEDED = 'rate_limit.exceeded',
+  RATE_LIMIT_APPROACHING = 'rate_limit.approaching',
   RATE_LIMIT_WARNING = 'rate_limit.warning',
+  RATE_LIMIT_RECOVERED = 'rate_limit.recovered',
 
   // Proxy Events
+  PROXY_REQUEST_STARTED = 'proxy.request_started',
+  PROXY_REQUEST_COMPLETED = 'proxy.request_completed',
+  PROXY_REQUEST_FAILED = 'proxy.request_failed',
   PROXY_ERROR = 'proxy.error',
   PROXY_TIMEOUT = 'proxy.timeout',
 
   // Health Events
+  HEALTH_CHECK_FAILED = 'health.check_failed',
+  HEALTH_CHECK_RECOVERED = 'health.check_recovered',
   HEALTH_DEGRADED = 'health.degraded',
   HEALTH_RECOVERED = 'health.recovered',
 
   // Configuration Events
   CONFIG_CHANGED = 'config.changed',
+  CONFIG_CREATED = 'config.created',
+  CONFIG_UPDATED = 'config.updated',
+  CONFIG_DELETED = 'config.deleted',
+  CONFIG_VALIDATION_FAILED = 'config.validation_failed',
 }
 
 /**

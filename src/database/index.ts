@@ -152,6 +152,16 @@ class Database {
       waitingCount: this.pool.waitingCount,
     };
   }
+
+  /**
+   * Get the underlying pool instance (for direct access)
+   */
+  getPool(): Pool {
+    if (!this.pool) {
+      throw new Error('Database not initialized. Call init() first.');
+    }
+    return this.pool;
+  }
 }
 
 // Singleton instance

@@ -12,6 +12,7 @@ import {
   CircularProgress,
   Alert,
   Button,
+  Chip,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -19,14 +20,15 @@ import {
   Error as ErrorIcon,
   CheckCircle as CheckCircleIcon,
   Refresh as RefreshIcon,
+  WifiOff as WifiOffIcon,
 } from '@mui/icons-material';
-import { metricsService } from '../services/metrics';
 import { MetricsData, TimeRange, RefreshInterval } from '../types';
 import { formatLargeNumber } from '../utils/metricsHelpers';
 import RequestRateChart from '../components/Charts/RequestRateChart';
 import LatencyChart from '../components/Charts/LatencyChart';
 import StatusPieChart from '../components/Charts/StatusPieChart';
 import SLOGauge from '../components/Charts/SLOGauge';
+import { useLiveMetrics } from '../hooks/useLiveMetrics';
 
 interface MetricCardProps {
   title: string;
@@ -78,40 +80,44 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, trend, ic
 };
 
 const Metrics: React.FC = () => {
-  const [metricsData, setMetricsData] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
   const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>('off');
 
-  const fetchMetrics = async () => {
-    setLoading(true);
-    setError(null);
-    const response = await metricsService.fetchMetrics(timeRange);
-    if (response.success && response.data) {
-      setMetricsData(response.data);
-    } else {
-      setError(response.error || 'Failed to fetch metrics');
-    }
-    setLoading(false);
-  };
+  const { data: metricsData, connected, error: streamError, reconnect } = useLiveMetrics({
+    streamUrl: '/api/stream/metrics',
+    pollUrl: '/api/metrics/live',
+    pollIntervalMs: refreshInterval === 'off'
+      ? 5000
+      : refreshInterval === '30s'
+        ? 30000
+        : refreshInterval === '1m'
+          ? 60000
+          : 300000,
+  });
 
   useEffect(() => {
-    fetchMetrics();
+    // Keep existing timeRange UI for now; backend stream currently pushes a fixed window.
+    // If/when backend supports range in stream, we can pass it here.
   }, [timeRange]);
 
   useEffect(() => {
-    if (refreshInterval === 'off') return;
-
-    const intervals: Record<Exclude<RefreshInterval, 'off'>, number> = {
-      '30s': 30000,
-      '1m': 60000,
-      '5m': 300000,
-    };
-
-    const intervalId = setInterval(fetchMetrics, intervals[refreshInterval as Exclude<RefreshInterval, 'off'>]);
-    return () => clearInterval(intervalId);
+    // Set loading state based on first live payload.
+    if (!metricsData) {
+      setLoading(true);
+      return;
+    }
+    setLoading(false);
   }, [refreshInterval, timeRange]);
+
+  useEffect(() => {
+    if (streamError) {
+      setError(streamError.message);
+    } else {
+      setError(null);
+    }
+  }, [streamError]);
 
   const handleTimeRangeChange = (_event: React.MouseEvent<HTMLElement>, newRange: TimeRange | null) => {
     if (newRange !== null) {
@@ -133,14 +139,17 @@ const Metrics: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !metricsData) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error" action={
-          <Button color="inherit" size="small" onClick={fetchMetrics}>
-            Retry
-          </Button>
-        }>
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={reconnect}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Alert>
       </Box>
@@ -162,7 +171,14 @@ const Metrics: React.FC = () => {
         <Typography variant="h4" fontWeight="bold">
           Metrics Dashboard
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Chip
+            label={connected ? 'Live' : 'Disconnected'}
+            color={connected ? 'success' : 'error'}
+            size="small"
+            variant="outlined"
+            icon={connected ? undefined : <WifiOffIcon />}
+          />
           <ToggleButtonGroup
             value={timeRange}
             exclusive
@@ -189,7 +205,7 @@ const Metrics: React.FC = () => {
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
-            onClick={fetchMetrics}
+            onClick={reconnect}
             disabled={loading}
           >
             Refresh
@@ -202,7 +218,7 @@ const Metrics: React.FC = () => {
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
             title="Total Requests"
-            value={formatLargeNumber(metricsData.summary.totalRequests)}
+            value={formatLargeNumber(metricsData?.summary?.totalRequests || 0)}
             change="+12.5%"
             trend="up"
             icon={<TrendingUpIcon fontSize="large" />}
@@ -212,7 +228,7 @@ const Metrics: React.FC = () => {
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
             title="Avg Latency"
-            value={`${metricsData.summary.avgLatency.toFixed(0)}ms`}
+            value={`${(metricsData?.summary?.avgLatency || 0).toFixed(0)}ms`}
             change="-5.2%"
             trend="down"
             icon={<SpeedIcon fontSize="large" />}
@@ -222,7 +238,7 @@ const Metrics: React.FC = () => {
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
             title="Error Rate"
-            value={`${metricsData.summary.errorRate.toFixed(2)}%`}
+            value={`${(metricsData?.summary?.errorRate || 0).toFixed(2)}%`}
             change="-0.1%"
             trend="down"
             icon={<ErrorIcon fontSize="large" />}
@@ -232,7 +248,7 @@ const Metrics: React.FC = () => {
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
             title="Uptime"
-            value={`${metricsData.summary.uptime.toFixed(2)}%`}
+            value={`${(metricsData?.summary?.uptime || 0).toFixed(2)}%`}
             change="+0.02%"
             trend="up"
             icon={<CheckCircleIcon fontSize="large" />}
@@ -245,26 +261,30 @@ const Metrics: React.FC = () => {
       <Grid container spacing={3}>
         {/* Request Rate */}
         <Grid item xs={12} md={6}>
-          <RequestRateChart data={metricsData.requestRate} />
+          <RequestRateChart data={metricsData?.requestRate || { name: 'Request Rate', data: [], unit: 'req/s' }} />
         </Grid>
 
         {/* SLO Gauge */}
         <Grid item xs={12} md={6}>
-          <SLOGauge slo={metricsData.slo} />
+          <SLOGauge slo={metricsData?.slo || { 
+            availability: { current: 0, target: 99.9, budget: 100 },
+            latency: { p50: 0, p95: 0, p99: 0, targetP95: 200, targetP99: 500 },
+            errorRate: { current: 0, target: 0.1 }
+          }} />
         </Grid>
 
         {/* Latency Chart */}
         <Grid item xs={12}>
           <LatencyChart
-            p50={metricsData.latency.p50}
-            p95={metricsData.latency.p95}
-            p99={metricsData.latency.p99}
+            p50={metricsData?.latency?.p50 || { name: 'p50', data: [], unit: 'ms' }}
+            p95={metricsData?.latency?.p95 || { name: 'p95', data: [], unit: 'ms' }}
+            p99={metricsData?.latency?.p99 || { name: 'p99', data: [], unit: 'ms' }}
           />
         </Grid>
 
         {/* Status Code Distribution */}
         <Grid item xs={12} md={6}>
-          <StatusPieChart statusCodes={metricsData.statusCodes} />
+          <StatusPieChart statusCodes={metricsData?.statusCodes || { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 }} />
         </Grid>
 
         {/* Circuit Breakers */}
@@ -277,19 +297,19 @@ const Metrics: React.FC = () => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2">Closed</Typography>
                 <Typography variant="body2" fontWeight="bold" color="success.main">
-                  {metricsData.circuitBreakers.closed}
+                  {metricsData?.circuitBreakers?.closed || 0}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2">Half-Open</Typography>
                 <Typography variant="body2" fontWeight="bold" color="warning.main">
-                  {metricsData.circuitBreakers.halfOpen}
+                  {metricsData?.circuitBreakers?.halfOpen || 0}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2">Open</Typography>
                 <Typography variant="body2" fontWeight="bold" color="error.main">
-                  {metricsData.circuitBreakers.open}
+                  {metricsData?.circuitBreakers?.open || 0}
                 </Typography>
               </Box>
             </Box>

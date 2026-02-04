@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { logger } from '../src/logger';
 import database from '../src/database/index';
+import { eventBus, EventType } from '../src/events/EventBus';
 
 const router: Router = Router();
 
@@ -95,6 +96,77 @@ router.get('/', async (_req: Request, res: Response): Promise<any> => {
 });
 
 /**
+ * POST /api/routes/seed
+ * Seed demo routes into the database.
+ *
+ * This helps quickly validate proxying + metrics without manual setup.
+ * Idempotent: uses fixed route_id values and upserts.
+ */
+router.post('/seed', async (_req: Request, res: Response): Promise<any> => {
+  try {
+    const seedRoutes = [
+      {
+        route_id: 'httpbin-api',
+        path: '/httpbin/*',
+        upstream: 'https://httpbin.org',
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        enabled: true,
+        description: 'Demo route for testing proxying and metrics',
+      },
+      {
+        route_id: 'jsonplaceholder-api',
+        path: '/external/api/*',
+        upstream: 'https://jsonplaceholder.typicode.com',
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        enabled: true,
+        description: 'Demo route for testing proxying and metrics',
+      },
+    ];
+
+    for (const r of seedRoutes) {
+      await database.query(
+        `INSERT INTO routes (
+            route_id,
+            path,
+            upstream,
+            methods,
+            enabled,
+            description,
+            created_at,
+            updated_at
+          ) VALUES ($1,$2,$3,$4,$5,$6,NOW(),NOW())
+          ON CONFLICT (route_id) DO UPDATE SET
+            path = EXCLUDED.path,
+            upstream = EXCLUDED.upstream,
+            methods = EXCLUDED.methods,
+            enabled = EXCLUDED.enabled,
+            description = EXCLUDED.description,
+            updated_at = NOW()
+        `,
+        [r.route_id, r.path, r.upstream, r.methods, r.enabled, r.description]
+      );
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        seeded: seedRoutes.map((r) => ({ id: r.route_id, path: r.path, upstream: r.upstream })),
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to seed demo routes', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to seed demo routes',
+    });
+  }
+});
+
+/**
  * GET /api/routes/:id
  * Get a single route by ID from database
  */
@@ -147,6 +219,20 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
     const validation = CreateRouteSchema.safeParse(req.body);
     
     if (!validation.success) {
+      // Emit validation failed event
+      eventBus.emitEvent(EventType.CONFIG_VALIDATION_FAILED, {
+        timestamp: new Date().toISOString(),
+        source: 'routes-api',
+        action: 'create_route',
+        validationErrors: validation.error.issues,
+        data: req.body,
+      } as any);
+      
+      logger.warn('Route validation failed', {
+        action: 'create',
+        errors: validation.error.issues,
+      });
+      
       return res.status(400).json({
         success: false,
         error: 'Bad Request',
@@ -199,6 +285,17 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
 
     const newRoute = dbRowToProxyRoute(result.rows[0]);
 
+    // Emit config created event
+    eventBus.emitEvent(EventType.CONFIG_CREATED, {
+      timestamp: new Date().toISOString(),
+      source: 'routes-api',
+      action: 'create_route',
+      routeId: newRoute.id,
+      routePath: newRoute.path,
+      upstream: newRoute.upstream,
+      methods: newRoute.methods,
+    } as any);
+
     logger.info('Route created in database', {
       routeId: newRoute.id,
       path: newRoute.path,
@@ -224,9 +321,10 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
 
 /**
  * PUT /api/routes/:id
+ * PATCH /api/routes/:id
  * Update an existing route in database
  */
-router.put('/:id', async (req: Request, res: Response): Promise<any> => {
+const updateRouteHandler = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
@@ -234,6 +332,22 @@ router.put('/:id', async (req: Request, res: Response): Promise<any> => {
     const validation = UpdateRouteSchema.safeParse(req.body);
     
     if (!validation.success) {
+      // Emit validation failed event
+      eventBus.emitEvent(EventType.CONFIG_VALIDATION_FAILED, {
+        timestamp: new Date().toISOString(),
+        source: 'routes-api',
+        action: 'update_route',
+        routeId: id,
+        validationErrors: validation.error.issues,
+        data: req.body,
+      } as any);
+      
+      logger.warn('Route validation failed', {
+        action: 'update',
+        routeId: id,
+        errors: validation.error.issues,
+      });
+      
       return res.status(400).json({
         success: false,
         error: 'Bad Request',
@@ -324,6 +438,17 @@ router.put('/:id', async (req: Request, res: Response): Promise<any> => {
 
     const updatedRoute = dbRowToProxyRoute(result.rows[0]);
 
+    // Emit config updated event
+    eventBus.emitEvent(EventType.CONFIG_UPDATED, {
+      timestamp: new Date().toISOString(),
+      source: 'routes-api',
+      action: 'update_route',
+      routeId: id,
+      routePath: updatedRoute.path,
+      upstream: updatedRoute.upstream,
+      changes: Object.keys(updateData),
+    } as any);
+
     logger.info('Route updated in database', {
       routeId: id,
       changes: Object.keys(updateData),
@@ -345,7 +470,11 @@ router.put('/:id', async (req: Request, res: Response): Promise<any> => {
       message: 'Failed to update route',
     });
   }
-});
+};
+
+// Register both PUT and PATCH routes
+router.put('/:id', updateRouteHandler);
+router.patch('/:id', updateRouteHandler);
 
 /**
  * DELETE /api/routes/:id
@@ -376,6 +505,16 @@ router.delete('/:id', async (req: Request, res: Response): Promise<any> => {
     );
 
     const deletedRoute = dbRowToProxyRoute(existingRoute.rows[0]);
+
+    // Emit config deleted event
+    eventBus.emitEvent(EventType.CONFIG_DELETED, {
+      timestamp: new Date().toISOString(),
+      source: 'routes-api',
+      action: 'delete_route',
+      routeId: id,
+      routePath: deletedRoute.path,
+      upstream: deletedRoute.upstream,
+    } as any);
 
     logger.info('Route deleted from database', {
       routeId: id,

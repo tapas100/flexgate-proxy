@@ -1,5 +1,6 @@
 // @ts-nocheck - Grid component type issues with MUI version
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -50,6 +51,7 @@ import {
 // Types
 interface WebhookConfig {
   id: string;
+  name: string;
   url: string;
   events: string[];
   enabled: boolean;
@@ -92,16 +94,20 @@ const EVENT_TYPES = [
   'circuit_breaker.half_open',
   'rate_limit.exceeded',
   'rate_limit.approaching',
+  'rate_limit.recovered',
   'proxy.request_started',
   'proxy.request_completed',
   'proxy.request_failed',
   'health.check_failed',
   'health.check_recovered',
+  'config.created',
   'config.updated',
+  'config.deleted',
   'config.validation_failed',
 ];
 
 const Webhooks: React.FC = () => {
+  const navigate = useNavigate();
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +120,7 @@ const Webhooks: React.FC = () => {
 
   // Form state
   const [formData, setFormData] = useState({
+    name: '',
     url: '',
     events: [] as string[],
     enabled: true,
@@ -133,8 +140,16 @@ const Webhooks: React.FC = () => {
       setLoading(true);
       const response = await fetch('/api/webhooks');
       if (!response.ok) throw new Error('Failed to fetch webhooks');
-      const data = await response.json();
-      setWebhooks(data.webhooks || []);
+      const result = await response.json();
+      // API returns { success: true, data: [...] }
+      const webhooksList = result.data || result.webhooks || result || [];
+      setWebhooks(webhooksList);
+      
+      // Fetch stats for all webhooks
+      webhooksList.forEach((webhook: WebhookConfig) => {
+        fetchWebhookStats(webhook.id);
+      });
+      
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load webhooks');
@@ -148,7 +163,8 @@ const Webhooks: React.FC = () => {
       const response = await fetch(`/api/webhooks/${webhookId}/logs`);
       if (!response.ok) throw new Error('Failed to fetch logs');
       const data = await response.json();
-      setDeliveryLogs(prev => ({ ...prev, [webhookId]: data.logs || [] }));
+      // API returns { success: true, data: [...] }
+      setDeliveryLogs(prev => ({ ...prev, [webhookId]: data.data || data.logs || [] }));
     } catch (err) {
       console.error('Failed to load logs:', err);
     }
@@ -156,11 +172,21 @@ const Webhooks: React.FC = () => {
 
   const fetchWebhookStats = async (webhookId: string) => {
     try {
-      const response = await fetch(`/api/webhooks/${webhookId}`);
+      const response = await fetch(`/api/webhooks/${webhookId}/stats`);
       if (!response.ok) throw new Error('Failed to fetch stats');
       const data = await response.json();
-      if (data.webhook && data.webhook.stats) {
-        setStats(prev => ({ ...prev, [webhookId]: data.webhook.stats }));
+      // API returns { success: true, data: { totalDeliveries, successfulDeliveries, ... } }
+      if (data.data) {
+        setStats(prev => ({ 
+          ...prev, 
+          [webhookId]: {
+            totalDeliveries: data.data.totalDeliveries || 0,
+            successfulDeliveries: data.data.successfulDeliveries || 0,
+            failedDeliveries: data.data.failedDeliveries || 0,
+            averageResponseTime: 0, // Not provided by backend yet
+            lastDelivery: data.data.last_delivery,
+          }
+        }));
       }
     } catch (err) {
       console.error('Failed to load stats:', err);
@@ -170,15 +196,13 @@ const Webhooks: React.FC = () => {
   const handleCreate = async () => {
     try {
       const payload = {
+        name: formData.name,
         url: formData.url,
         events: formData.events,
         enabled: formData.enabled,
         description: formData.description,
-        retryConfig: {
-          maxRetries: formData.maxRetries,
-          initialDelay: formData.initialDelay,
-          backoffMultiplier: formData.backoffMultiplier,
-        },
+        retry_count: formData.maxRetries,
+        retry_delay: formData.initialDelay,
       };
 
       const response = await fetch('/api/webhooks', {
@@ -190,7 +214,8 @@ const Webhooks: React.FC = () => {
       if (!response.ok) throw new Error('Failed to create webhook');
       
       const data = await response.json();
-      setSnackbar({ open: true, message: `Webhook created! Secret: ${data.webhook.secret}`, severity: 'success' });
+      const secret = data?.data?.secret || data?.secret || 'N/A';
+      setSnackbar({ open: true, message: `Webhook created! Secret: ${secret}`, severity: 'success' });
       setOpenDialog(false);
       resetForm();
       fetchWebhooks();
@@ -204,15 +229,13 @@ const Webhooks: React.FC = () => {
 
     try {
       const payload = {
+        name: formData.name,
         url: formData.url,
         events: formData.events,
         enabled: formData.enabled,
         description: formData.description,
-        retryConfig: {
-          maxRetries: formData.maxRetries,
-          initialDelay: formData.initialDelay,
-          backoffMultiplier: formData.backoffMultiplier,
-        },
+        retry_count: formData.maxRetries,
+        retry_delay: formData.initialDelay,
       };
 
       const response = await fetch(`/api/webhooks/${editingWebhook.id}`, {
@@ -262,6 +285,7 @@ const Webhooks: React.FC = () => {
   const handleEdit = (webhook: WebhookConfig) => {
     setEditingWebhook(webhook);
     setFormData({
+      name: webhook.name || '',
       url: webhook.url,
       events: webhook.events,
       enabled: webhook.enabled,
@@ -281,6 +305,7 @@ const Webhooks: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
+      name: '',
       url: '',
       events: [],
       enabled: true,
@@ -328,7 +353,7 @@ const Webhooks: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3 }} data-testid="webhooks-page">
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Webhooks</Typography>
         <Button
@@ -336,6 +361,7 @@ const Webhooks: React.FC = () => {
           color="primary"
           startIcon={<AddIcon />}
           onClick={handleOpenDialog}
+          data-testid="create-webhook-button"
         >
           Create Webhook
         </Button>
@@ -415,6 +441,11 @@ const Webhooks: React.FC = () => {
                       )}
                     </TableCell>
                     <TableCell align="right">
+                      <Tooltip title="View Details">
+                        <IconButton onClick={() => navigate(`/webhooks/${webhook.id}/details`)} size="small" color="primary">
+                          <VisibilityIcon />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="View Logs">
                         <IconButton onClick={() => toggleLogs(webhook.id)} size="small">
                           {expandedLogs === webhook.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -510,10 +541,27 @@ const Webhooks: React.FC = () => {
       )}
 
       {/* Create/Edit Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
+      <Dialog 
+        open={openDialog} 
+        onClose={() => setOpenDialog(false)} 
+        maxWidth="md" 
+        fullWidth
+        scroll="paper"
+        data-testid="webhook-dialog"
+      >
         <DialogTitle>{editingWebhook ? 'Edit Webhook' : 'Create Webhook'}</DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="Webhook Name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Slack Notifications"
+              fullWidth
+              required
+              helperText="A friendly name to identify this webhook"
+            />
+
             <TextField
               label="Webhook URL"
               value={formData.url}
@@ -604,12 +652,18 @@ const Webhooks: React.FC = () => {
             </Grid>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+        <DialogActions sx={{ p: 2 }}>
+          <Button 
+            onClick={() => setOpenDialog(false)}
+            data-testid="cancel-button"
+          >
+            Cancel
+          </Button>
           <Button
             onClick={editingWebhook ? handleUpdate : handleCreate}
             variant="contained"
             disabled={!formData.url || formData.events.length === 0}
+            data-testid="save-button"
           >
             {editingWebhook ? 'Update' : 'Create'}
           </Button>
