@@ -1,2 +1,15 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Mark TypeScript as the primary language
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+
+# Exclude generated/vendor files from language stats
+coverage/** linguist-generated
+build/** linguist-generated
+dist/** linguist-generated
+*.min.js linguist-generated
+
+# Exclude documentation from stats
+*.md linguist-documentation
