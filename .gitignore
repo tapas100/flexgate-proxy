@@ -48,6 +48,9 @@ jspm_packages/
 .env
 .env.development.local
 .env.test.local
+
+# npm authentication token (contains sensitive credentials)
+.npmrc
 .env.production.local
 .env.local
 
