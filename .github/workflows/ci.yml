@@ -62,7 +62,7 @@ jobs:
           DATABASE_URL: postgresql://flexgate:flexgate@localhost:5432/flexgate_test
       
       - name: 📊 Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         if: matrix.node-version == '20.x'
         with:
           file: ./coverage/lcov.info
@@ -107,7 +107,7 @@ jobs:
         run: npm run build
       
       - name: 📊 Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: ./admin-ui/coverage/lcov.info
           flags: admin-ui
