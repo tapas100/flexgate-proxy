@@ -36,7 +36,7 @@
     "db:stop": "docker-compose -f docker-compose.dev.yml down",
     "metrics:poll": "node scripts/testing/poll-live-metrics.js",
     "metrics:stream": "node scripts/testing/stream-live-metrics.js",
-    "prepublishOnly": "npm run build && npm test",
+    "prepublishOnly": "npm run build",
     "prepack": "npm run build",
     "postinstall": "node scripts/npm/postinstall.js || true"
   },

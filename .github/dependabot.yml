@@ -21,19 +21,6 @@ updates:
       - "automated"
     reviewers:
       - "tapas100"
-    # Group updates to reduce PR noise
-    groups:
-      security-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "security"
-      minor-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
     # Ignore major version updates for critical packages (review manually)
     ignore:
       - dependency-name: "express"
@@ -62,18 +49,6 @@ updates:
       - "automated"
     reviewers:
       - "tapas100"
-    groups:
-      security-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "security"
-      minor-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
     ignore:
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
