@@ -1,7 +1,9 @@
-# Production-Grade Proxy Server
+# FlexGate Proxy
 
 > **A config-driven HTTP proxy with enterprise-grade observability, security, and reliability—purpose-built for internal API gateways.**
 
+[![npm version](https://img.shields.io/npm/v/flexgate-proxy.svg?style=flat)](https://www.npmjs.com/package/flexgate-proxy)
+[![npm downloads](https://img.shields.io/npm/dm/flexgate-proxy.svg?style=flat)](https://www.npmjs.com/package/flexgate-proxy)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -91,6 +93,46 @@ Most "proxy tutorials" stop at forwarding requests. This goes further:
 - **Admin UI**: Web-based management console
 - **Webhook System**: Event-driven notifications with retry logic
 - **Database-Backed Config**: PostgreSQL for routes, API keys, webhooks
+
+---
+
+## 📦 Installation
+
+### NPM Package (Recommended)
+
+Install globally:
+```bash
+npm install -g flexgate-proxy@beta
+flexgate init
+flexgate start
+```
+
+Or use in your Node.js project:
+```bash
+npm install flexgate-proxy@beta
+```
+
+```javascript
+const { FlexGate } = require('flexgate-proxy');
+
+const gateway = new FlexGate({
+  port: 3000,
+  configPath: './config/proxy.yml'
+});
+
+await gateway.start();
+```
+
+📘 **[See full installation guide →](QUICK_START.md)**
+
+### From Source
+
+```bash
+git clone https://github.com/tapas100/flexgate-proxy.git
+cd flexgate-proxy
+npm install
+npm start
+```
 
 ---
 

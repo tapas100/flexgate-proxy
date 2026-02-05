@@ -51,6 +51,9 @@ jspm_packages/
 .env.production.local
 .env.local
 
+# NPM authentication token (security)
+.npmrc
+
 # parcel-bundler cache
 .cache
 .parcel-cache
