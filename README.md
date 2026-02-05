@@ -1,4 +1,4 @@
-# FlexGate Proxy# FlexGate Proxy# FlexGate Proxy
+# FlexGate Proxy# FlexGate Proxy# FlexGate Proxy# FlexGate Proxy
 
 
 
@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org)[![npm version](https://img.shields.io/npm/v/flexgate-proxy.svg)](https://www.npmjs.com/package/flexgate-proxy)> **A config-driven HTTP proxy with enterprise-grade observability, security, and reliability—purpose-built for internal API gateways.**
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org)[![npm version](https://img.shields.io/npm/v/flexgate-proxy.svg)](https://www.npmjs.com/package/flexgate-proxy)
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
@@ -14,429 +14,868 @@
 
 > **Production-grade API Gateway with built-in observability, security, and reliability features.**
 
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org)[![npm version](https://img.shields.io/npm/v/flexgate-proxy.svg?style=flat)](https://www.npmjs.com/package/flexgate-proxy)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org)[![npm version](https://img.shields.io/npm/v/flexgate-proxy.svg)](https://www.npmjs.com/package/flexgate-proxy)> **A config-driven HTTP proxy with enterprise-grade observability, security, and reliability—purpose-built for internal API gateways.**
 
 FlexGate is a flexible, open-source alternative to Kong and AWS API Gateway, built with TypeScript and designed for modern microservices architectures.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)[![npm downloads](https://img.shields.io/npm/dm/flexgate-proxy.svg?style=flat)](https://www.npmjs.com/package/flexgate-proxy)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
 ---
 
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚀 Features
 
-**FlexGate** is a production-grade API Gateway with built-in observability, security, and reliability features. It's the flexible, open-source alternative to Kong and AWS API Gateway.[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+> **Production-grade API Gateway with built-in observability, security, and reliability features.**
 
 - **🔀 Reverse Proxy & API Gateway** - Route and transform HTTP requests with flexible routing rules
 
-- **⚡ Rate Limiting** - Protect your APIs with configurable rate limits per route or globally[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+- **⚡ Rate Limiting** - Protect your APIs with configurable rate limits per route or globally[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org)[![npm version](https://img.shields.io/npm/v/flexgate-proxy.svg?style=flat)](https://www.npmjs.com/package/flexgate-proxy)
 
 - **🔌 Circuit Breaker** - Automatic failure detection and recovery with circuit breaker pattern
 
-- **📊 Observability** - Built-in logging, metrics, and monitoring with Prometheus integration## 🚀 Features
+- **📊 Observability** - Built-in logging, metrics, and monitoring with Prometheus integrationFlexGate is a flexible, open-source alternative to Kong and AWS API Gateway, built with TypeScript and designed for modern microservices architectures.
 
 - **🔐 Authentication** - JWT and OAuth2 support with session management
 
-- **🎣 Webhook Management** - Advanced webhook delivery system with retry logic and event streaming---
+- **🎣 Webhook Management** - Advanced webhook delivery system with retry logic and event streaming[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)[![npm downloads](https://img.shields.io/npm/dm/flexgate-proxy.svg?style=flat)](https://www.npmjs.com/package/flexgate-proxy)
 
 - **📈 Real-time Metrics** - Live metrics streaming with WebSocket support
 
-- **🎨 Admin UI** - React-based admin interface for managing routes and monitoring- **🔀 Reverse Proxy & API Gateway** - Route and transform HTTP requests with flexible routing rules
+- **🎨 Admin UI** - React-based admin interface for managing routes and monitoring---
 
 - **🗄️ Database-backed Configuration** - PostgreSQL for persistent storage and dynamic configuration
 
-- **🐳 Container Ready** - Docker and Kubernetes deployment configurations included- **⚡ Rate Limiting** - Protect your APIs with configurable rate limits per route or globally## Why This Exists
+- **🐳 Container Ready** - Docker and Kubernetes deployment configurations included[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 
 
 
----- **🔌 Circuit Breaker** - Automatic failure detection and recovery with circuit breaker pattern
+---## 🚀 Features
 
 
 
-## 📦 Installation- **📊 Observability** - Built-in logging, metrics, and monitoring with Prometheus integration### The Problem
+## 📦 Installation**FlexGate** is a production-grade API Gateway with built-in observability, security, and reliability features. It's the flexible, open-source alternative to Kong and AWS API Gateway.[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 
 
-### Via npm (Recommended)- **🔐 Authentication & Authorization** - Support for JWT, OAuth2, and custom auth strategiesYou need a proxy that:
+### Via npm (Recommended)- **🔀 Reverse Proxy & API Gateway** - Route and transform HTTP requests with flexible routing rules
 
 
 
-```bash- **🎣 Webhook Management** - Advanced webhook delivery system with retry logic and event streaming- ✅ Routes requests intelligently (not just round-robin)
+```bash- **⚡ Rate Limiting** - Protect your APIs with configurable rate limits per route or globally[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 # Install globally
 
-npm install -g flexgate-proxy@beta- **📈 Real-time Metrics** - Live metrics streaming with WebSocket support- ✅ Validates requests before they hit your backend
+npm install -g flexgate-proxy@beta- **🔌 Circuit Breaker** - Automatic failure detection and recovery with circuit breaker pattern
 
 
 
-# Or use npx- **🎨 Admin UI** - Beautiful React-based admin interface for managing routes and monitoring- ✅ Rate limits abusive clients
+# Or use npx- **📊 Observability** - Built-in logging, metrics, and monitoring with Prometheus integration## 🚀 Features
 
 npx flexgate-proxy@beta
 
-```- **🗄️ Database-backed Configuration** - PostgreSQL for persistent storage and dynamic configuration- ✅ Fails gracefully when upstreams are down
+- **🔐 Authentication** - JWT and OAuth2 support with session management
+
+# Or add as a project dependency
+
+npm install flexgate-proxy@beta- **🎣 Webhook Management** - Advanced webhook delivery system with retry logic and event streaming---
+
+```
+
+- **📈 Real-time Metrics** - Live metrics streaming with WebSocket support
+
+**NPM Package Information:**
+
+- 📦 **Package Name**: `flexgate-proxy`- **🎨 Admin UI** - React-based admin interface for managing routes and monitoring- **🔀 Reverse Proxy & API Gateway** - Route and transform HTTP requests with flexible routing rules
+
+- 🔗 **NPM Registry**: https://www.npmjs.com/package/flexgate-proxy
+
+- 🏷️ **Current Version**: `0.1.0-beta.1`- **🗄️ Database-backed Configuration** - PostgreSQL for persistent storage and dynamic configuration
+
+- 🔖 **Distribution Tag**: `beta`
+
+- 📥 **Install Command**: `npm install -g flexgate-proxy@beta`- **🐳 Container Ready** - Docker and Kubernetes deployment configurations included- **⚡ Rate Limiting** - Protect your APIs with configurable rate limits per route or globally## Why This Exists
+
+- 📦 **Package Size**: ~132 KB (165 files)
+
+- ⚙️ **CLI Command**: `flexgate` (after global install)
 
 
 
-### From Source- **🐳 Container Ready** - Docker and Kubernetes deployment configurations included- ✅ Gives you deep observability (not just access logs)
+### From Source---- **🔌 Circuit Breaker** - Automatic failure detection and recovery with circuit breaker pattern
 
 
 
-```bash- ✅ Can be configured by non-engineers
+```bash
 
 # Clone the repository
 
-git clone https://github.com/tapas100/flexgate-proxy.git## 📦 Installation
+git clone https://github.com/tapas100/flexgate-proxy.git## 📦 Installation- **📊 Observability** - Built-in logging, metrics, and monitoring with Prometheus integration### The Problem
 
 cd flexgate-proxy
 
-**Nginx/HAProxy**: Fast but config is cryptic, no custom logic  
+
 
 # Install dependencies
 
-npm install### Via npm (Recommended)**Kong/Tyk**: Powerful but heavyweight, complex to operate  
+npm install### Via npm (Recommended)- **🔐 Authentication & Authorization** - Support for JWT, OAuth2, and custom auth strategiesYou need a proxy that:
 
 
 
-# Build TypeScript**Roll your own**: Easy to start, hard to make production-ready
+# Build TypeScript
 
 npm run build
 
-```bash
+```bash- **🎣 Webhook Management** - Advanced webhook delivery system with retry logic and event streaming- ✅ Routes requests intelligently (not just round-robin)
 
 # Start the server
 
-npm start# Install globally### This Proxy
+npm start# Install globally
 
 ```
 
-npm install -g flexgate-proxy@betaA **middle ground**: production-ready proxy in Node.js with:
+npm install -g flexgate-proxy@beta- **📈 Real-time Metrics** - Live metrics streaming with WebSocket support- ✅ Validates requests before they hit your backend
 
 ---
 
-- Config-driven routing (YAML, not code)
+
 
 ## 🎯 Quick Start
 
-# Or use npx- Built-in security (SSRF protection, rate limiting, auth)
+# Or use npx- **🎨 Admin UI** - Beautiful React-based admin interface for managing routes and monitoring- ✅ Rate limits abusive clients
 
 ### 1. Start the API Gateway
 
-npx flexgate-proxy@beta- Deep observability (structured logs, Prometheus metrics, correlation IDs)
+npx flexgate-proxy@beta
 
 ```bash
 
-# Using npm package```- Reliability patterns (circuit breakers, retries, timeouts)
+# Using npm package (global install)```- **🗄️ Database-backed Configuration** - PostgreSQL for persistent storage and dynamic configuration- ✅ Fails gracefully when upstreams are down
 
 flexgate start
 
-- Developer-friendly (JavaScript, not Lua or C++)
+
+
+# Using npx
+
+npx flexgate-proxy@beta start### From Source- **🐳 Container Ready** - Docker and Kubernetes deployment configurations included- ✅ Gives you deep observability (not just access logs)
+
+
 
 # Or from source
 
-npm run dev### From Source
+npm run dev
+
+``````bash- ✅ Can be configured by non-engineers
+
+
+
+### 2. Configure Your First Route# Clone the repository
+
+
+
+```bashgit clone https://github.com/tapas100/flexgate-proxy.git## 📦 Installation
+
+# Create a route via API
+
+curl -X POST http://localhost:3000/api/routes \cd flexgate-proxy
+
+  -H "Content-Type: application/json" \
+
+  -d '{**Nginx/HAProxy**: Fast but config is cryptic, no custom logic  
+
+    "path": "/api/users",
+
+    "targetUrl": "https://jsonplaceholder.typicode.com/users",# Install dependencies
+
+    "methods": ["GET"],
+
+    "enabled": truenpm install### Via npm (Recommended)**Kong/Tyk**: Powerful but heavyweight, complex to operate  
+
+  }'
 
 ```
 
----
 
-### 2. Configure Your First Route
 
-```bash
+### 3. Test Your Route# Build TypeScript**Roll your own**: Easy to start, hard to make production-ready
 
-```bash
 
-# Create a route via API# Clone the repository## When to Use This
 
-curl -X POST http://localhost:3000/api/routes \
+```bashnpm run build
 
-  -H "Content-Type: application/json" \git clone https://github.com/tapas100/flexgate-proxy.git
+# Test the proxied route
 
-  -d '{
-
-    "path": "/api/users",cd flexgate-proxy### ✅ Good Fit
-
-    "targetUrl": "https://jsonplaceholder.typicode.com/users",
-
-    "methods": ["GET"],- **Internal API gateway** for microservices
-
-    "enabled": true
-
-  }'# Install dependencies- **Development/staging** proxy with observability
+curl http://localhost:3000/api/users```bash
 
 ```
 
-npm install- **Custom routing logic** that's easier in JavaScript than Nginx config
+# Start the server
 
-### 3. Access Admin UI
+### 4. Access Admin UI
 
-- **Request transformation** (header manipulation, body validation)
+npm start# Install globally### This Proxy
 
 Open your browser and navigate to:
 
-```# Build TypeScript- **Team has Node.js expertise**
+``````
 
 http://localhost:3000/admin
 
-```npm run build
+```npm install -g flexgate-proxy@betaA **middle ground**: production-ready proxy in Node.js with:
 
 
 
----### ❌ Not a Good Fit
+------
 
 
 
-## 📚 Documentation# Start the server- **Public-facing edge proxy** (use Nginx/Cloudflare)
+## 💻 Usage as a Module- Config-driven routing (YAML, not code)
 
 
 
-### Getting Startednpm start- **Ultra-high throughput** (> 10K req/sec per instance)
-
-- [Overview](docs/README.md)
-
-- [Database Setup](docs/development/DATABASE_SETUP.md)```- **Ultra-low latency** (P99 < 5ms required)
-
-- [API Documentation](docs/api.md)
-
-- **Service mesh** (use Istio/Linkerd)
-
-### Architecture & Design
-
-- [Architecture Overview](docs/architecture.md)## 🎯 Quick Start
-
-- [Monorepo vs Microservices Decision](docs/architecture/ARCHITECTURE_DECISION_MONOREPO_VS_MICROSERVICES.md)
-
-- [System Architecture](docs/architecture/ARCHITECTURE_SPLIT.md)---
-
-- [Hybrid Strategy](docs/architecture/HYBRID_STRATEGY.md)
-
-- [Problem Statement](docs/problem.md)### 1. Start the API Gateway
-
-- [Trade-offs](docs/trade-offs.md)
-
-## What Makes This Production-Ready
-
-### Features
-
-- [Admin UI](docs/features/01-admin-ui.md)```bash
-
-- [Route Management](docs/features/02-route-management.md)
-
-- [Logging System](docs/features/03-logging-spec.md)# Using npm packageMost "proxy tutorials" stop at forwarding requests. This goes further:
-
-- [Metrics & Monitoring](docs/features/04-metrics-spec.md)
-
-- [SSO Integration](docs/features/05-sso-spec.md)flexgate start
-
-- [Webhook System](docs/features/07-webhooks.md)
-
-- [Traffic Control](docs/traffic-control.md)### 🔒 Security
+You can also use FlexGate as a Node.js module in your project:## 🎯 Quick Start
 
 
 
-### Development# Or from source- **SSRF Protection**: Block access to cloud metadata, private IPs
+```javascript# Or use npx- Built-in security (SSRF protection, rate limiting, auth)
 
-- [API Development Protocol](docs/development/API_DEVELOPMENT_PROTOCOL.md)
+const { createProxyServer } = require('flexgate-proxy');
 
-- [Database Implementation](docs/development/DATABASE_IMPLEMENTATION.md)npm run dev- **Authentication**: API key validation (HMAC-SHA256)
+### 1. Start the API Gateway
 
-- [TypeScript Migration](docs/typescript-migration.md)
+// Create and start proxy server
 
-```- **Rate Limiting**: Token bucket with Redis backend
+const server = createProxyServer({npx flexgate-proxy@beta- Deep observability (structured logs, Prometheus metrics, correlation IDs)
 
-### Deployment
+  port: 3000,
 
-- [Deployment Strategy](docs/deployment/DEPLOYMENT_STRATEGY.md)- **Input Validation**: Header sanitization, payload size limits
+  database: {```bash
 
-- [Docker Deployment](docs/deployment/DEPLOYMENT_README.md)
+    url: process.env.DATABASE_URL
 
-- [Open Source Deployment](docs/deployment/OPEN_SOURCE_DEPLOYMENT.md)### 2. Configure Your First Route- **Allow-list**: Deny by default, explicit upstream allow-list
+  },# Using npm package```- Reliability patterns (circuit breakers, retries, timeouts)
 
-- [Multi-Repo Setup](docs/deployment/MULTI_REPO_SETUP_GUIDE.md)
+  rateLimit: {
 
+    enabled: true,flexgate start
 
+    max: 100,
 
-### Testing
+    windowMs: 60000- Developer-friendly (JavaScript, not Lua or C++)
 
-- [Testing Guide](docs/testing.md)```bash[**See full threat model →**](docs/threat-model.md)
+  }
 
-- [Test Plan](docs/TEST_PLAN.md)
-
-- [E2E Testing](docs/testing/e2e-guide.md)# Create a route via API
-
-- [Test Automation](docs/testing/TEST_AUTOMATION_COMPLETE_GUIDE.md)
-
-- [Quick Start Guide](docs/testing/quick-start.md)curl -X POST http://localhost:3000/api/routes \### 🎯 Reliability
+});# Or from source
 
 
 
-### Security  -H "Content-Type: application/json" \- **Circuit Breakers**: Stop hitting failing upstreams
+server.start();npm run dev### From Source
 
-- [Threat Model](docs/threat-model.md)
+```
 
-- [Observability](docs/observability.md)  -d '{- **Retries**: Exponential backoff with jitter
+```
+
+---
+
+---
+
+## 📚 Documentation
+
+### 2. Configure Your First Route
+
+### Getting Started
+
+- [Overview](docs/README.md)```bash
+
+- [Database Setup](docs/development/DATABASE_SETUP.md)
+
+- [API Documentation](docs/api.md)```bash
 
 
 
-### Advanced Topics    "path": "/api/users",- **Timeouts**: Request, connection, DNS, header, idle
+### Architecture & Design# Create a route via API# Clone the repository## When to Use This
 
-- [NATS JetStream Integration](docs/JETSTREAM_QUICKSTART.md)
+- [Architecture Overview](docs/architecture.md)
 
-- [Multi-Channel Delivery](docs/MULTI_CHANNEL_DELIVERY.md)    "targetUrl": "https://jsonplaceholder.typicode.com/users",- **Backpressure**: Reject when overloaded (don't OOM crash)
+- [Monorepo vs Microservices Decision](docs/architecture/ARCHITECTURE_DECISION_MONOREPO_VS_MICROSERVICES.md)curl -X POST http://localhost:3000/api/routes \
+
+- [System Architecture](docs/architecture/ARCHITECTURE_SPLIT.md)
+
+- [Hybrid Strategy](docs/architecture/HYBRID_STRATEGY.md)  -H "Content-Type: application/json" \git clone https://github.com/tapas100/flexgate-proxy.git
+
+- [Problem Statement](docs/problem.md)
+
+- [Trade-offs](docs/trade-offs.md)  -d '{
+
+
+
+### Features    "path": "/api/users",cd flexgate-proxy### ✅ Good Fit
+
+- [Admin UI](docs/features/01-admin-ui.md)
+
+- [Route Management](docs/features/02-route-management.md)    "targetUrl": "https://jsonplaceholder.typicode.com/users",
+
+- [Logging System](docs/features/03-logging-spec.md)
+
+- [Metrics & Monitoring](docs/features/04-metrics-spec.md)    "methods": ["GET"],- **Internal API gateway** for microservices
+
+- [SSO Integration](docs/features/05-sso-spec.md)
+
+- [Webhook System](docs/features/07-webhooks.md)    "enabled": true
+
+- [Traffic Control](docs/traffic-control.md)
+
+  }'# Install dependencies- **Development/staging** proxy with observability
+
+### Development
+
+- [API Development Protocol](docs/development/API_DEVELOPMENT_PROTOCOL.md)```
+
+- [Database Implementation](docs/development/DATABASE_IMPLEMENTATION.md)
+
+- [TypeScript Migration](docs/typescript-migration.md)npm install- **Custom routing logic** that's easier in JavaScript than Nginx config
+
+
+
+### Deployment### 3. Access Admin UI
+
+- [Deployment Strategy](docs/deployment/DEPLOYMENT_STRATEGY.md)
+
+- [Docker Deployment](docs/deployment/DEPLOYMENT_README.md)- **Request transformation** (header manipulation, body validation)
+
+- [Open Source Deployment](docs/deployment/OPEN_SOURCE_DEPLOYMENT.md)
+
+- [Multi-Repo Setup](docs/deployment/MULTI_REPO_SETUP_GUIDE.md)Open your browser and navigate to:
+
+
+
+### Testing```# Build TypeScript- **Team has Node.js expertise**
+
+- [Testing Guide](docs/testing.md)
+
+- [Test Plan](docs/TEST_PLAN.md)http://localhost:3000/admin
+
+- [E2E Testing](docs/testing/e2e-guide.md)
+
+- [Test Automation](docs/testing/TEST_AUTOMATION_COMPLETE_GUIDE.md)```npm run build
+
+- [Quick Start Guide](docs/testing/quick-start.md)
+
+
+
+### Security
+
+- [Threat Model](docs/threat-model.md)---### ❌ Not a Good Fit
+
+- [Observability](docs/observability.md)
+
+
+
+### Advanced Topics
+
+- [NATS JetStream Integration](docs/JETSTREAM_QUICKSTART.md)## 📚 Documentation# Start the server- **Public-facing edge proxy** (use Nginx/Cloudflare)
+
+- [Multi-Channel Delivery](docs/MULTI_CHANNEL_DELIVERY.md)
 
 - [JetStream Implementation](docs/JETSTREAM_IMPLEMENTATION_SUMMARY.md)
 
-    "methods": ["GET"],- **Connection Pooling**: Reuse TCP connections
+
+
+---### Getting Startednpm start- **Ultra-high throughput** (> 10K req/sec per instance)
+
+
+
+## 🛠️ Configuration- [Overview](docs/README.md)
+
+
+
+FlexGate can be configured via environment variables or a configuration file:- [Database Setup](docs/development/DATABASE_SETUP.md)```- **Ultra-low latency** (P99 < 5ms required)
+
+
+
+```bash- [API Documentation](docs/api.md)
+
+# .env file
+
+PORT=3000- **Service mesh** (use Istio/Linkerd)
+
+NODE_ENV=production
+
+DATABASE_URL=postgresql://user:password@localhost:5432/flexgate### Architecture & Design
+
+
+
+# Rate Limiting- [Architecture Overview](docs/architecture.md)## 🎯 Quick Start
+
+RATE_LIMIT_WINDOW_MS=60000
+
+RATE_LIMIT_MAX_REQUESTS=100- [Monorepo vs Microservices Decision](docs/architecture/ARCHITECTURE_DECISION_MONOREPO_VS_MICROSERVICES.md)
+
+
+
+# Circuit Breaker- [System Architecture](docs/architecture/ARCHITECTURE_SPLIT.md)---
+
+CIRCUIT_BREAKER_THRESHOLD=5
+
+CIRCUIT_BREAKER_TIMEOUT=30000- [Hybrid Strategy](docs/architecture/HYBRID_STRATEGY.md)
+
+```
+
+- [Problem Statement](docs/problem.md)### 1. Start the API Gateway
+
+See [API Documentation](docs/api.md) for all available options.
+
+- [Trade-offs](docs/trade-offs.md)
 
 ---
 
-    "enabled": true
+## What Makes This Production-Ready
 
-## 🛠️ Configuration
+## 🏗️ Architecture
 
-  }'[**See traffic control docs →**](docs/traffic-control.md)
+### Features
 
-FlexGate can be configured via environment variables or a configuration file:
+FlexGate is built with modern technologies:
 
-```
+- [Admin UI](docs/features/01-admin-ui.md)```bash
 
-```bash
+- **Backend**: Node.js + TypeScript + Express
 
-# .env file### 📊 Observability
+- **Database**: PostgreSQL- [Route Management](docs/features/02-route-management.md)
 
-PORT=3000
+- **Message Queue**: NATS JetStream (optional)
 
-NODE_ENV=production### 3. Access Admin UI- **Structured Logs**: JSON logs with correlation IDs
+- **Admin UI**: React + Material-UI- [Logging System](docs/features/03-logging-spec.md)# Using npm packageMost "proxy tutorials" stop at forwarding requests. This goes further:
 
-DATABASE_URL=postgresql://user:password@localhost:5432/flexgate
+- **Monitoring**: Prometheus + Grafana
 
-- **Metrics**: Prometheus-compatible (RPS, latency histograms, error rates)
-
-# Rate Limiting
-
-RATE_LIMIT_WINDOW_MS=60000Open your browser and navigate to:- **Health Checks**: Liveness, readiness, deep health
-
-RATE_LIMIT_MAX_REQUESTS=100
-
-```- **Tracing**: Request flow across services (correlation IDs)
-
-# Circuit Breaker
-
-CIRCUIT_BREAKER_THRESHOLD=5http://localhost:3000/admin- **Real-Time Metrics**: NATS JetStream streaming with SSE
-
-CIRCUIT_BREAKER_TIMEOUT=30000
-
-``````- **Metrics Database**: PostgreSQL storage for historical analysis
+- **Deployment**: Docker + Kubernetes- [Metrics & Monitoring](docs/features/04-metrics-spec.md)
 
 
 
-See [API Documentation](docs/api.md) for all available options.- **Admin Dashboard**: React-based UI with live metrics visualization
+```- [SSO Integration](docs/features/05-sso-spec.md)flexgate start
 
+┌─────────────┐
 
+│   Client    │- [Webhook System](docs/features/07-webhooks.md)
 
----## 📚 Documentation
+└──────┬──────┘
 
+       │- [Traffic Control](docs/traffic-control.md)### 🔒 Security
 
-
-## 🏗️ Architecture[**See observability docs →**](docs/observability.md)
-
-
-
-FlexGate is built with modern technologies:### Getting Started
-
-
-
-- **Backend**: Node.js + TypeScript + Express- [Installation Guide](docs/README.md)### ⚙️ Operability
-
-- **Database**: PostgreSQL
-
-- **Message Queue**: NATS JetStream (optional)- [Quick Start Guide](docs/development/DATABASE_SETUP.md)- **Config Hot Reload**: Update routes without restart
-
-- **Admin UI**: React + Material-UI
-
-- **Monitoring**: Prometheus + Grafana- [Configuration Options](docs/api.md)- **Graceful Shutdown**: Drain connections before exit
-
-- **Deployment**: Docker + Kubernetes
-
-- **Error Handling**: Fail fast on bad config (don't serve traffic)
-
-```
-
-┌─────────────┐### Architecture & Design- **Kubernetes-Ready**: Health probes, resource limits, signals
-
-│   Client    │
-
-└──────┬──────┘- [Architecture Overview](docs/architecture.md)- **Admin UI**: Web-based management console
-
-       │
-
-       ▼- [Design Decisions](docs/architecture/ARCHITECTURE_DECISION_MONOREPO_VS_MICROSERVICES.md)- **Webhook System**: Event-driven notifications with retry logic
+       ▼
 
 ┌─────────────────────────────────────┐
 
-│         FlexGate Proxy              │- [System Architecture](docs/architecture/ARCHITECTURE_SPLIT.md)- **Database-Backed Config**: PostgreSQL for routes, API keys, webhooks
+│         FlexGate Proxy              │
+
+│  ┌──────────────────────────────┐   │### Development# Or from source- **SSRF Protection**: Block access to cloud metadata, private IPs
+
+│  │   Rate Limiter               │   │
+
+│  └──────────────────────────────┘   │- [API Development Protocol](docs/development/API_DEVELOPMENT_PROTOCOL.md)
 
 │  ┌──────────────────────────────┐   │
 
-│  │   Rate Limiter               │   │- [Problem Statement](docs/problem.md)
+│  │   Circuit Breaker            │   │- [Database Implementation](docs/development/DATABASE_IMPLEMENTATION.md)npm run dev- **Authentication**: API key validation (HMAC-SHA256)
 
 │  └──────────────────────────────┘   │
 
-│  ┌──────────────────────────────┐   │- [Trade-offs](docs/trade-offs.md)---
+│  ┌──────────────────────────────┐   │- [TypeScript Migration](docs/typescript-migration.md)
 
-│  │   Circuit Breaker            │   │
+│  │   Route Matcher              │   │
 
-│  └──────────────────────────────┘   │
+│  └──────────────────────────────┘   │```- **Rate Limiting**: Token bucket with Redis backend
 
-│  ┌──────────────────────────────┐   │
+└──────────┬──────────────────────────┘
 
-│  │   Route Matcher              │   │### Features & Capabilities## 📦 Installation
+           │### Deployment
 
-│  └──────────────────────────────┘   │
+           ▼
 
-└──────────┬──────────────────────────┘- [Admin UI](docs/features/01-admin-ui.md)
+    ┌──────────────┐- [Deployment Strategy](docs/deployment/DEPLOYMENT_STRATEGY.md)- **Input Validation**: Header sanitization, payload size limits
 
-           │
+    │   Backend    │
 
-           ▼- [Route Management](docs/features/02-route-management.md)### NPM Package (Recommended)
+    │   Services   │- [Docker Deployment](docs/deployment/DEPLOYMENT_README.md)
 
-    ┌──────────────┐
+    └──────────────┘
 
-    │   Backend    │- [Logging System](docs/features/03-logging-spec.md)
+```- [Open Source Deployment](docs/deployment/OPEN_SOURCE_DEPLOYMENT.md)### 2. Configure Your First Route- **Allow-list**: Deny by default, explicit upstream allow-list
 
-    │   Services   │
 
-    └──────────────┘- [Metrics & Monitoring](docs/features/04-metrics-spec.md)Install globally:
 
-```
+---- [Multi-Repo Setup](docs/deployment/MULTI_REPO_SETUP_GUIDE.md)
 
-- [SSO Integration](docs/features/05-sso-spec.md)```bash
 
----
-
-- [Webhook System](docs/features/07-webhooks.md)npm install -g flexgate-proxy@beta
 
 ## 🧪 Testing
 
-- [Traffic Control](docs/traffic-control.md)flexgate init
+
+
+```bash### Testing
+
+# Run all tests
+
+npm test- [Testing Guide](docs/testing.md)```bash[**See full threat model →**](docs/threat-model.md)
+
+
+
+# Run unit tests only- [Test Plan](docs/TEST_PLAN.md)
+
+npm run test:unit
+
+- [E2E Testing](docs/testing/e2e-guide.md)# Create a route via API
+
+# Run integration tests
+
+npm run test:integration- [Test Automation](docs/testing/TEST_AUTOMATION_COMPLETE_GUIDE.md)
+
+
+
+# Run with coverage- [Quick Start Guide](docs/testing/quick-start.md)curl -X POST http://localhost:3000/api/routes \### 🎯 Reliability
+
+npm run test:ci
+
+
+
+# Watch mode
+
+npm run test:watch### Security  -H "Content-Type: application/json" \- **Circuit Breakers**: Stop hitting failing upstreams
+
+```
+
+- [Threat Model](docs/threat-model.md)
+
+---
+
+- [Observability](docs/observability.md)  -d '{- **Retries**: Exponential backoff with jitter
+
+## 📊 Monitoring & Metrics
+
+
+
+FlexGate exposes Prometheus metrics at `/metrics`:
+
+### Advanced Topics    "path": "/api/users",- **Timeouts**: Request, connection, DNS, header, idle
 
 ```bash
 
-# Run all testsflexgate start
+# Scrape metrics- [NATS JetStream Integration](docs/JETSTREAM_QUICKSTART.md)
 
-npm test
+curl http://localhost:3000/metrics
 
-### Development```
-
-# Run unit tests only
-
-npm run test:unit- [API Development Protocol](docs/development/API_DEVELOPMENT_PROTOCOL.md)
+```- [Multi-Channel Delivery](docs/MULTI_CHANNEL_DELIVERY.md)    "targetUrl": "https://jsonplaceholder.typicode.com/users",- **Backpressure**: Reject when overloaded (don't OOM crash)
 
 
 
-# Run integration tests- [Database Implementation](docs/development/DATABASE_IMPLEMENTATION.md)Or use in your Node.js project:
+**Key metrics include:**- [JetStream Implementation](docs/JETSTREAM_IMPLEMENTATION_SUMMARY.md)
 
-npm run test:integration
+- Request rate and latency
+
+- Error rates by route    "methods": ["GET"],- **Connection Pooling**: Reuse TCP connections
+
+- Circuit breaker state
+
+- Rate limiter hits---
+
+- Database connection pool stats
+
+    "enabled": true
+
+---
+
+## 🛠️ Configuration
+
+## 🔧 Development
+
+  }'[**See traffic control docs →**](docs/traffic-control.md)
+
+```bash
+
+# Install dependenciesFlexGate can be configured via environment variables or a configuration file:
+
+npm install
+
+```
+
+# Run in development mode with hot reload
+
+npm run dev```bash
+
+
+
+# Build TypeScript# .env file### 📊 Observability
+
+npm run build
+
+PORT=3000
+
+# Run linter
+
+npm run lintNODE_ENV=production### 3. Access Admin UI- **Structured Logs**: JSON logs with correlation IDs
+
+
+
+# Fix lint errorsDATABASE_URL=postgresql://user:password@localhost:5432/flexgate
+
+npm run lint:fix
+
+- **Metrics**: Prometheus-compatible (RPS, latency histograms, error rates)
+
+# Type checking
+
+npm run typecheck# Rate Limiting
+
+
+
+# Validate everythingRATE_LIMIT_WINDOW_MS=60000Open your browser and navigate to:- **Health Checks**: Liveness, readiness, deep health
+
+npm run validate
+
+```RATE_LIMIT_MAX_REQUESTS=100
+
+
+
+---```- **Tracing**: Request flow across services (correlation IDs)
+
+
+
+## 🐳 Docker Deployment# Circuit Breaker
+
+
+
+```bashCIRCUIT_BREAKER_THRESHOLD=5http://localhost:3000/admin- **Real-Time Metrics**: NATS JetStream streaming with SSE
+
+# Build image
+
+npm run docker:buildCIRCUIT_BREAKER_TIMEOUT=30000
+
+
+
+# Run with docker-compose``````- **Metrics Database**: PostgreSQL storage for historical analysis
+
+npm run docker:run
+
+
+
+# Stop containers
+
+npm run docker:stopSee [API Documentation](docs/api.md) for all available options.- **Admin Dashboard**: React-based UI with live metrics visualization
+
+```
+
+
+
+---
+
+---## 📚 Documentation
+
+## ☸️ Kubernetes Deployment
+
+
+
+```bash
+
+# Deploy to Kubernetes## 🏗️ Architecture[**See observability docs →**](docs/observability.md)
+
+npm run k8s:deploy
+
+
+
+# Delete from Kubernetes
+
+npm run k8s:deleteFlexGate is built with modern technologies:### Getting Started
+
+```
+
+
+
+See [Deployment Documentation](docs/deployment/DEPLOYMENT_README.md) for detailed instructions.
+
+- **Backend**: Node.js + TypeScript + Express- [Installation Guide](docs/README.md)### ⚙️ Operability
+
+---
+
+- **Database**: PostgreSQL
+
+## 🗄️ Database
+
+- **Message Queue**: NATS JetStream (optional)- [Quick Start Guide](docs/development/DATABASE_SETUP.md)- **Config Hot Reload**: Update routes without restart
+
+FlexGate uses PostgreSQL for persistent storage:
+
+- **Admin UI**: React + Material-UI
+
+```bash
+
+# Start database (Docker)- **Monitoring**: Prometheus + Grafana- [Configuration Options](docs/api.md)- **Graceful Shutdown**: Drain connections before exit
+
+npm run db:start
+
+- **Deployment**: Docker + Kubernetes
+
+# Run migrations
+
+npm run db:migrate- **Error Handling**: Fail fast on bad config (don't serve traffic)
+
+
+
+# Seed data```
+
+npm run db:seed
+
+┌─────────────┐### Architecture & Design- **Kubernetes-Ready**: Health probes, resource limits, signals
+
+# Reset database
+
+npm run db:reset│   Client    │
+
+```
+
+└──────┬──────┘- [Architecture Overview](docs/architecture.md)- **Admin UI**: Web-based management console
+
+---
+
+       │
+
+## 🤝 Contributing
+
+       ▼- [Design Decisions](docs/architecture/ARCHITECTURE_DECISION_MONOREPO_VS_MICROSERVICES.md)- **Webhook System**: Event-driven notifications with retry logic
+
+We welcome contributions! Please see our development guides:
+
+┌─────────────────────────────────────┐
+
+- [Feature Development Plan](docs/planning/FEATURE_DEVELOPMENT_PLAN.md)
+
+- [Branch Tracking](docs/planning/BRANCH_TRACKING.md)│         FlexGate Proxy              │- [System Architecture](docs/architecture/ARCHITECTURE_SPLIT.md)- **Database-Backed Config**: PostgreSQL for routes, API keys, webhooks
+
+
+
+### Development Workflow│  ┌──────────────────────────────┐   │
+
+
+
+1. Fork the repository│  │   Rate Limiter               │   │- [Problem Statement](docs/problem.md)
+
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+
+3. Commit your changes (`git commit -m 'Add amazing feature'`)│  └──────────────────────────────┘   │
+
+4. Push to the branch (`git push origin feature/amazing-feature`)
+
+5. Open a Pull Request│  ┌──────────────────────────────┐   │- [Trade-offs](docs/trade-offs.md)---
+
+
+
+---│  │   Circuit Breaker            │   │
+
+
+
+## 📋 Roadmap│  └──────────────────────────────┘   │
+
+
+
+See our planning documents for upcoming features:│  ┌──────────────────────────────┐   │
+
+
+
+- [Phase 1 Monitoring Plan](docs/planning/PHASE_1_MONITORING_PLAN.md)│  │   Route Matcher              │   │### Features & Capabilities## 📦 Installation
+
+- [Phase 2 & 3 TODO](docs/planning/PHASE_2_3_TODO.md)
+
+- [Launch Plan](docs/planning/LAUNCH_PLAN.md)│  └──────────────────────────────┘   │
+
+
+
+**Planned features:**└──────────┬──────────────────────────┘- [Admin UI](docs/features/01-admin-ui.md)
+
+- GraphQL support
+
+- gRPC proxying           │
+
+- Advanced caching strategies
+
+- Multi-region deployment           ▼- [Route Management](docs/features/02-route-management.md)### NPM Package (Recommended)
+
+- Plugin system
+
+- Enhanced WebSocket proxying    ┌──────────────┐
+
+
+
+---    │   Backend    │- [Logging System](docs/features/03-logging-spec.md)
+
+
+
+## 📄 License    │   Services   │
+
+
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.    └──────────────┘- [Metrics & Monitoring](docs/features/04-metrics-spec.md)Install globally:
+
+
+
+---```
+
+
+
+## 🙏 Acknowledgments- [SSO Integration](docs/features/05-sso-spec.md)```bash
+
+
+
+Built with ❤️ using:---
+
+- [Express.js](https://expressjs.com/) - Web framework
+
+- [TypeScript](https://www.typescriptlang.org/) - Type safety- [Webhook System](docs/features/07-webhooks.md)npm install -g flexgate-proxy@beta
+
+- [PostgreSQL](https://www.postgresql.org/) - Database
+
+- [React](https://reactjs.org/) - Admin UI## 🧪 Testing
+
+- [NATS](https://nats.io/) - Message streaming
+
+- [Prometheus](https://prometheus.io/) - Metrics- [Traffic Control](docs/traffic-control.md)flexgate init
+
+
+
+---```bash
+
+
+
+## 📞 Support# Run all testsflexgate start
+
+
+
+- 📧 **Email**: mahanta.tapas9@gmail.comnpm test
+
+- 🐛 **Issues**: [GitHub Issues](https://github.com/tapas100/flexgate-proxy/issues)
+
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/tapas100/flexgate-proxy/discussions)### Development```
+
+
+
+---# Run unit tests only
+
+
+
+## 🌟 Star Historynpm run test:unit- [API Development Protocol](docs/development/API_DEVELOPMENT_PROTOCOL.md)
+
+
+
+If you find FlexGate useful, please consider giving it a star ⭐
+
+
+
+---# Run integration tests- [Database Implementation](docs/development/DATABASE_IMPLEMENTATION.md)Or use in your Node.js project:
+
+
+
+**Made with ❤️ by [tapas100](https://github.com/tapas100)**npm run test:integration
+
 
 - [Database Setup](docs/development/DATABASE_SETUP.md)```bash
 
