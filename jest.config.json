@@ -29,7 +29,8 @@
     }]
   },
   "verbose": true,
-  "bail": false,
+  "bail": 1,
+  "maxWorkers": "50%",
   "clearMocks": true,
   "resetMocks": true,
   "collectCoverage": false
