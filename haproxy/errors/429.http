@@ -1,0 +1,60 @@
+HTTP/1.1 429 Too Many Requests
+Content-Type: text/html; charset=utf-8
+Cache-Control: no-cache
+Connection: close
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rate Limit Exceeded</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+        }
+        p {
+            font-size: 1.5rem;
+            margin: 1rem 0;
+        }
+        .details {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        code {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚦 429</h1>
+        <p>Rate Limit Exceeded</p>
+        <div class="details">
+            <p>You've made too many requests in a short period.</p>
+            <p>Limit: <code>1000 requests per 10 seconds</code></p>
+            <p>Please wait a moment and try again.</p>
+        </div>
+    </div>
+</body>
+</html>

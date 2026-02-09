@@ -1,0 +1,55 @@
+HTTP/1.1 503 Service Unavailable
+Content-Type: text/html; charset=utf-8
+Cache-Control: no-cache
+Connection: close
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Service Unavailable</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+        }
+        p {
+            font-size: 1.5rem;
+            margin: 1rem 0;
+        }
+        .details {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚠️ 503</h1>
+        <p>Service Temporarily Unavailable</p>
+        <div class="details">
+            <p>Our backend services are experiencing issues.</p>
+            <p>Please try again in a few moments.</p>
+            <p><small>Circuit breaker activated - all backend servers are down</small></p>
+        </div>
+    </div>
+</body>
+</html>

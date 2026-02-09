@@ -627,26 +627,50 @@ http_request_duration_ms_count{route="/api/users"} 12543
 
 ## Deployment
 
-### Docker
-```dockerfile
-FROM node:20-alpine
+### Podman (Recommended)
 
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-
-COPY . .
-
-EXPOSE 3000
-CMD ["node", "bin/www"]
-```
+For high-performance production deployments (>10K req/sec), use HAProxy + Podman:
 
 ```bash
-docker build -t flexgate-proxy .
-docker run -p 3000:3000 \
-  -v $(pwd)/config:/app/config \
+# Quick start with Makefile
+make build    # Build container image
+make start    # Start all services
+make stats    # View HAProxy dashboard
+
+# Or use podman-compose directly
+podman-compose up -d
+
+# Access services
+# HAProxy: http://localhost:8080
+# Stats: http://localhost:8404/stats (admin/admin)
+# Prometheus: http://localhost:9090
+# Grafana: http://localhost:3001 (admin/admin)
+```
+
+**Features:**
+- HAProxy data plane (>10K req/sec, <10ms latency)
+- Rate limiting: 1000 requests per 10 seconds per IP
+- Circuit breaker: automatic health checks every 2s
+- Load balancing across 2+ backend instances
+- Prometheus metrics + Grafana dashboards
+- Rootless, daemonless container runtime
+
+**📘 See [haproxy/README.md](haproxy/README.md) for complete HAProxy documentation**
+**📘 See [haproxy/PODMAN_SETUP.md](haproxy/PODMAN_SETUP.md) for Podman setup guide**
+
+### Standalone (Development)
+
+For development or testing without HAProxy:
+
+```bash
+# Build image
+npm run podman:build
+
+# Run standalone
+podman run -d -p 3000:3000 \
+  -v $(pwd)/config:/app/config:Z \
   -e NODE_ENV=production \
-  flexgate-proxy
+  localhost/flexgate-proxy:latest
 ```
 
 ### Kubernetes
