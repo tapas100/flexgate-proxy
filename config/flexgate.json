@@ -1,0 +1,45 @@
+{
+  "server": {
+    "port": 8080,
+    "host": "0.0.0.0",
+    "environment": "production"
+  },
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "name": "flexgate_prod",
+    "user": "flexgate_user",
+    "password": "${DB_PASSWORD}",
+    "ssl": true,
+    "poolMin": 5,
+    "poolMax": 20
+  },
+  "redis": {
+    "host": "flexgate-redis.internal",
+    "port": 6379,
+    "password": "${REDIS_PASSWORD}",
+    "db": 0
+  },
+  "security": {
+    "corsOrigins": [
+      "https://admin.example.com",
+      "https://api.example.com"
+    ],
+    "corsEnabled": true,
+    "rateLimitEnabled": true,
+    "rateLimitWindowMs": 60000,
+    "rateLimitMaxRequests": 1000
+  },
+  "logging": {
+    "level": "warn",
+    "format": "json",
+    "destination": "both",
+    "maxFiles": 30,
+    "maxSize": "100m"
+  },
+  "monitoring": {
+    "metricsEnabled": true,
+    "prometheusPort": 9090,
+    "healthCheckInterval": 30000
+  }
+}
