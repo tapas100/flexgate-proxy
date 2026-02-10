@@ -39,9 +39,7 @@ services:
 
   # FlexGate App - Instance 1 (Control Plane + Backend)
   flexgate-app-1:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: localhost/flexgate-proxy:latest
     container_name: flexgate-app-1
     environment:
       - NODE_ENV=production
@@ -68,9 +66,7 @@ services:
 
   # FlexGate App - Instance 2 (Backup)
   flexgate-app-2:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: localhost/flexgate-proxy:latest
     container_name: flexgate-app-2
     environment:
       - NODE_ENV=production
@@ -159,6 +155,28 @@ services:
     networks:
       - flexgate-network
     restart: unless-stopped
+
+  # Admin UI - FlexGate Management Dashboard
+  admin-ui:
+    image: localhost/flexgate-admin-ui:latest
+    container_name: flexgate-admin-ui
+    environment:
+      - NODE_ENV=production
+      # Admin UI is served by nginx (static files)
+      # Browser makes API calls directly to HAProxy (client-side)
+      # REACT_APP_API_URL not needed - browser uses http://localhost:8080
+    ports:
+      - "3002:3000"
+    networks:
+      - flexgate-network
+    depends_on:
+      - haproxy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 networks:
   flexgate-network:

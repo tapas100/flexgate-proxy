@@ -11,8 +11,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
+# Install ALL dependencies (including dev dependencies for build)
+RUN npm ci && \
     npm cache clean --force
 
 # Copy source code
@@ -33,10 +33,12 @@ RUN addgroup -g 1001 flexgate && \
 
 WORKDIR /app
 
+# Copy package files and install ONLY production dependencies
+COPY --from=builder --chown=flexgate:flexgate /app/package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
 # Copy built application from builder
 COPY --from=builder --chown=flexgate:flexgate /app/dist ./dist
-COPY --from=builder --chown=flexgate:flexgate /app/node_modules ./node_modules
-COPY --from=builder --chown=flexgate:flexgate /app/package.json ./
 COPY --from=builder --chown=flexgate:flexgate /app/config ./config
 COPY --from=builder --chown=flexgate:flexgate /app/migrations ./migrations
 
