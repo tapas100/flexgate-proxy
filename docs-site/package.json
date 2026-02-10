@@ -1,0 +1,21 @@
+{
+  "name": "flexgate-docs",
+  "version": "1.0.0",
+  "description": "FlexGate Documentation Website",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview",
+    "docs:serve": "vitepress preview --port 4173"
+  },
+  "devDependencies": {
+    "vitepress": "^1.0.0-rc.40",
+    "vue": "^3.4.15"
+  },
+  "keywords": [
+    "documentation",
+    "api-gateway",
+    "flexgate"
+  ]
+}
