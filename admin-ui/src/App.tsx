@@ -13,6 +13,7 @@ import OAuthProviders from './pages/OAuthProviders';
 import Webhooks from './pages/Webhooks';
 import WebhookDetails from './pages/WebhookDetails';
 import Settings from './pages/Settings';
+import Troubleshooting from './pages/Troubleshooting';
 
 const theme = createTheme({
   palette: {
@@ -113,6 +114,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Settings />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/troubleshooting"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Troubleshooting />
                 </Layout>
               </ProtectedRoute>
             }

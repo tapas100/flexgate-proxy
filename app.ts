@@ -22,6 +22,7 @@ import webhookRoutes from './routes/webhooks';
 import routeRoutes from './routes/routes';
 import metricsRoutes from './routes/metrics';
 import logsRoutes from './routes/logs';
+import troubleshootingRoutes from './routes/troubleshooting';
 import streamRoutes from './src/routes/stream';
 import database from './src/database/index';
 import { jetStreamService } from './src/services/jetstream';
@@ -129,6 +130,9 @@ app.use('/api/metrics', metricsRoutes);
 
 // Mount logs API
 app.use('/api/logs', logsRoutes);
+
+// Mount troubleshooting API
+app.use('/api/troubleshooting', troubleshootingRoutes);
 
 // Mount stream API (SSE for real-time metrics)
 app.use('/api/stream', streamRoutes);

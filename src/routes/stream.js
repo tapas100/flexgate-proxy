@@ -1,7 +1,9 @@
 const express = require('express');
 const { jetStreamService } = require('../services/jetstream');
 const { logger } = require('../logger');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
+// Use crypto.randomUUID() instead of uuid package (Node 14.17+)
+const uuidv4 = () => crypto.randomUUID();
 const { database } = require('../database');
 const { MetricsPublisher } = require('../services/metricsPublisher');
 

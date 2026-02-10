@@ -18,6 +18,8 @@ import {
 } from '@mui/icons-material';
 import OAuthProviderList from '../components/OAuth/OAuthProviderList';
 import Breadcrumb from '../components/Common/Breadcrumb';
+import GeneralSettings from '../components/Settings/GeneralSettings';
+import NotificationsSettings from '../components/Settings/NotificationsSettings';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -123,11 +125,9 @@ const Settings: React.FC = () => {
               <Typography variant="h4" gutterBottom>
                 Notifications
               </Typography>
-              <Paper sx={{ p: 3, mt: 2 }}>
-                <Typography variant="body1" color="text.secondary">
-                  Notification settings will be implemented in upcoming features.
-                </Typography>
-              </Paper>
+              <Box sx={{ mt: 2 }}>
+                <NotificationsSettings />
+              </Box>
             </>
           }
         />
@@ -146,11 +146,9 @@ const Settings: React.FC = () => {
               <Typography variant="h4" gutterBottom>
                 General Settings
               </Typography>
-              <Paper sx={{ p: 3, mt: 2 }}>
-                <Typography variant="body1" color="text.secondary">
-                  General settings will be implemented in upcoming features.
-                </Typography>
-              </Paper>
+              <Box sx={{ mt: 2 }}>
+                <GeneralSettings />
+              </Box>
             </>
           }
         />

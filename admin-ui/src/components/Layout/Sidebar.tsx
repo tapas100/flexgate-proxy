@@ -17,6 +17,7 @@ import {
   Description as LogsIcon,
   Webhook as WebhookIcon,
   Settings as SettingsIcon,
+  Build as TroubleshootingIcon,
 } from '@mui/icons-material';
 
 const DRAWER_WIDTH = 240;
@@ -36,6 +37,7 @@ const menuItems: MenuItem[] = [
 ];
 
 const bottomMenuItems: MenuItem[] = [
+  { text: 'Troubleshooting', icon: <TroubleshootingIcon />, path: '/troubleshooting' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
 ];
 

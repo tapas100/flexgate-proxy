@@ -179,7 +179,39 @@ npm run build
 cd ..
 ```
 
-### 7. Run
+### 7. Run with Docker/Podman (Recommended)
+
+**Simple one-command startup:**
+```bash
+# Start all services (FlexGate, PostgreSQL, Redis, NATS, Prometheus, Grafana, HAProxy)
+npm run start:all
+
+# Check status
+npm run status
+
+# Stop all services
+npm run stop:all
+
+# Restart all services
+npm run restart:all
+```
+
+**What it does:**
+- ✅ Starts 8 containers (PostgreSQL, Redis, NATS, 2× FlexGate apps, HAProxy, Prometheus, Grafana)
+- ✅ Waits for all services to be healthy
+- ✅ Verifies port accessibility
+- ✅ Shows access URLs and status
+
+**Access Points:**
+- **FlexGate API:** http://localhost:8080
+- **HAProxy Stats:** http://localhost:8404/stats (admin/changeme)
+- **Prometheus:** http://localhost:9090
+- **Grafana:** http://localhost:3001 (admin/admin)
+- **NATS Monitor:** http://localhost:8222
+
+[**See full management guide →**](MANAGEMENT_SCRIPTS.md)
+
+### 8. Run Without Docker (Local Development)
 ```bash
 # Development
 npm run dev
@@ -188,7 +220,7 @@ npm run dev
 npm start
 ```
 
-### 8. Access Admin UI
+### 9. Access Admin UI
 ```bash
 # Open in browser
 open http://localhost:3000/dashboard
@@ -201,7 +233,7 @@ open http://localhost:3000/dashboard
 # http://localhost:3000/settings   - System settings
 ```
 
-### 9. Test the Proxy
+### 10. Test the Proxy
 ```bash
 curl http://localhost:3000/api/users
 ```

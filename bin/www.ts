@@ -4,6 +4,9 @@
  * Module dependencies.
  */
 
+// Load configuration first (before anything else)
+import config from '../src/config/index.js';
+
 import app from '../app';
 import debug from 'debug';
 import http from 'http';
@@ -13,9 +16,10 @@ const log = debug('proxy-server:server');
 
 /**
  * Get port from environment and store in Express.
+ * Use config.server.port if available, otherwise fall back to environment variable
  */
 
-const port = normalizePort(process.env.PORT || '3000');
+const port = normalizePort(process.env.PORT || config.server.port.toString() || '3000');
 app.set('port', port);
 
 /**
