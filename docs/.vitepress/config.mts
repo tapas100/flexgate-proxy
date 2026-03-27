@@ -25,6 +25,7 @@ export default defineConfig({
   themeConfig: {
     // Top navigation bar
     nav: [
+      { text: 'Guide', link: '/guide/introduction' },
       { text: 'Getting Started', link: '/getting-started/' },
       { text: 'Guides', link: '/guides/' },
       { text: 'AI Features', link: '/ai/' },
@@ -49,6 +50,46 @@ export default defineConfig({
 
     // Left sidebar
     sidebar: {
+      '/guide/': [
+        {
+          text: 'Getting Started',
+          items: [
+            { text: 'Introduction', link: '/guide/introduction' },
+            { text: 'Quick Start', link: '/guide/getting-started' },
+            { text: 'Installation', link: '/guide/installation' },
+            { text: 'Your First Route', link: '/guide/first-route' },
+          ]
+        },
+        {
+          text: 'Admin UI',
+          items: [
+            { text: 'Overview', link: '/guide/admin-ui/overview' },
+            { text: 'Managing Routes', link: '/guide/admin-ui/routes' },
+            { text: 'Monitoring', link: '/guide/admin-ui/monitoring' },
+            { text: 'Settings', link: '/guide/admin-ui/settings' },
+          ]
+        },
+        {
+          text: 'Configuration',
+          items: [
+            { text: 'Routes', link: '/guide/config/routes' },
+            { text: 'Rate Limiting', link: '/guide/config/rate-limiting' },
+          ]
+        },
+        {
+          text: 'Deployment',
+          items: [
+            { text: 'Quick Setup', link: '/guide/deployment/quick-setup' },
+          ]
+        },
+        {
+          text: 'Troubleshooting',
+          items: [
+            { text: 'Common Issues', link: '/guide/troubleshooting' },
+          ]
+        },
+      ],
+
       '/getting-started/': [
         {
           text: 'Getting Started',
