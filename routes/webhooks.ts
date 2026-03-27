@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { logger } from '../src/logger';
 import webhooksRepository from '../src/database/repositories/webhooksRepository';
 import { WebhookDelivery } from '../src/database/repositories/webhookDeliveriesRepository';
+import { deleteOperationRateLimiter, webhookCreationRateLimiter } from '../src/middleware/rateLimiting';
 
 const router = Router();
 
@@ -123,7 +124,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<any> => {
  * POST /api/webhooks
  * Create a new webhook in database
  */
-router.post('/', async (req: Request, res: Response): Promise<any> => {
+router.post('/', webhookCreationRateLimiter, async (req: Request, res: Response): Promise<any> => {
   try {
     // Validate request body
     const validation = CreateWebhookSchema.safeParse(req.body);
@@ -259,7 +260,7 @@ router.put('/:id', async (req: Request, res: Response): Promise<any> => {
  * DELETE /api/webhooks/:id
  * Delete a webhook from database
  */
-router.delete('/:id', async (req: Request, res: Response): Promise<any> => {
+router.delete('/:id', deleteOperationRateLimiter, async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 

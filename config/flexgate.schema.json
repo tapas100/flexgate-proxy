@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FlexGate Configuration",
+  "description": "FlexGate configuration schema for validation",
+  "type": "object",
+  "properties": {
+    "server": {
+      "type": "object",
+      "description": "Server configuration",
+      "properties": {
+        "port": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Server port (1-65535)"
+        },
+        "host": {
+          "type": "string",
+          "description": "Host to bind to (0.0.0.0 for all interfaces)"
+        },
+        "environment": {
+          "type": "string",
+          "enum": ["development", "production", "staging", "test"],
+          "description": "Runtime environment"
+        }
+      },
+      "required": ["port", "host", "environment"]
+    },
+    "database": {
+      "type": "object",
+      "description": "PostgreSQL database configuration",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Database host"
+        },
+        "port": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Database port"
+        },
+        "name": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "user": {
+          "type": "string",
+          "description": "Database user"
+        },
+        "password": {
+          "type": "string",
+          "description": "Database password"
+        },
+        "ssl": {
+          "type": "boolean",
+          "description": "Enable SSL connection"
+        },
+        "poolMin": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum connection pool size"
+        },
+        "poolMax": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Maximum connection pool size"
+        }
+      },
+      "required": ["host", "port", "name", "user", "password"]
+    },
+    "redis": {
+      "type": "object",
+      "description": "Redis cache configuration",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Redis host"
+        },
+        "port": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Redis port"
+        },
+        "password": {
+          "type": "string",
+          "description": "Redis password (optional)"
+        },
+        "db": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 15,
+          "description": "Redis database number (0-15)"
+        }
+      },
+      "required": ["host", "port", "db"]
+    },
+    "security": {
+      "type": "object",
+      "description": "Security configuration",
+      "properties": {
+        "corsOrigins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed CORS origins"
+        },
+        "corsEnabled": {
+          "type": "boolean",
+          "description": "Enable CORS"
+        },
+        "rateLimitEnabled": {
+          "type": "boolean",
+          "description": "Enable rate limiting"
+        },
+        "rateLimitWindowMs": {
+          "type": "number",
+          "minimum": 1000,
+          "description": "Rate limit window in milliseconds"
+        },
+        "rateLimitMaxRequests": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Maximum requests per window"
+        }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "description": "Logging configuration",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["error", "warn", "info", "http", "verbose", "debug", "silly"],
+          "description": "Log level"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["json", "simple", "combined"],
+          "description": "Log format"
+        },
+        "destination": {
+          "type": "string",
+          "enum": ["file", "console", "both"],
+          "description": "Log destination"
+        },
+        "maxFiles": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Maximum log files to keep"
+        },
+        "maxSize": {
+          "type": "string",
+          "pattern": "^[0-9]+[kmg]$",
+          "description": "Maximum log file size (e.g., 10m, 1g)"
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "description": "Monitoring configuration",
+      "properties": {
+        "metricsEnabled": {
+          "type": "boolean",
+          "description": "Enable Prometheus metrics"
+        },
+        "prometheusPort": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Prometheus metrics port"
+        },
+        "healthCheckInterval": {
+          "type": "number",
+          "minimum": 1000,
+          "description": "Health check interval in milliseconds"
+        }
+      }
+    }
+  },
+  "required": ["server", "database", "redis"]
+}

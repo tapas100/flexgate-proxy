@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { logger } from '../src/logger';
 import database from '../src/database/index';
 import { eventBus, EventType } from '../src/events/EventBus';
+import { deleteOperationRateLimiter, routeManagementRateLimiter } from '../src/middleware/rateLimiting';
 
 const router: Router = Router();
 
@@ -213,7 +214,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<any> => {
  * POST /api/routes
  * Create a new route in database
  */
-router.post('/', async (req: Request, res: Response): Promise<any> => {
+router.post('/', routeManagementRateLimiter, async (req: Request, res: Response): Promise<any> => {
   try {
     // Validate request body
     const validation = CreateRouteSchema.safeParse(req.body);
@@ -480,7 +481,7 @@ router.patch('/:id', updateRouteHandler);
  * DELETE /api/routes/:id
  * Delete a route from database
  */
-router.delete('/:id', async (req: Request, res: Response): Promise<any> => {
+router.delete('/:id', deleteOperationRateLimiter, async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 

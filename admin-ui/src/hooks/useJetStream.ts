@@ -37,6 +37,18 @@ export const useJetStream = (options: UseJetStreamOptions) => {
   const [error, setError] = useState<Error | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
+  
+  // Store callbacks in refs to avoid recreating connect function
+  const onErrorRef = useRef(onError);
+  const onConnectRef = useRef(onConnect);
+  const onDisconnectRef = useRef(onDisconnect);
+  
+  useEffect(() => {
+    onErrorRef.current = onError;
+    onConnectRef.current = onConnect;
+    onDisconnectRef.current = onDisconnect;
+  }, [onError, onConnect, onDisconnect]);
 
   const cleanup = useCallback(() => {
     if (eventSourceRef.current) {
@@ -50,6 +62,7 @@ export const useJetStream = (options: UseJetStreamOptions) => {
   }, []);
 
   const connect = useCallback(() => {
+    if (!mountedRef.current) return;
     cleanup();
 
     // If UI runs on a different origin/port than the backend (common in dev),
@@ -61,15 +74,17 @@ export const useJetStream = (options: UseJetStreamOptions) => {
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
+      if (!mountedRef.current) return;
       console.log('✅ Connected to JetStream');
       setConnected(true);
       setError(null);
-      if (onConnect) {
-        onConnect();
+      if (onConnectRef.current) {
+        onConnectRef.current();
       }
     };
 
     eventSource.onmessage = (event) => {
+      if (!mountedRef.current) return;
       try {
         const message = JSON.parse(event.data);
         
@@ -79,8 +94,8 @@ export const useJetStream = (options: UseJetStreamOptions) => {
           console.error('Stream error:', message.message);
           const err = new Error(message.message);
           setError(err);
-          if (onError) {
-            onError(err);
+          if (onErrorRef.current) {
+            onErrorRef.current(err);
           }
         } else {
           // It's metrics data
@@ -90,39 +105,43 @@ export const useJetStream = (options: UseJetStreamOptions) => {
         console.error('Error parsing message:', err);
         const error = err instanceof Error ? err : new Error('Failed to parse message');
         setError(error);
-        if (onError) {
-          onError(error);
+        if (onErrorRef.current) {
+          onErrorRef.current(error);
         }
       }
     };
 
     eventSource.onerror = (err) => {
+      if (!mountedRef.current) return;
       console.error('❌ EventSource error:', err);
       setConnected(false);
       const error = new Error('Connection lost');
       setError(error);
       
-      if (onDisconnect) {
-        onDisconnect();
+      if (onDisconnectRef.current) {
+        onDisconnectRef.current();
       }
-      if (onError) {
-        onError(error);
+      if (onErrorRef.current) {
+        onErrorRef.current(error);
       }
 
       // Cleanup and schedule reconnect
       cleanup();
       
       reconnectTimeoutRef.current = setTimeout(() => {
+        if (!mountedRef.current) return;
         console.log('🔄 Attempting to reconnect...');
         connect();
       }, reconnectInterval);
     };
-  }, [url, reconnectInterval, onError, onConnect, onDisconnect, cleanup]);
+  }, [url, reconnectInterval, cleanup]);
 
   useEffect(() => {
+    mountedRef.current = true;
     connect();
 
     return () => {
+      mountedRef.current = false;
       cleanup();
     };
   }, [connect, cleanup]);

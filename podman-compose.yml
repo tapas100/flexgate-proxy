@@ -1,0 +1,172 @@
+# Podman Compose for HAProxy + FlexGate
+# High-performance setup for >10K req/sec
+# Run with: podman-compose up -d
+# Or use Makefile: make start
+version: '3.8'
+
+services:
+  # HAProxy - High-performance data plane
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: flexgate-haproxy
+    ports:
+      - "8080:8080"   # HTTP
+      - "8443:8443"   # HTTPS
+      - "8404:8404"   # Stats page
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./haproxy/errors:/etc/haproxy/errors:ro
+      - ./haproxy/certs:/etc/haproxy/certs:ro
+    networks:
+      - flexgate-network
+    depends_on:
+      - flexgate-app-1
+      - flexgate-app-2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  # FlexGate App - Instance 1 (Control Plane + Backend)
+  flexgate-app-1:
+    image: localhost/flexgate-proxy:latest
+    container_name: flexgate-app-1
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://flexgate:flexgate@postgres:5432/flexgate
+      - REDIS_URL=redis://redis:6379
+      - INSTANCE_ID=app-1
+    networks:
+      - flexgate-network
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # FlexGate App - Instance 2 (Backup)
+  flexgate-app-2:
+    image: localhost/flexgate-proxy:latest
+    container_name: flexgate-app-2
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://flexgate:flexgate@postgres:5432/flexgate
+      - REDIS_URL=redis://redis:6379
+      - INSTANCE_ID=app-2
+    networks:
+      - flexgate-network
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # PostgreSQL - Configuration database
+  postgres:
+    image: postgres:15-alpine
+    container_name: flexgate-postgres
+    environment:
+      - POSTGRES_DB=flexgate
+      - POSTGRES_USER=flexgate
+      - POSTGRES_PASSWORD=flexgate
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - flexgate-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Redis - Session cache and rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: flexgate-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - flexgate-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # Prometheus - Metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: flexgate-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - flexgate-network
+    restart: unless-stopped
+
+  # Admin UI - FlexGate Management Dashboard
+  admin-ui:
+    image: localhost/flexgate-admin-ui:latest
+    container_name: flexgate-admin-ui
+    environment:
+      - NODE_ENV=production
+      # Admin UI is served by nginx (static files)
+      # Browser makes API calls directly to HAProxy (client-side)
+      # REACT_APP_API_URL not needed - browser uses http://localhost:8080
+    ports:
+      - "3002:3000"
+    networks:
+      - flexgate-network
+    depends_on:
+      - haproxy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  flexgate-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  prometheus-data:

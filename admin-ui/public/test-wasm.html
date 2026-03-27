@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WASM Test - FlexGate Admin UI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            margin-top: 0;
+            text-align: center;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .info {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        .perf {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #FFD700;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .wasm-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .worker-badge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .js-badge {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 WASM Performance Test</h1>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <button onclick="testWasm()">🔥 Test WASM Processing</button>
+            <button onclick="testWorker()">⚡ Test Web Worker</button>
+            <button onclick="testSync()">🐌 Test Sync Processing</button>
+            <button onclick="runBenchmark()">📊 Run Full Benchmark</button>
+        </div>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script type="module">
+        let wasmModule = null;
+        let output = document.getElementById('result');
+
+        // Helper function to log
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Initialize WASM
+        async function initWasm() {
+            if (wasmModule) return true;
+            
+            try {
+                log('⏳ Loading WASM module...', 'info');
+                const wasm = await import('/wasm/metrics_processor.js');
+                await wasm.default();
+                wasmModule = wasm;
+                log('✅ WASM module loaded successfully!', 'success');
+                return true;
+            } catch (error) {
+                log(`❌ Failed to load WASM: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Generate test data
+        function generateTestData(size) {
+            const data = [];
+            const now = Date.now();
+            for (let i = 0; i < size; i++) {
+                data.push({
+                    timestamp: now - (size - i) * 1000,
+                    value: Math.random() * 100,
+                    status: Math.random() > 0.1 ? 200 : 500
+                });
+            }
+            return data;
+        }
+
+        // Test WASM
+        window.testWasm = async function() {
+            output.innerHTML = '';
+            log('🚀 Starting WASM Test...', 'info');
+            
+            const loaded = await initWasm();
+            if (!loaded) {
+                log('❌ WASM not available. Make sure to build it with: cd admin-ui/wasm && ./build.sh', 'error');
+                return;
+            }
+
+            const testData = generateTestData(5000);
+            log(`📊 Processing ${testData.length} data points with WASM...`, 'info');
+
+            const start = performance.now();
+            try {
+                const processor = new wasmModule.MetricsProcessor();
+                
+                // Calculate bucket size for downsampling to 200 points
+                const timeRange = testData[testData.length - 1].timestamp - testData[0].timestamp;
+                const bucketSizeMs = Math.ceil(timeRange / 200);
+                
+                // Process with WASM (expects JSON array of {timestamp, value} objects)
+                const result = processor.process_timeseries(testData, bucketSizeMs, 200);
+                const end = performance.now();
+                
+                const time = (end - start).toFixed(2);
+                log(`✅ WASM Processing completed in ${time}ms`, 'success');
+                log(`📈 Downsampled from ${testData.length} to ${result.length} points`, 'info');
+                log(`⚡ Speed: ${(testData.length / time * 1000).toFixed(0)} points/sec`, 'success');
+                
+                output.innerHTML += `\n<div class="perf">
+                    <strong>🏆 WASM Performance</strong>
+                    <div>Processing Time: <strong>${time}ms</strong> <span class="badge wasm-badge">FASTEST</span></div>
+                    <div>Throughput: <strong>${(testData.length / time * 1000).toFixed(0)}</strong> points/sec</div>
+                </div>`;
+            } catch (error) {
+                const end = performance.now();
+                log(`❌ WASM Error: ${error.message}`, 'error');
+            }
+        };
+
+        // Test Web Worker
+        window.testWorker = function() {
+            output.innerHTML = '';
+            log('⚡ Starting Web Worker Test...', 'info');
+            
+            const testData = generateTestData(5000);
+            log(`📊 Processing ${testData.length} data points with Web Worker...`, 'info');
+
+            const start = performance.now();
+            const worker = new Worker('/static/js/workers/metricsProcessor.worker.js');
+            
+            worker.onmessage = (e) => {
+                const end = performance.now();
+                const time = (end - start).toFixed(2);
+                
+                if (e.data.type === 'RESULT') {
+                    log(`✅ Worker Processing completed in ${time}ms`, 'success');
+                    log(`📈 Processed ${testData.length} points`, 'info');
+                    log(`⚡ Speed: ${(testData.length / time * 1000).toFixed(0)} points/sec`, 'success');
+                    
+                    output.innerHTML += `\n<div class="perf">
+                        <strong>⚡ Web Worker Performance</strong>
+                        <div>Processing Time: <strong>${time}ms</strong> <span class="badge worker-badge">FAST</span></div>
+                        <div>Throughput: <strong>${(testData.length / time * 1000).toFixed(0)}</strong> points/sec</div>
+                    </div>`;
+                } else if (e.data.type === 'ERROR') {
+                    log(`❌ Worker Error: ${e.data.error}`, 'error');
+                }
+                worker.terminate();
+            };
+
+            worker.postMessage({
+                type: 'PROCESS_TIMESERIES',
+                data: testData,
+                maxPoints: 200
+            });
+        };
+
+        // Test Sync (JavaScript)
+        window.testSync = function() {
+            output.innerHTML = '';
+            log('🐌 Starting Synchronous Test...', 'info');
+            
+            const testData = generateTestData(5000);
+            log(`📊 Processing ${testData.length} data points synchronously...`, 'info');
+
+            const start = performance.now();
+            
+            // Simple downsampling
+            const bucketSize = Math.ceil(testData.length / 200);
+            const result = [];
+            for (let i = 0; i < testData.length; i += bucketSize) {
+                const bucket = testData.slice(i, i + bucketSize);
+                const avg = bucket.reduce((sum, d) => sum + d.value, 0) / bucket.length;
+                result.push({
+                    timestamp: bucket[0].timestamp,
+                    value: avg
+                });
+            }
+            
+            const end = performance.now();
+            const time = (end - start).toFixed(2);
+            
+            log(`✅ Sync Processing completed in ${time}ms`, 'success');
+            log(`📈 Downsampled from ${testData.length} to ${result.length} points`, 'info');
+            log(`⚡ Speed: ${(testData.length / time * 1000).toFixed(0)} points/sec`, 'info');
+            
+            output.innerHTML += `\n<div class="perf">
+                <strong>🐌 Synchronous Performance</strong>
+                <div>Processing Time: <strong>${time}ms</strong> <span class="badge js-badge">BASELINE</span></div>
+                <div>Throughput: <strong>${(testData.length / time * 1000).toFixed(0)}</strong> points/sec</div>
+            </div>`;
+        };
+
+        // Run full benchmark
+        window.runBenchmark = async function() {
+            output.innerHTML = '';
+            log('📊 Running Full Performance Benchmark...', 'info');
+            log('━'.repeat(60), 'info');
+            
+            const sizes = [1000, 5000, 10000];
+            const results = { wasm: [], worker: [], sync: [] };
+            
+            // Test each size
+            for (const size of sizes) {
+                log(`\n🔬 Testing with ${size} data points...`, 'info');
+                const testData = generateTestData(size);
+                
+                // Sync test
+                let start = performance.now();
+                const bucketSize = Math.ceil(testData.length / 200);
+                for (let i = 0; i < testData.length; i += bucketSize) {
+                    const bucket = testData.slice(i, i + bucketSize);
+                    bucket.reduce((sum, d) => sum + d.value, 0) / bucket.length;
+                }
+                const syncTime = performance.now() - start;
+                results.sync.push(syncTime);
+                log(`  🐌 Sync: ${syncTime.toFixed(2)}ms`, 'info');
+                
+                // WASM test (if available)
+                if (await initWasm()) {
+                    start = performance.now();
+                    const processor = new wasmModule.MetricsProcessor();
+                    const timeRange = testData[testData.length - 1].timestamp - testData[0].timestamp;
+                    const bucketSizeMs = Math.ceil(timeRange / 200);
+                    const wasmResult = processor.process_timeseries(testData, bucketSizeMs, 200);
+                    const wasmTime = performance.now() - start;
+                    results.wasm.push(wasmTime);
+                    log(`  🔥 WASM: ${wasmTime.toFixed(2)}ms (${(syncTime/wasmTime).toFixed(1)}x faster)`, 'success');
+                }
+            }
+            
+            // Summary
+            log('\n' + '━'.repeat(60), 'info');
+            log('📈 BENCHMARK SUMMARY', 'success');
+            log('━'.repeat(60), 'info');
+            
+            const avgWasm = results.wasm.reduce((a, b) => a + b, 0) / results.wasm.length;
+            const avgSync = results.sync.reduce((a, b) => a + b, 0) / results.sync.length;
+            const speedup = avgSync / avgWasm;
+            
+            output.innerHTML += `\n<div class="perf">
+                <h3 style="margin-top: 0;">🏆 Performance Comparison</h3>
+                <div style="margin: 15px 0;">
+                    <strong>WASM:</strong> ${avgWasm.toFixed(2)}ms average <span class="badge wasm-badge">${speedup.toFixed(1)}x FASTER</span>
+                </div>
+                <div style="margin: 15px 0;">
+                    <strong>JavaScript:</strong> ${avgSync.toFixed(2)}ms average <span class="badge js-badge">BASELINE</span>
+                </div>
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.3);">
+                    <strong>💡 Result:</strong> WASM is <strong>${speedup.toFixed(1)}x faster</strong> than JavaScript!
+                </div>
+            </div>`;
+        };
+
+        // Auto-run test on load
+        log('🎯 WASM Test Page Ready!', 'success');
+        log('Click a button above to run tests', 'info');
+        log('\n💡 Tip: Open DevTools Network tab and filter by "Wasm" to see WASM files loading!', 'info');
+    </script>
+</body>
+</html>

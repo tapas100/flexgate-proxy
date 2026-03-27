@@ -13,6 +13,7 @@ import {
   Alert,
   Button,
   Chip,
+  LinearProgress,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -21,6 +22,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Refresh as RefreshIcon,
   WifiOff as WifiOffIcon,
+  Psychology as PsychologyIcon,
+  AutoFixHigh as AutoFixHighIcon,
 } from '@mui/icons-material';
 import { MetricsData, TimeRange, RefreshInterval } from '../types';
 import { formatLargeNumber } from '../utils/metricsHelpers';
@@ -29,6 +32,8 @@ import LatencyChart from '../components/Charts/LatencyChart';
 import StatusPieChart from '../components/Charts/StatusPieChart';
 import SLOGauge from '../components/Charts/SLOGauge';
 import { useLiveMetrics } from '../hooks/useLiveMetrics';
+import { useNavigate } from 'react-router-dom';
+import incidentService from '../services/incidentService';
 
 interface MetricCardProps {
   title: string;
@@ -80,10 +85,20 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, trend, ic
 };
 
 const Metrics: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
   const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>('off');
+
+  // AI Analytics state
+  const [aiAnalytics, setAiAnalytics] = useState({
+    totalIncidents: 0,
+    resolvedIncidents: 0,
+    acceptanceRate: 0,
+    avgResolutionTime: 0,
+    loading: true,
+  });
 
   const { data: metricsData, connected, error: streamError, reconnect } = useLiveMetrics({
     streamUrl: '/api/stream/metrics',
@@ -100,6 +115,31 @@ const Metrics: React.FC = () => {
   useEffect(() => {
     // Keep existing timeRange UI for now; backend stream currently pushes a fixed window.
     // If/when backend supports range in stream, we can pass it here.
+  }, [timeRange]);
+
+  // Fetch AI Analytics
+  useEffect(() => {
+    const fetchAiAnalytics = async () => {
+      try {
+        const days = timeRange === '1h' ? 1 : timeRange === '24h' ? 1 : timeRange === '7d' ? 7 : 30;
+        const summary = await incidentService.getAnalyticsSummary(days);
+        
+        setAiAnalytics({
+          totalIncidents: Number(summary.incidents.total_incidents) || 0,
+          resolvedIncidents: Number(summary.incidents.resolved_count) || 0,
+          acceptanceRate: Number(summary.recommendations.acceptance_rate) || 0,
+          avgResolutionTime: Number(summary.incidents.avg_resolution_time_seconds) || 0,
+          loading: false,
+        });
+      } catch (err) {
+        console.error('Failed to fetch AI analytics:', err);
+        setAiAnalytics(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchAiAnalytics();
+    const interval = setInterval(fetchAiAnalytics, 60000);
+    return () => clearInterval(interval);
   }, [timeRange]);
 
   useEffect(() => {
@@ -285,6 +325,106 @@ const Metrics: React.FC = () => {
         {/* Status Code Distribution */}
         <Grid item xs={12} md={6}>
           <StatusPieChart statusCodes={metricsData?.statusCodes || { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 }} />
+        </Grid>
+
+        {/* AI Analytics Section */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">AI-Powered Incident Management</Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => navigate('/ai-analytics')}
+              >
+                View Full Analytics
+              </Button>
+            </Box>
+            
+            {aiAnalytics.loading ? (
+              <LinearProgress />
+            ) : (
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <PsychologyIcon sx={{ color: '#1976d2', mr: 1 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          AI Incidents
+                        </Typography>
+                      </Box>
+                      <Typography variant="h5">{aiAnalytics.totalIncidents}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Detected & Tracked
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <CheckCircleIcon sx={{ color: '#2e7d32', mr: 1 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          Auto-Resolved
+                        </Typography>
+                      </Box>
+                      <Typography variant="h5">{aiAnalytics.resolvedIncidents}</Typography>
+                      <Typography variant="caption" color="success.main">
+                        {aiAnalytics.totalIncidents > 0 
+                          ? `${((aiAnalytics.resolvedIncidents / aiAnalytics.totalIncidents) * 100).toFixed(0)}%` 
+                          : '0%'} success rate
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <AutoFixHighIcon sx={{ color: '#9c27b0', mr: 1 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          AI Acceptance
+                        </Typography>
+                      </Box>
+                      <Typography variant="h5">
+                        {(aiAnalytics.acceptanceRate * 100).toFixed(0)}%
+                      </Typography>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={aiAnalytics.acceptanceRate * 100} 
+                        sx={{ mt: 1 }}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <SpeedIcon sx={{ color: '#ed6c02', mr: 1 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          Avg Resolution
+                        </Typography>
+                      </Box>
+                      <Typography variant="h5">
+                        {aiAnalytics.avgResolutionTime > 0 
+                          ? `${Math.floor(aiAnalytics.avgResolutionTime / 60)}m` 
+                          : 'N/A'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Time to resolve
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            )}
+          </Paper>
         </Grid>
 
         {/* Circuit Breakers */}

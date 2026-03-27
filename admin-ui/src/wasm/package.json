@@ -1,0 +1,19 @@
+{
+  "name": "metrics-processor",
+  "type": "module",
+  "collaborators": [
+    "FlexGate Team"
+  ],
+  "description": "High-performance metrics data processing in WebAssembly",
+  "version": "0.1.0",
+  "files": [
+    "metrics_processor_bg.wasm",
+    "metrics_processor.js",
+    "metrics_processor.d.ts"
+  ],
+  "main": "metrics_processor.js",
+  "types": "metrics_processor.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "server": {
+    "port": 8080,
+    "host": "0.0.0.0",
+    "environment": "development"
+  },
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "name": "flexgate",
+    "user": "flexgate",
+    "password": "flexgate",
+    "ssl": false,
+    "poolMin": 2,
+    "poolMax": 10
+  },
+  "redis": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 0
+  },
+  "security": {
+    "corsOrigins": ["*"],
+    "corsEnabled": true,
+    "rateLimitEnabled": false,
+    "rateLimitWindowMs": 60000,
+    "rateLimitMaxRequests": 1000
+  },
+  "logging": {
+    "level": "debug"
+  },
+  "monitoring": {
+    "metricsEnabled": true,
+    "prometheusPort": 9090,
+    "healthCheckInterval": 30000
+  },
+  "routes": []
+}

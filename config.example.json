@@ -1,0 +1,13 @@
+{
+  "ai": {
+    "provider": "gemini",
+    "apiKey": "",
+    "model": "gemini-1.5-flash-latest",
+    "maxTokens": 2000,
+    "temperature": 0
+  },
+  "security": {
+    "encryptionKey": "",
+    "allowApiKeyEdit": false
+  }
+}
