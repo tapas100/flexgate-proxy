@@ -18,6 +18,9 @@
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.js",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "validate": "npm run typecheck && npm run lint && npm test",
     "prebuild": "rm -rf dist",
@@ -147,6 +150,7 @@
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.4"
   }
 }

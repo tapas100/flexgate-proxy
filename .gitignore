@@ -118,5 +118,9 @@ dist/
 *.d.ts
 *.js.map
 
-# MkDocs build output
+# MkDocs build output (no longer used)
 site/
+
+# VitePress build output
+docs/.vitepress/dist
+docs/.vitepress/cache

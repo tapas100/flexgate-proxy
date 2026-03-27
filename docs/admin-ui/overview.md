@@ -30,7 +30,7 @@ Enable HTTPS in production (see [SSL/TLS Configuration](../security/ssl.md))
 
 ## Dashboard Overview
 
-![Admin UI Dashboard](../images/admin-dashboard.png)
+> Screenshot coming soon. Run `flexgate start` and open `http://localhost:3000` to see the live dashboard.
 
 The dashboard provides at-a-glance insights:
 

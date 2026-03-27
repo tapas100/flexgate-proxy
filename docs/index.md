@@ -1,6 +1,106 @@
-# FlexGate Proxy
+---
+layout: home
 
-**The AI-native API gateway** that detects failures, analyzes root causes with Claude, and auto-heals 80% of incidents — in under 10 minutes.
+hero:
+  name: "FlexGate Proxy"
+  text: "AI-Native API Gateway"
+  tagline: Detects failures, analyzes root causes with Claude, and auto-heals 80% of incidents — in under 10 minutes.
+  actions:
+    - theme: brand
+      text: Get Started
+      link: /getting-started/
+    - theme: alt
+      text: View on GitHub
+      link: https://github.com/tapas100/flexgate-proxy
+
+features:
+  - icon: 🤖
+    title: AI-Native Signals
+    details: 10 structured event types (CIRCUIT_BREAKER_OPENED, HIGH_LATENCY, ERROR_RATE_SPIKE…) that AI agents can reason about directly — no noisy logs, no dashboards.
+
+  - icon: 🛡️
+    title: Production Security
+    details: SSRF protection, HMAC-SHA256 API keys, tiered rate limiting, restricted CORS via ALLOWED_ORIGINS, and 0 npm vulnerabilities.
+
+  - icon: ⚡
+    title: Circuit Breakers & Retries
+    details: Per-upstream circuit breaking with configurable thresholds and automatic recovery. Exponential backoff retries with jitter.
+
+  - icon: 📊
+    title: Real-time Observability
+    details: Prometheus metrics, Winston structured JSON logs, Server-Sent Events for live dashboard streaming, and full PostgreSQL persistence.
+
+  - icon: 🖥️
+    title: Admin UI — No Extra Setup
+    details: Full React dashboard built-in. Manage routes, webhooks, logs, metrics, settings, and AI incidents from http://localhost:3000.
+
+  - icon: 💰
+    title: Token-Optimised
+    details: ~$5/day for AI-assisted incident response vs $50–500/day for Grafana + PagerDuty. Clean pre-digested signals mean fewer tokens and less hallucination risk.
+---
+
+## Quick Install
+
+```bash
+npm install -g flexgate-proxy
+
+flexgate init       # generates config/flexgate.json
+flexgate migrate    # sets up the database schema
+flexgate start      # starts gateway on :3001, Admin UI on :3000
+```
+
+## How It Compares
+
+| Feature | FlexGate | Kong | AWS API GW | Nginx |
+|---------|----------|------|------------|-------|
+| Admin UI | ✅ Built-in, free | ✅ Enterprise only | ✅ Paid | ❌ |
+| AI-native events | ✅ | ❌ | ❌ | ❌ |
+| npm installable | ✅ | ❌ | ❌ | ❌ |
+| Circuit breakers | ✅ Built-in | ✅ Plugin | ❌ | ❌ |
+| PostgreSQL backend | ✅ | ✅ | ✅ | ❌ |
+| Open source | ✅ MIT | ✅ / Enterprise | ❌ | ✅ |
+
+## Architecture
+
+```
+Incoming Request
+       │
+       ▼
+┌──────────────────────────────────────┐
+│             FlexGate Proxy           │
+│                                      │
+│  CORS  ──►  Rate Limit  ──►  Auth   │
+│                   │                  │
+│            Route Matching            │
+│                   │                  │
+│           Circuit Breaker            │
+│                   │                  │
+│          Upstream Request            │
+│                   │                  │
+│       Metrics + Structured Logs      │
+└──────────────────────────────────────┘
+       │                    │
+       ▼                    ▼
+   Response           AI Event Bus
+                            │
+                     AI Incident Record
+                            │
+                     Claude Analysis
+                     (root cause + fix)
+```
+
+## What's New in v0.1.0-beta.2
+
+- **0 npm vulnerabilities** — removed `jade` (4 CVEs), upgraded `http-proxy-middleware` to v3, `morgan` to 1.10.1
+- **Settings API** — `GET/PUT/POST /api/settings` with validation, sanitization, and backup
+- **AI incident tracking** — full CRUD at `/api/ai-incidents` with Claude integration
+- **Tiered rate limiting** — global / admin / auth layers
+- **Restricted CORS** — configured via `ALLOWED_ORIGINS` environment variable
+- **26/26 integration tests passing**
+
+See the full [Changelog](changelog.md).
+
+> **Beta notice:** Not recommended for production use yet. [Report issues on GitHub.](https://github.com/tapas100/flexgate-proxy/issues)
 
 [![npm](https://img.shields.io/npm/v/flexgate-proxy?label=npm&color=blue)](https://www.npmjs.com/package/flexgate-proxy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/tapas100/flexgate-proxy/blob/main/LICENSE)
