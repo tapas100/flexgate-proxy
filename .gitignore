@@ -117,3 +117,6 @@ temp/
 dist/
 *.d.ts
 *.js.map
+
+# MkDocs build output
+site/

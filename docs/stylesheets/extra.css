@@ -1,0 +1,135 @@
+/* ─────────────────────────────────────────────
+   FlexGate Docs — Google developer docs polish
+   ───────────────────────────────────────────── */
+
+/* Primary brand colour overrides */
+:root {
+  --md-primary-fg-color:        #3f51b5;
+  --md-primary-fg-color--light: #5c6bc0;
+  --md-primary-fg-color--dark:  #283593;
+  --md-accent-fg-color:         #2196f3;
+}
+
+/* Hero banner on the home page */
+.hero {
+  padding: 3rem 1rem;
+  text-align: center;
+  background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3f51b5 100%);
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  color: #fff;
+}
+
+.hero h1 {
+  font-size: 2.4rem;
+  font-weight: 700;
+  margin-bottom: .5rem;
+  color: #fff !important;
+}
+
+.hero p {
+  font-size: 1.15rem;
+  opacity: .9;
+  max-width: 640px;
+  margin: 0 auto 1.5rem;
+}
+
+.hero .btn-group {
+  display: flex;
+  gap: .75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hero .md-button {
+  border-radius: 4px;
+  font-weight: 600;
+  padding: .55rem 1.4rem;
+}
+
+.hero .md-button--primary {
+  background: #fff;
+  color: #3f51b5;
+  border: none;
+}
+
+.hero .md-button--primary:hover {
+  background: #e8eaf6;
+}
+
+/* Feature cards grid */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.2rem;
+  margin: 2rem 0;
+}
+
+.feature-card {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+
+.feature-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  transform: translateY(-2px);
+}
+
+.feature-card .icon {
+  font-size: 2rem;
+  margin-bottom: .5rem;
+}
+
+.feature-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: .25rem 0;
+}
+
+.feature-card p {
+  font-size: .875rem;
+  opacity: .8;
+  margin: 0;
+}
+
+/* Better code block headers */
+.md-typeset pre > code {
+  font-size: .82rem;
+}
+
+/* Wider content area (like Google docs) */
+.md-grid {
+  max-width: 1280px;
+}
+
+/* Sticky TOC heading */
+.md-nav--secondary .md-nav__title {
+  font-weight: 600;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Version badge in nav */
+.version-badge {
+  display: inline-block;
+  font-size: .65rem;
+  font-weight: 700;
+  padding: .1rem .45rem;
+  border-radius: 999px;
+  background: var(--md-accent-fg-color);
+  color: #fff;
+  vertical-align: middle;
+  margin-left: .4rem;
+  letter-spacing: .04em;
+}
+
+/* API method badges */
+.get    { background:#4caf50; color:#fff; padding:.1rem .5rem; border-radius:4px; font-size:.75rem; font-weight:700; font-family:monospace; }
+.post   { background:#2196f3; color:#fff; padding:.1rem .5rem; border-radius:4px; font-size:.75rem; font-weight:700; font-family:monospace; }
+.put    { background:#ff9800; color:#fff; padding:.1rem .5rem; border-radius:4px; font-size:.75rem; font-weight:700; font-family:monospace; }
+.delete { background:#f44336; color:#fff; padding:.1rem .5rem; border-radius:4px; font-size:.75rem; font-weight:700; font-family:monospace; }
+.patch  { background:#9c27b0; color:#fff; padding:.1rem .5rem; border-radius:4px; font-size:.75rem; font-weight:700; font-family:monospace; }
