@@ -5,7 +5,7 @@ import {
   CardContent,
   Typography,
   Button,
-  Grid,
+  Stack,
   Alert,
   LinearProgress,
   Chip,
@@ -23,11 +23,14 @@ import {
   DialogActions,
   TextField,
   Paper,
+  CircularProgress,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
+  CheckCircle,
+  Cancel as ErrorCircleIcon,
   Warning as WarningIcon,
   Info as InfoIcon,
   PlayArrow as PlayArrowIcon,
@@ -59,7 +62,6 @@ const Troubleshooting: React.FC = () => {
     { name: 'Redis', status: 'unknown', message: 'Not checked yet' },
     { name: 'HAProxy', status: 'unknown', message: 'Not checked yet' },
     { name: 'Prometheus', status: 'unknown', message: 'Not checked yet' },
-    { name: 'Grafana', status: 'unknown', message: 'Not checked yet' },
   ]);
 
   const [systemChecks, setSystemChecks] = useState<HealthCheck[]>([
@@ -81,6 +83,17 @@ const Troubleshooting: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [nuclearResetDialog, setNuclearResetDialog] = useState(false);
   const [nuclearConfirmText, setNuclearConfirmText] = useState('');
+  const [cleanInstallDialog, setCleanInstallDialog] = useState(false);
+  const [cleanInstallPassword, setCleanInstallPassword] = useState('');
+  const [nuclearResetPassword, setNuclearResetPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  
+  // Clean Install Progress Dialog State
+  const [cleanInstallProgress, setCleanInstallProgress] = useState(false);
+  const [installProgress, setInstallProgress] = useState(0);
+  const [installLogs, setInstallLogs] = useState<string[]>([]);
+  const [installComplete, setInstallComplete] = useState(false);
+  const [installSuccess, setInstallSuccess] = useState(false);
 
   // Run health check
   const runHealthCheck = async () => {
@@ -88,18 +101,27 @@ const Troubleshooting: React.FC = () => {
     updateScriptStatus('healthCheck', 'running', []);
 
     try {
-      // Call backend API to run health-check.sh
+      // Call backend API to run health-check.sh with JSON output
       const response = await fetch('/api/troubleshooting/health-check', {
         method: 'POST',
       });
 
       const data = await response.json();
 
-      // Update health checks based on response
-      setHealthChecks(data.healthChecks || []);
+      // Map services from JSON to health checks
+      if (data.services) {
+        const mappedChecks = data.services.map((service: any) => ({
+          name: service.name,
+          status: service.status,
+          message: `${service.message} ${service.mode !== 'none' ? `[${service.mode}]` : ''}`
+        }));
+        setHealthChecks(mappedChecks);
+      }
+
       updateScriptStatus('healthCheck', 'success', data.output || [], data.exitCode);
     } catch (error) {
-      updateScriptStatus('healthCheck', 'error', [`Error: ${error.message}`], 1);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      updateScriptStatus('healthCheck', 'error', [`Error: ${errorMessage}`], 1);
     } finally {
       setLoading(false);
     }
@@ -120,7 +142,8 @@ const Troubleshooting: React.FC = () => {
       setSystemChecks(data.systemChecks || []);
       updateScriptStatus('requirements', 'success', data.output || [], data.exitCode);
     } catch (error) {
-      updateScriptStatus('requirements', 'error', [`Error: ${error.message}`], 1);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      updateScriptStatus('requirements', 'error', [`Error: ${errorMessage}`], 1);
     } finally {
       setLoading(false);
     }
@@ -143,49 +166,158 @@ const Troubleshooting: React.FC = () => {
       // Re-run health check after recovery
       setTimeout(() => runHealthCheck(), 2000);
     } catch (error) {
-      updateScriptStatus('autoRecover', 'error', [`Error: ${error.message}`], 1);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      updateScriptStatus('autoRecover', 'error', [`Error: ${errorMessage}`], 1);
     } finally {
       setLoading(false);
     }
   };
 
-  // Run clean install
-  const runCleanInstall = async () => {
-    if (!window.confirm('This will reinstall all dependencies and rebuild FlexGate. Database data will be preserved. Continue?')) {
-      return;
-    }
-
-    setLoading(true);
-    updateScriptStatus('cleanInstall', 'running', []);
-
+  // Verify admin password
+  const verifyAdminPassword = async (password: string): Promise<boolean> => {
     try {
-      const response = await fetch('/api/troubleshooting/clean-install', {
+      const response = await fetch('/api/troubleshooting/verify-admin', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
       });
 
       const data = await response.json();
-
-      updateScriptStatus('cleanInstall', 'success', data.output || [], data.exitCode);
+      return data.verified === true;
     } catch (error) {
-      updateScriptStatus('cleanInstall', 'error', [`Error: ${error.message}`], 1);
-    } finally {
-      setLoading(false);
+      console.error('Password verification error:', error);
+      return false;
+    }
+  };
+
+  // Run clean install
+  const runCleanInstall = async () => {
+    // Verify admin password first
+    const isVerified = await verifyAdminPassword(cleanInstallPassword);
+    
+    if (!isVerified) {
+      setPasswordError('Invalid admin password. Access denied.');
+      return;
+    }
+
+    // Close password dialog and open progress dialog
+    setCleanInstallDialog(false);
+    const password = cleanInstallPassword;
+    setCleanInstallPassword('');
+    setPasswordError('');
+    
+    // Reset progress state
+    setInstallProgress(0);
+    setInstallLogs([]);
+    setInstallComplete(false);
+    setInstallSuccess(false);
+    setCleanInstallProgress(true);
+    
+    try {
+      // Step 1: Start the standalone progress server
+      setInstallLogs(['🚀 Starting progress server...']);
+      const startResponse = await fetch('/api/troubleshooting/start-progress-server', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+
+      if (!startResponse.ok) {
+        const error = await startResponse.json();
+        setInstallLogs(prev => [...prev, `❌ Failed to start progress server: ${error.error}`]);
+        setInstallComplete(true);
+        setInstallSuccess(false);
+        return;
+      }
+
+      const startResult = await startResponse.json();
+      setInstallLogs(prev => [...prev, `✅ ${startResult.message} (port ${startResult.port})`]);
+      
+      // Step 2: Connect to the progress stream
+      // This server runs independently and won't be killed during clean install
+      const eventSource = new EventSource(
+        `http://localhost:8082/stream?password=${encodeURIComponent(password)}`
+      );
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          switch (data.type) {
+            case 'connected':
+              setInstallLogs(prev => [...prev, data.message]);
+              break;
+              
+            case 'progress':
+              setInstallProgress(data.progress);
+              setInstallLogs(prev => [...prev, data.message]);
+              break;
+              
+            case 'complete':
+              setInstallComplete(true);
+              setInstallSuccess(data.success);
+              setInstallLogs(prev => [...prev, data.message]);
+              eventSource.close();
+              
+              // Update script status
+              updateScriptStatus(
+                'cleanInstall',
+                data.success ? 'success' : 'error',
+                [...installLogs, data.message],
+                data.exitCode
+              );
+              break;
+          }
+        } catch (error) {
+          console.error('Error parsing SSE data:', error);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE error:', error);
+        setInstallComplete(true);
+        setInstallSuccess(false);
+        setInstallLogs(prev => [...prev, '❌ Connection error - installation may have failed']);
+        eventSource.close();
+        updateScriptStatus('cleanInstall', 'error', installLogs, 1);
+      };
+    } catch (error: any) {
+      setInstallLogs(prev => [...prev, `❌ Error: ${error.message}`]);
+      setInstallComplete(true);
+      setInstallSuccess(false);
     }
   };
 
   // Run nuclear reset
   const runNuclearReset = async () => {
     if (nuclearConfirmText !== 'DELETE EVERYTHING') {
-      alert('Please type "DELETE EVERYTHING" to confirm');
+      setPasswordError('Please type "DELETE EVERYTHING" to confirm');
+      return;
+    }
+
+    // Verify admin password
+    const isVerified = await verifyAdminPassword(nuclearResetPassword);
+    
+    if (!isVerified) {
+      setPasswordError('Invalid admin password. Access denied.');
       return;
     }
 
     setLoading(true);
     setNuclearResetDialog(false);
+    setNuclearConfirmText('');
+    setNuclearResetPassword('');
+    setPasswordError('');
 
     try {
       const response = await fetch('/api/troubleshooting/nuclear-reset', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ adminPassword: nuclearResetPassword }),
       });
 
       const data = await response.json();
@@ -193,7 +325,8 @@ const Troubleshooting: React.FC = () => {
       alert('Nuclear reset complete. You will need to reinstall FlexGate.');
       window.location.reload();
     } catch (error) {
-      alert(`Error: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Error: ${errorMessage}`);
     } finally {
       setLoading(false);
       setNuclearConfirmText('');
@@ -258,16 +391,16 @@ const Troubleshooting: React.FC = () => {
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
-      <Grid container spacing={3}>
+      <Stack spacing={3}>
         {/* Quick Actions */}
-        <Grid item xs={12}>
+        <Box sx={{ width: "100%" }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Quick Actions
               </Typography>
-              <Grid container spacing={2}>
-                <Grid item>
+              <Stack spacing={2}>
+                <Box>
                   <Button
                     variant="contained"
                     color="primary"
@@ -277,8 +410,8 @@ const Troubleshooting: React.FC = () => {
                   >
                     Run Health Check
                   </Button>
-                </Grid>
-                <Grid item>
+                </Box>
+                <Box>
                   <Button
                     variant="contained"
                     color="info"
@@ -288,8 +421,8 @@ const Troubleshooting: React.FC = () => {
                   >
                     Check Requirements
                   </Button>
-                </Grid>
-                <Grid item>
+                </Box>
+                <Box>
                   <Button
                     variant="contained"
                     color="warning"
@@ -299,36 +432,26 @@ const Troubleshooting: React.FC = () => {
                   >
                     Auto Recovery
                   </Button>
-                </Grid>
-                <Grid item>
+                </Box>
+                <Box>
                   <Button
                     variant="outlined"
                     color="secondary"
                     startIcon={<BuildIcon />}
-                    onClick={runCleanInstall}
+                    onClick={() => setCleanInstallDialog(true)}
                     disabled={loading}
                   >
                     Clean Install
                   </Button>
-                </Grid>
-                <Grid item>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<DeleteForeverIcon />}
-                    onClick={() => setNuclearResetDialog(true)}
-                    disabled={loading}
-                  >
-                    Nuclear Reset
-                  </Button>
-                </Grid>
-              </Grid>
+                </Box>
+                {/* Nuclear Reset button temporarily removed */}
+              </Stack>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
         {/* Service Health Status */}
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -355,10 +478,10 @@ const Troubleshooting: React.FC = () => {
               </List>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
         {/* System Requirements */}
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -385,10 +508,10 @@ const Troubleshooting: React.FC = () => {
               </List>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
         {/* Script Execution Logs */}
-        <Grid item xs={12}>
+        <Box sx={{ width: "100%" }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -447,10 +570,10 @@ const Troubleshooting: React.FC = () => {
               ))}
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
         {/* Common Errors Reference */}
-        <Grid item xs={12}>
+        <Box sx={{ width: "100%" }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -531,10 +654,10 @@ const Troubleshooting: React.FC = () => {
               </Accordion>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
         {/* Recovery Workflow Guide */}
-        <Grid item xs={12}>
+        <Box sx={{ width: "100%" }}>
           <Alert severity="info">
             <Typography variant="subtitle2" gutterBottom>
               Recovery Workflow
@@ -547,53 +670,156 @@ const Troubleshooting: React.FC = () => {
               3. <strong>Clean Install:</strong> If still failing, run Clean Install (5 min)
               <br />
               4. <strong>Requirements:</strong> Check system requirements
-              <br />
-              5. <strong>Nuclear Reset:</strong> Last resort - destroys all data (10 min)
             </Typography>
           </Alert>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
 
-      {/* Nuclear Reset Confirmation Dialog */}
-      <Dialog open={nuclearResetDialog} onClose={() => setNuclearResetDialog(false)}>
-        <DialogTitle>☢️ Nuclear Reset - Confirm</DialogTitle>
+      {/* Nuclear Reset temporarily disabled */}
+
+      {/* Clean Install Confirmation Dialog */}
+      <Dialog open={cleanInstallDialog} onClose={() => {
+        setCleanInstallDialog(false);
+        setCleanInstallPassword('');
+        setPasswordError('');
+      }}>
+        <DialogTitle>🧹 Clean Install - Admin Authorization Required</DialogTitle>
         <DialogContent>
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="warning" sx={{ mb: 2 }}>
             <Typography variant="subtitle2" gutterBottom>
-              WARNING: This will DESTROY ALL DATA
+              This operation requires admin authorization
             </Typography>
             <Typography variant="body2">
-              • All containers will be removed
+              • Removes backend node_modules only
               <br />
-              • All volumes will be deleted (DATABASE DATA LOST)
+              • Clears backend build artifacts
               <br />
-              • All dependencies will be removed
+              • Fresh npm install for backend (~5 minutes)
               <br />
-              • All build artifacts will be deleted
-              <br />• You will need to reinstall FlexGate
+              • Rebuilds backend
+              <br />
+              <strong>✅ Admin UI stays running - you'll see live progress</strong>
+              <br />
+              <strong>✅ Database data will be preserved</strong>
             </Typography>
           </Alert>
 
           <Typography variant="body2" gutterBottom>
-            Type <strong>"DELETE EVERYTHING"</strong> to confirm:
+            Enter admin password to proceed:
           </Typography>
           <TextField
             fullWidth
-            value={nuclearConfirmText}
-            onChange={(e) => setNuclearConfirmText(e.target.value)}
-            placeholder="DELETE EVERYTHING"
+            type="password"
+            value={cleanInstallPassword}
+            onChange={(e) => {
+              setCleanInstallPassword(e.target.value);
+              setPasswordError('');
+            }}
+            placeholder="Admin password"
+            error={!!passwordError}
+            helperText={passwordError}
             sx={{ mt: 1 }}
+            autoFocus
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setNuclearResetDialog(false)}>Cancel</Button>
+          <Button onClick={() => {
+            setCleanInstallDialog(false);
+            setCleanInstallPassword('');
+            setPasswordError('');
+          }}>Cancel</Button>
           <Button
-            onClick={runNuclearReset}
-            color="error"
+            onClick={runCleanInstall}
+            color="secondary"
             variant="contained"
-            disabled={nuclearConfirmText !== 'DELETE EVERYTHING'}
+            disabled={!cleanInstallPassword}
           >
-            Confirm Nuclear Reset
+            Confirm Clean Install
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Clean Install Progress Dialog */}
+      <Dialog 
+        open={cleanInstallProgress} 
+        onClose={() => {
+          // Only allow closing if installation is complete
+          if (installComplete) {
+            setCleanInstallProgress(false);
+          }
+        }}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown={!installComplete}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            {installComplete ? (
+              installSuccess ? (
+                <>
+                  <CheckCircle color="success" />
+                  Clean Installation Complete
+                </>
+              ) : (
+                <>
+                  <ErrorCircleIcon color="error" />
+                  Installation Failed
+                </>
+              )
+            ) : (
+              <>
+                <CircularProgress size={20} />
+                Installing Backend Dependencies...
+              </>
+            )}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Box sx={{ flex: 1, mr: 1 }}>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={installProgress} 
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+              </Box>
+              <Typography variant="body2" color="text.secondary">
+                {installProgress}%
+              </Typography>
+            </Box>
+            {!installComplete && (
+              <Typography variant="caption" color="text.secondary">
+                The Admin UI will remain accessible during installation
+              </Typography>
+            )}
+          </Box>
+
+          <Box 
+            sx={{ 
+              bgcolor: '#1e1e1e',
+              color: '#d4d4d4',
+              p: 2,
+              borderRadius: 1,
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+              maxHeight: 400,
+              overflowY: 'auto',
+            }}
+          >
+            {installLogs.map((log, index) => (
+              <div key={index}>{log}</div>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setCleanInstallProgress(false)}
+            disabled={!installComplete}
+            variant="contained"
+            color={installSuccess ? 'primary' : 'error'}
+          >
+            {installComplete ? 'Close' : 'Please wait...'}
           </Button>
         </DialogActions>
       </Dialog>

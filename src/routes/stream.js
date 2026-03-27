@@ -39,6 +39,7 @@ router.get('/metrics', async (req, res) => {
 
   /**
    * Fallback: Poll database directly when JetStream is not available
+   * Returns a Promise that resolves when the client disconnects
    */
   const pollMetrics = async () => {
     logger.info(`Client ${clientId} using polling fallback (JetStream unavailable)`);
@@ -66,12 +67,13 @@ router.get('/metrics', async (req, res) => {
     // Poll every 5 seconds
     const pollInterval = setInterval(sendMetrics, 5000);
 
-    // Cleanup on disconnect
-    req.on('close', () => {
-      clearInterval(pollInterval);
+    // Return a Promise that resolves when client disconnects
+    return new Promise((resolve) => {
+      req.on('close', () => {
+        clearInterval(pollInterval);
+        resolve();
+      });
     });
-
-    return pollInterval;
   };
 
   /**
@@ -98,8 +100,9 @@ router.get('/metrics', async (req, res) => {
     try {
       if (!jetStreamService.isConnected()) {
         logger.warn(`Client ${clientId}: JetStream not connected, using polling fallback`);
-        await pollMetrics();
-        return;
+        // Note: pollMetrics() sets up intervals and doesn't return until client disconnects
+        // So we should NOT reach the finally block when polling
+        return await pollMetrics();
       }
 
       logger.info(`Client ${clientId} using JetStream streaming`);
@@ -108,8 +111,8 @@ router.get('/metrics', async (req, res) => {
       const js = jetStreamService.js;
       if (!js) {
         logger.warn(`Client ${clientId}: JetStream client not initialized, using polling fallback`);
-        await pollMetrics();
-        return;
+        // Note: pollMetrics() sets up intervals and doesn't return until client disconnects
+        return await pollMetrics();
       }
 
       // Subscribe to metrics stream with ephemeral consumer

@@ -50,22 +50,62 @@ echo ""
 echo "🔍 Checking port availability..."
 
 check_port() {
-    if lsof -Pi :$1 -sTCP:LISTEN -t >/dev/null 2>&1; then
-        echo "❌ Port $1 already in use"
-        lsof -i :$1 | grep LISTEN
+    local PORT=$1
+    local SERVICE_NAME=$2
+    
+    if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+        # Port is in use - get process info
+        local PROCESS_INFO=$(lsof -i :$PORT -sTCP:LISTEN | grep LISTEN | head -1)
+        local PID=$(echo "$PROCESS_INFO" | awk '{print $2}')
+        local COMMAND=$(echo "$PROCESS_INFO" | awk '{print $1}')
+        local USER=$(echo "$PROCESS_INFO" | awk '{print $3}')
+        
+        # Try to get more detailed process name
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS: Use ps to get full command
+            local FULL_COMMAND=$(ps -p $PID -o command= 2>/dev/null | head -c 50)
+        elif [[ "$OSTYPE" == "linux"* ]]; then
+            # Linux: Use ps to get full command
+            local FULL_COMMAND=$(ps -p $PID -o cmd= 2>/dev/null | head -c 50)
+        fi
+        
+        # Determine what's using the port
+        local USAGE_INFO=""
+        if [[ "$FULL_COMMAND" == *"node"* ]] && [[ "$FULL_COMMAND" == *"flexgate"* ]]; then
+            USAGE_INFO="FlexGate (already running)"
+        elif [[ "$FULL_COMMAND" == *"postgres"* ]]; then
+            USAGE_INFO="PostgreSQL database"
+        elif [[ "$FULL_COMMAND" == *"redis"* ]]; then
+            USAGE_INFO="Redis server"
+        elif [[ "$FULL_COMMAND" == *"haproxy"* ]]; then
+            USAGE_INFO="HAProxy load balancer"
+        elif [[ "$FULL_COMMAND" == *"prometheus"* ]]; then
+            USAGE_INFO="Prometheus monitoring"
+        elif [[ "$FULL_COMMAND" == *"react-scripts"* ]] || [[ "$FULL_COMMAND" == *"webpack"* ]]; then
+            USAGE_INFO="React dev server"
+        elif [[ "$FULL_COMMAND" == *"npm"* ]] || [[ "$FULL_COMMAND" == *"node"* ]]; then
+            USAGE_INFO="Node.js application"
+        else
+            USAGE_INFO="$COMMAND (PID: $PID, User: $USER)"
+        fi
+        
+        echo "❌ Port $PORT already in use by: $USAGE_INFO"
+        if [[ -n "$FULL_COMMAND" ]]; then
+            echo "   Command: ${FULL_COMMAND}..."
+        fi
         return 1
     else
-        echo "✅ Port $1 available"
+        echo "✅ Port $PORT available ($SERVICE_NAME)"
         return 0
     fi
 }
 
-check_port 3000  # FlexGate backend
-check_port 3001  # Admin UI / Grafana
-check_port 5432  # PostgreSQL
-check_port 6379  # Redis
-check_port 8080  # HAProxy
-check_port 9090  # Prometheus
+check_port 3000 "FlexGate backend"
+check_port 3001 "Admin UI"
+check_port 5432 "PostgreSQL"
+check_port 6379 "Redis"
+check_port 8080 "HAProxy"
+check_port 9090 "Prometheus"
 
 # Check disk space
 echo ""

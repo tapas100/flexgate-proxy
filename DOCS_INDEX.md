@@ -13,6 +13,12 @@
 | **Set up the database** | [README.md](README.md) → Setup Database |
 | **Use the Admin UI** | [docs/features/01-admin-ui.md](docs/features/01-admin-ui.md) |
 | **Configure webhooks** | [docs/features/07-webhooks.md](docs/features/07-webhooks.md) |
+| **Test before production** | [PRODUCTION_TESTING_PLAN.md](PRODUCTION_TESTING_PLAN.md) ⭐ **NEW** |
+| **Quick testing reference** | [QUICK_TEST_REFERENCE.md](QUICK_TEST_REFERENCE.md) ⭐ **NEW** |
+| **Run automated tests** | [scripts/testing/critical-path-test.sh](scripts/testing/critical-path-test.sh) ⭐ **NEW** |
+| **Generate test data** | [TEST_DATA_REQUIREMENTS.md](TEST_DATA_REQUIREMENTS.md) ⭐ **NEW** |
+| **Quick test data setup** | [scripts/testing/quick-test-data.sh](scripts/testing/quick-test-data.sh) ⭐ **NEW** |
+| **View test results** | [TEST_EXECUTION_COMPLETE.md](TEST_EXECUTION_COMPLETE.md) ⭐ **NEW** |
 | **Fix failing tests** | [TEST_IMPROVEMENTS.md](TEST_IMPROVEMENTS.md) |
 | **Update test code** | [QUICK_TEST_UPDATE.md](QUICK_TEST_UPDATE.md) |
 | **Check documentation status** | [DOCUMENTATION_STATUS.md](DOCUMENTATION_STATUS.md) |
@@ -116,6 +122,49 @@ Security documentation:
 
 ### Testing Documentation
 
+#### [PRODUCTION_TESTING_PLAN.md](PRODUCTION_TESTING_PLAN.md) ⭐ **NEW**
+Comprehensive end-to-end testing plan:
+- 12 major test sections
+- 100+ detailed test cases
+- Step-by-step instructions
+- Circuit breaker testing (all states)
+- Rate limiter testing (global + per-route)
+- AI incident management (complete workflow)
+- Admin UI testing (all pages)
+- CLI testing (all 10 commands)
+- Database & metrics verification
+- Security & performance testing
+- Production readiness checklist
+
+#### [QUICK_TEST_REFERENCE.md](QUICK_TEST_REFERENCE.md) ⭐ **NEW**
+Fast reference for common tests:
+- 5-minute quick start test
+- Circuit breaker (10 min)
+- Rate limiter (5 min)
+- AI incidents (15 min)
+- Admin UI (10 min)
+- CLI commands (5 min)
+- Database checks (2 min)
+- Troubleshooting guide
+
+#### [TESTING_DOCUMENTATION.md](TESTING_DOCUMENTATION.md) ⭐ **NEW**
+Testing documentation summary:
+- How to use the testing suite
+- Test coverage matrix
+- Critical path tests
+- Execution tracking
+- CI/CD integration
+- Best practices
+
+#### [scripts/testing/critical-path-test.sh](scripts/testing/critical-path-test.sh) ⭐ **NEW**
+Automated test runner:
+- 9 test sections
+- ~30 automated checks
+- Color-coded output
+- Pass/fail summary
+- Exit codes for CI/CD
+- Run: `./scripts/testing/critical-path-test.sh`
+
 #### [TEST_IMPROVEMENTS.md](TEST_IMPROVEMENTS.md)
 Technical guide for test fixes:
 - Dashboard timeout issue (networkidle vs SSE)
@@ -169,6 +218,18 @@ Documentation completeness report:
 3. Use REST API: `POST /api/webhooks`
 
 ### I'm a QA Engineer...
+
+**Want to test before production?**
+1. Read [PRODUCTION_TESTING_PLAN.md](PRODUCTION_TESTING_PLAN.md) - Complete testing plan
+2. Use [QUICK_TEST_REFERENCE.md](QUICK_TEST_REFERENCE.md) - Fast 5-15 minute tests
+3. Run [scripts/testing/critical-path-test.sh](scripts/testing/critical-path-test.sh) - Automated test suite
+4. Set up test data with [TEST_DATA_REQUIREMENTS.md](TEST_DATA_REQUIREMENTS.md)
+
+**Need test data?**
+1. Read [TEST_DATA_REQUIREMENTS.md](TEST_DATA_REQUIREMENTS.md) - Complete data requirements
+2. Run `./scripts/testing/quick-test-data.sh` - Generate test data (5 minutes)
+3. Or use `database/seeds/test-data.sql` - SQL seed file (30 incidents)
+4. Clean up with `./scripts/testing/cleanup-test-data.sh`
 
 **Tests failing?**
 1. Read [TEST_IMPROVEMENTS.md](TEST_IMPROVEMENTS.md) - Understand fixes

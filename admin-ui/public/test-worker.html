@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Web Worker Test</title>
+</head>
+<body>
+    <h1>Testing Web Worker (Not WASM)</h1>
+    <button onclick="testWorker()">Test Worker</button>
+    <div id="results"></div>
+
+    <script>
+        async function testWorker() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h3>Testing...</h3>';
+
+            // Check if Worker is supported
+            if (typeof Worker === 'undefined') {
+                results.innerHTML = '<p style="color: red;">❌ Web Workers not supported</p>';
+                return;
+            }
+
+            results.innerHTML += '<p>✅ Web Workers supported</p>';
+
+            // Try to create a simple worker
+            try {
+                const blob = new Blob([`
+                    self.addEventListener('message', (e) => {
+                        const { data } = e.data;
+                        // Process data
+                        const result = data.map(x => x * 2);
+                        self.postMessage({ result });
+                    });
+                `], { type: 'application/javascript' });
+                
+                const workerUrl = URL.createObjectURL(blob);
+                const worker = new Worker(workerUrl);
+
+                worker.onmessage = (e) => {
+                    results.innerHTML += '<p style="color: green;">✅ Worker is processing data!</p>';
+                    results.innerHTML += '<p>Input: [1,2,3] → Output: ' + JSON.stringify(e.data.result) + '</p>';
+                    worker.terminate();
+                };
+
+                worker.onerror = (err) => {
+                    results.innerHTML += '<p style="color: red;">❌ Worker error: ' + err.message + '</p>';
+                };
+
+                // Send test data
+                worker.postMessage({ data: [1, 2, 3] });
+
+            } catch (error) {
+                results.innerHTML += '<p style="color: red;">❌ Worker creation failed: ' + error.message + '</p>';
+            }
+
+            // Check for WASM
+            results.innerHTML += '<h3>WASM Check:</h3>';
+            if (typeof WebAssembly === 'undefined') {
+                results.innerHTML += '<p style="color: orange;">⚠️ WebAssembly not supported (but Worker works!)</p>';
+            } else {
+                results.innerHTML += '<p>✅ WebAssembly supported (but not loaded yet)</p>';
+                results.innerHTML += '<p style="color: blue;">ℹ️ To load WASM: Install Rust and run <code>cd wasm && ./build.sh</code></p>';
+            }
+        }
+    </script>
+</body>
+</html>

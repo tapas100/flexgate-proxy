@@ -7,7 +7,7 @@ import {
   Switch,
   FormControlLabel,
   Button,
-  Grid,
+  Stack,
   Divider,
   Alert,
   Tabs,
@@ -292,37 +292,58 @@ const GeneralSettingsComponent: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Server Configuration
           </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Port"
-                type="number"
-                value={settings.server.port}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    server: { ...settings.server, port: parseInt(e.target.value) },
-                  })
-                }
-                helperText="Port number for FlexGate to listen on"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Host"
-                value={settings.server.host}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    server: { ...settings.server, host: e.target.value },
-                  })
-                }
-                helperText="Network interface to bind to (0.0.0.0 for all)"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
+          
+          {/* Infrastructure Settings (Read-only) */}
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Infrastructure Settings
+            </Typography>
+            <Typography variant="body2">
+              Port and Host cannot be changed via Settings UI. These require updating multiple configuration files and restarting all services.
+            </Typography>
+          </Alert>
+
+          <Stack spacing={3}>
+            {/* Port - Read-only Display */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Server Port
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip 
+                  label={`Port ${settings.server.port}`} 
+                  color="primary" 
+                  variant="outlined"
+                  size="medium"
+                />
+                <Typography variant="caption" color="text.secondary">
+                  (Read-only - Edit config/flexgate.json to change)
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Host - Read-only Display */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Server Host
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip 
+                  label={settings.server.host} 
+                  color="primary" 
+                  variant="outlined"
+                  size="medium"
+                />
+                <Typography variant="caption" color="text.secondary">
+                  (Read-only - Bind address for network interface)
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
+
+            {/* Editable Settings */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Base Path"
@@ -335,8 +356,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Base URL path for the gateway"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Max Connections"
@@ -350,8 +371,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Maximum concurrent connections"
               />
-            </Grid>
-            <Grid item xs={12}>
+            </Box>
+            <Box sx={{ width: "100%" }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -369,16 +390,16 @@ const GeneralSettingsComponent: React.FC = () => {
               <Typography variant="caption" display="block" color="text.secondary">
                 Enable when behind a load balancer or reverse proxy
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
+            <Box sx={{ width: "100%" }}>
               <Divider sx={{ my: 2 }} />
               <Typography variant="subtitle1" gutterBottom>
                 Compression
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} md={6}>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -399,8 +420,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 label="Enable Compression"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Compression Level"
@@ -422,16 +443,16 @@ const GeneralSettingsComponent: React.FC = () => {
                 helperText="1 (fast) to 9 (best compression)"
                 disabled={!settings.server.compression.enabled}
               />
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
+            <Box sx={{ width: "100%" }}>
               <Divider sx={{ my: 2 }} />
               <Typography variant="subtitle1" gutterBottom>
                 Admin UI
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} md={6}>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Admin UI Path"
@@ -444,8 +465,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="URL path for Admin UI (e.g., /admin)"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Session Timeout (ms)"
@@ -459,8 +480,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Session duration in milliseconds"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Max Login Attempts"
@@ -474,8 +495,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Failed attempts before lockout"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Lockout Duration (ms)"
@@ -489,8 +510,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Account lockout time in milliseconds"
               />
-            </Grid>
-          </Grid>
+            </Box>
+          </Stack>
         </Paper>
       </TabPanel>
 
@@ -512,69 +533,77 @@ const GeneralSettingsComponent: React.FC = () => {
             </Button>
           </Box>
 
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Host"
-                value={settings.database.host}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    database: { ...settings.database, host: e.target.value },
-                  })
-                }
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Port"
-                type="number"
-                value={settings.database.port}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    database: { ...settings.database, port: parseInt(e.target.value) },
-                  })
-                }
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Database Name"
-                value={settings.database.database}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    database: { ...settings.database, database: e.target.value },
-                  })
-                }
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="User"
-                value={settings.database.user}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    database: { ...settings.database, user: e.target.value },
-                  })
-                }
-              />
-            </Grid>
+          {/* Infrastructure Settings (Read-only) */}
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Connection Settings (Read-only)
+            </Typography>
+            <Typography variant="body2">
+              Database connection settings cannot be changed while FlexGate is running. Edit config/flexgate.json to change.
+            </Typography>
+          </Alert>
 
-            <Grid item xs={12}>
+          <Stack spacing={3}>
+            {/* Host - Read-only */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Database Host
+              </Typography>
+              <Chip 
+                label={settings.database.host} 
+                color="primary" 
+                variant="outlined"
+                size="medium"
+              />
+            </Box>
+
+            {/* Port - Read-only */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Database Port
+              </Typography>
+              <Chip 
+                label={`Port ${settings.database.port}`} 
+                color="primary" 
+                variant="outlined"
+                size="medium"
+              />
+            </Box>
+
+            {/* Database Name - Read-only */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Database Name
+              </Typography>
+              <Chip 
+                label={settings.database.database} 
+                color="primary" 
+                variant="outlined"
+                size="medium"
+              />
+            </Box>
+
+            {/* User - Read-only */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Database User
+              </Typography>
+              <Chip 
+                label={settings.database.user} 
+                color="primary" 
+                variant="outlined"
+                size="medium"
+              />
+            </Box>
+
+            <Box sx={{ width: "100%" }}>
               <Divider sx={{ my: 2 }} />
               <Typography variant="subtitle1" gutterBottom>
-                Connection Pool
+                Connection Pool (Editable)
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} md={4}>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 32%" } }}>
               <TextField
                 fullWidth
                 label="Min Connections"
@@ -590,8 +619,8 @@ const GeneralSettingsComponent: React.FC = () => {
                   })
                 }
               />
-            </Grid>
-            <Grid item xs={12} md={4}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 32%" } }}>
               <TextField
                 fullWidth
                 label="Max Connections"
@@ -607,8 +636,8 @@ const GeneralSettingsComponent: React.FC = () => {
                   })
                 }
               />
-            </Grid>
-            <Grid item xs={12} md={4}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 32%" } }}>
               <TextField
                 fullWidth
                 label="Idle Timeout (ms)"
@@ -624,9 +653,9 @@ const GeneralSettingsComponent: React.FC = () => {
                   })
                 }
               />
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
+            <Box sx={{ width: "100%" }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -644,8 +673,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 label="Enable SSL/TLS"
               />
-            </Grid>
-          </Grid>
+            </Box>
+          </Stack>
         </Paper>
       </TabPanel>
 
@@ -667,50 +696,63 @@ const GeneralSettingsComponent: React.FC = () => {
             </Button>
           </Box>
 
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Host"
-                value={settings.redis.host}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    redis: { ...settings.redis, host: e.target.value },
-                  })
-                }
+          {/* Infrastructure Settings (Read-only) */}
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Connection Settings (Read-only)
+            </Typography>
+            <Typography variant="body2">
+              Redis connection settings cannot be changed while FlexGate is running. Edit config/flexgate.json to change.
+            </Typography>
+          </Alert>
+
+          <Stack spacing={3}>
+            {/* Host - Read-only */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Redis Host
+              </Typography>
+              <Chip 
+                label={settings.redis.host} 
+                color="secondary" 
+                variant="outlined"
+                size="medium"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Port"
-                type="number"
-                value={settings.redis.port}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    redis: { ...settings.redis, port: parseInt(e.target.value) },
-                  })
-                }
+            </Box>
+
+            {/* Port - Read-only */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Redis Port
+              </Typography>
+              <Chip 
+                label={`Port ${settings.redis.port}`} 
+                color="secondary" 
+                variant="outlined"
+                size="medium"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Database Number"
-                type="number"
-                value={settings.redis.db}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    redis: { ...settings.redis, db: parseInt(e.target.value) },
-                  })
-                }
-                helperText="Redis database number (0-15)"
+            </Box>
+
+            {/* Database Number - Read-only */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Database Number
+              </Typography>
+              <Chip 
+                label={`DB ${settings.redis.db}`} 
+                color="secondary" 
+                variant="outlined"
+                size="medium"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+              <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                Redis database number (0-15)
+              </Typography>
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
+
+            {/* Editable Settings */}
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Key Prefix"
@@ -723,16 +765,16 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Prefix for all Redis keys"
               />
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
+            <Box sx={{ width: "100%" }}>
               <Divider sx={{ my: 2 }} />
               <Typography variant="subtitle1" gutterBottom>
                 Cache Settings
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} md={6}>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Default TTL (ms)"
@@ -749,8 +791,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Default cache lifetime in milliseconds"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Max Memory (MB)"
@@ -767,8 +809,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Maximum cache memory"
               />
-            </Grid>
-          </Grid>
+            </Box>
+          </Stack>
         </Paper>
       </TabPanel>
 
@@ -779,13 +821,13 @@ const GeneralSettingsComponent: React.FC = () => {
             Security Configuration
           </Typography>
 
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
+          <Stack spacing={3}>
+            <Box sx={{ width: "100%" }}>
               <Typography variant="subtitle1" gutterBottom>
                 JWT Settings
               </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Algorithm"
@@ -807,8 +849,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 <option value="HS512">HS512</option>
                 <option value="RS256">RS256</option>
               </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Token Expiration"
@@ -824,16 +866,16 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="e.g., 24h, 7d, 30d"
               />
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
+            <Box sx={{ width: "100%" }}>
               <Divider sx={{ my: 2 }} />
               <Typography variant="subtitle1" gutterBottom>
                 CORS Settings
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
+            <Box sx={{ width: "100%" }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -851,11 +893,11 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 label="Enable CORS"
               />
-            </Grid>
+            </Box>
 
             {settings.security.cors.enabled && (
               <>
-                <Grid item xs={12}>
+                <Box sx={{ width: "100%" }}>
                   <TextField
                     fullWidth
                     label="Allowed Origins"
@@ -876,8 +918,8 @@ const GeneralSettingsComponent: React.FC = () => {
                     multiline
                     rows={2}
                   />
-                </Grid>
-                <Grid item xs={12}>
+                </Box>
+                <Box sx={{ width: "100%" }}>
                   <Box>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
                       Allowed Methods
@@ -888,8 +930,8 @@ const GeneralSettingsComponent: React.FC = () => {
                       ))}
                     </Box>
                   </Box>
-                </Grid>
-                <Grid item xs={12}>
+                </Box>
+                <Box sx={{ width: "100%" }}>
                   <FormControlLabel
                     control={
                       <Switch
@@ -907,10 +949,10 @@ const GeneralSettingsComponent: React.FC = () => {
                     }
                     label="Allow Credentials"
                   />
-                </Grid>
+                </Box>
               </>
             )}
-          </Grid>
+          </Stack>
         </Paper>
       </TabPanel>
 
@@ -921,8 +963,8 @@ const GeneralSettingsComponent: React.FC = () => {
             Logging Configuration
           </Typography>
 
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Stack spacing={3}>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Log Level"
@@ -941,8 +983,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 <option value="warn">Warn (Warnings only)</option>
                 <option value="error">Error (Errors only)</option>
               </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Log Format"
@@ -959,8 +1001,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 <option value="json">JSON</option>
                 <option value="text">Text</option>
               </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Max File Size (bytes)"
@@ -974,8 +1016,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Log rotation size (default: 10MB)"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Max Files"
@@ -989,8 +1031,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 helperText="Number of log files to retain"
               />
-            </Grid>
-          </Grid>
+            </Box>
+          </Stack>
         </Paper>
       </TabPanel>
 
@@ -1001,13 +1043,13 @@ const GeneralSettingsComponent: React.FC = () => {
             Monitoring Configuration
           </Typography>
 
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
+          <Stack spacing={3}>
+            <Box sx={{ width: "100%" }}>
               <Typography variant="subtitle1" gutterBottom>
                 Prometheus
               </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -1028,8 +1070,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 label="Enable Prometheus Metrics"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Metrics Endpoint"
@@ -1048,16 +1090,16 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 disabled={!settings.monitoring.prometheus.enabled}
               />
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
+            <Box sx={{ width: "100%" }}>
               <Divider sx={{ my: 2 }} />
               <Typography variant="subtitle1" gutterBottom>
                 Distributed Tracing
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} md={6}>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -1078,8 +1120,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 }
                 label="Enable Tracing"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
               <TextField
                 fullWidth
                 label="Sample Rate"
@@ -1101,8 +1143,8 @@ const GeneralSettingsComponent: React.FC = () => {
                 helperText="0.1 = 10% of requests"
                 disabled={!settings.monitoring.tracing.enabled}
               />
-            </Grid>
-          </Grid>
+            </Box>
+          </Stack>
         </Paper>
       </TabPanel>
 

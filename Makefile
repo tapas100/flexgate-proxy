@@ -47,7 +47,6 @@ start:
 	@echo "  - API Gateway:  http://localhost:8080"
 	@echo "  - HAProxy Stats: http://localhost:8404/stats (admin/changeme)"
 	@echo "  - Prometheus:    http://localhost:9090"
-	@echo "  - Grafana:       http://localhost:3001 (admin/admin)"
 
 # Stop all services
 stop:
@@ -169,6 +168,3 @@ deploy:
 metrics:
 	@open http://localhost:9090 || xdg-open http://localhost:9090
 
-# Open Grafana
-grafana:
-	@open http://localhost:3001 || xdg-open http://localhost:3001

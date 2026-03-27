@@ -12,45 +12,59 @@ import { getAuthStatus } from '../src/auth';
 
 const router: Router = express.Router();
 
+// Demo credentials from environment (for testing only)
+const DEMO_MODE_ENABLED = process.env.DEMO_MODE === 'true';
+const DEMO_EMAIL = process.env.DEMO_EMAIL || 'admin@flexgate.dev';
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD; // Required if DEMO_MODE enabled
+
+if (DEMO_MODE_ENABLED && !DEMO_PASSWORD) {
+  console.warn('⚠️  WARNING: DEMO_MODE is enabled but DEMO_PASSWORD is not set!');
+  console.warn('⚠️  Demo login will be disabled for security.');
+}
+
 /**
  * POST /api/auth/login
  * Simple login for development/testing (bypasses SAML)
- * TODO: Remove in production
+ * Only enabled when DEMO_MODE=true
  */
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    // Simple validation for demo credentials
-    if (email === 'admin@flexgate.dev' && password === 'admin123') {
-      const token = `demo-token-${Date.now()}`;
-      const sessionId = `session-${Date.now()}`;
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-      const sessionCache = getSessionCache();
-      
-      const user = {
-        id: 'demo-admin-001',
-        email: email,
-        name: 'Demo Admin',
-        role: 'admin',
-      };
+    // Demo mode authentication (only if explicitly enabled)
+    if (DEMO_MODE_ENABLED && DEMO_PASSWORD) {
+      if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+        const token = `demo-token-${Date.now()}`;
+        const sessionId = `session-${Date.now()}`;
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        const sessionCache = getSessionCache();
+        
+        const user = {
+          id: 'demo-admin-001',
+          email: email,
+          name: 'Demo Admin',
+          role: 'admin',
+        };
 
-      // Create a demo session (token, user, sessionId, expiresAt)
-      sessionCache.set(token, user, sessionId, expiresAt);
+        // Create a demo session (token, user, sessionId, expiresAt)
+        sessionCache.set(token, user, sessionId, expiresAt);
 
-      logger.info('Demo login successful', { email });
+        logger.info('Demo login successful', { email });
 
-      res.json({
-        token,
-        user,
-      });
-      return;
+        res.json({
+          token,
+          user,
+        });
+        return;
+      }
     }
 
-    // Invalid credentials
+    // Production: Use SAML SSO
     res.status(401).json({
       error: 'Unauthorized',
-      message: 'Invalid credentials',
+      message: DEMO_MODE_ENABLED 
+        ? 'Invalid credentials'
+        : 'Please use SSO authentication via /api/auth/saml/initiate',
     });
   } catch (error) {
     logger.error('Login failed', {

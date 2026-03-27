@@ -15,11 +15,13 @@ import {
   Security as SecurityIcon,
   Notifications as NotificationsIcon,
   Settings as SettingsIcon,
+  Psychology as PsychologyIcon,
 } from '@mui/icons-material';
 import OAuthProviderList from '../components/OAuth/OAuthProviderList';
 import Breadcrumb from '../components/Common/Breadcrumb';
 import GeneralSettings from '../components/Settings/GeneralSettings';
 import NotificationsSettings from '../components/Settings/NotificationsSettings';
+import AISettings from '../components/Settings/AISettings';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +33,12 @@ const Settings: React.FC = () => {
       label: 'Authentication',
       icon: <SecurityIcon />,
       description: 'Manage OAuth providers and SSO settings',
+    },
+    {
+      path: '/settings/ai',
+      label: 'AI Configuration',
+      icon: <PsychologyIcon />,
+      description: 'Configure AI providers (Claude, Gemini, OpenAI, Groq)',
     },
     {
       path: '/settings/notifications',
@@ -110,6 +118,31 @@ const Settings: React.FC = () => {
             </>
           }
         />
+
+        {/* AI Configuration Section */}
+        <Route
+          path="/ai"
+          element={
+            <>
+              <Breadcrumb
+                items={[
+                  { label: 'Settings', path: '/settings' },
+                  { label: 'AI Configuration' },
+                ]}
+              />
+              <Typography variant="h4" gutterBottom>
+                AI Provider Settings
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Configure AI providers for intelligent incident analysis. Choose from Claude, Gemini, OpenAI, Groq, or Demo mode.
+              </Typography>
+              <AISettings />
+            </>
+          }
+        />
+
+        {/* Legacy Claude route - redirect to AI */}
+        <Route path="/claude" element={<Navigate to="/settings/ai" replace />} />
 
         {/* Notifications Section */}
         <Route

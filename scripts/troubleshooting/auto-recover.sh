@@ -1,8 +1,31 @@
 #!/bin/bash
 # auto-recover.sh - Automatic recovery of failed services
 
-echo "🔧 FlexGate Auto-Recovery System"
+echo "🔧 FlexGate Auto-Recovery System v2.1"
 echo ""
+
+# Run dependency check first
+echo "🔍 Running dependency check..."
+if [ -f "./scripts/troubleshooting/check-dependencies.sh" ]; then
+    ./scripts/troubleshooting/check-dependencies.sh
+    DEPENDENCY_CHECK_STATUS=$?
+    
+    echo ""
+    echo "========================================"
+    echo ""
+    
+    if [ $DEPENDENCY_CHECK_STATUS -eq 0 ]; then
+        echo "✅ All dependencies satisfied - system healthy!"
+        echo "No recovery needed."
+        exit 0
+    else
+        echo "⚠️  Found $DEPENDENCY_CHECK_STATUS issue(s) - proceeding with recovery..."
+        echo ""
+    fi
+else
+    echo "⚠️  Dependency checker not found, proceeding with basic recovery..."
+    echo ""
+fi
 
 RECOVERY_NEEDED=0
 
@@ -95,7 +118,86 @@ else
     echo "   ✅ FlexGate API is healthy"
 fi
 
-# 4. If containers were restarted, check database connectivity
+# 4. Check Prometheus (if installed)
+echo ""
+echo "🔍 Checking Prometheus..."
+if command -v prometheus &> /dev/null; then
+    if ! curl -sf http://localhost:9090/-/healthy > /dev/null 2>&1; then
+        echo "   ❌ Prometheus is down or not responding"
+        
+        # Check if process is running
+        if [ -f ".prometheus.pid" ]; then
+            PROM_PID=$(cat .prometheus.pid)
+            if ! ps -p $PROM_PID > /dev/null 2>&1; then
+                echo "   🔧 Starting Prometheus..."
+                
+                # Start Prometheus with development config
+                if [ -f "infra/prometheus/prometheus.dev.yml" ]; then
+                    nohup prometheus --config.file=infra/prometheus/prometheus.dev.yml --storage.tsdb.path=./logs/prometheus > logs/prometheus.log 2>&1 &
+                    echo $! > .prometheus.pid
+                    sleep 2
+                    RECOVERY_NEEDED=1
+                    
+                    if curl -sf http://localhost:9090/-/healthy > /dev/null 2>&1; then
+                        echo "   ✅ Prometheus started successfully (PID: $(cat .prometheus.pid))"
+                    else
+                        echo "   ⚠️  Prometheus may need more time to start (check logs/prometheus.log)"
+                    fi
+                elif [ -f "infra/prometheus/prometheus.yml" ]; then
+                    nohup prometheus --config.file=infra/prometheus/prometheus.yml --storage.tsdb.path=./logs/prometheus > logs/prometheus.log 2>&1 &
+                    echo $! > .prometheus.pid
+                    sleep 2
+                    RECOVERY_NEEDED=1
+                    
+                    if curl -sf http://localhost:9090/-/healthy > /dev/null 2>&1; then
+                        echo "   ✅ Prometheus started successfully (PID: $(cat .prometheus.pid))"
+                    else
+                        echo "   ⚠️  Prometheus may need more time to start (check logs/prometheus.log)"
+                    fi
+                else
+                    echo "   ⚠️  Prometheus config not found (skipping)"
+                fi
+            else
+                echo "   ⚠️  Prometheus process running but not responding, restarting..."
+                kill $PROM_PID 2>/dev/null
+                sleep 1
+                
+                if [ -f "infra/prometheus/prometheus.dev.yml" ]; then
+                    nohup prometheus --config.file=infra/prometheus/prometheus.dev.yml --storage.tsdb.path=./logs/prometheus > logs/prometheus.log 2>&1 &
+                elif [ -f "infra/prometheus/prometheus.yml" ]; then
+                    nohup prometheus --config.file=infra/prometheus/prometheus.yml --storage.tsdb.path=./logs/prometheus > logs/prometheus.log 2>&1 &
+                fi
+                echo $! > .prometheus.pid
+                sleep 2
+                RECOVERY_NEEDED=1
+            fi
+        else
+            echo "   🔧 Starting Prometheus (no PID file found)..."
+            
+            if [ -f "infra/prometheus/prometheus.dev.yml" ]; then
+                nohup prometheus --config.file=infra/prometheus/prometheus.dev.yml --storage.tsdb.path=./logs/prometheus > logs/prometheus.log 2>&1 &
+            elif [ -f "infra/prometheus/prometheus.yml" ]; then
+                nohup prometheus --config.file=infra/prometheus/prometheus.yml --storage.tsdb.path=./logs/prometheus > logs/prometheus.log 2>&1 &
+            else
+                echo "   ⚠️  Prometheus config not found (skipping)"
+                echo ""
+                echo "   To enable Prometheus:"
+                echo "     1. Install: brew install prometheus"
+                echo "     2. Ensure config exists at: infra/prometheus/prometheus.dev.yml"
+                return
+            fi
+            echo $! > .prometheus.pid
+            sleep 2
+            RECOVERY_NEEDED=1
+        fi
+    else
+        echo "   ✅ Prometheus is healthy"
+    fi
+else
+    echo "   ℹ️  Prometheus not installed (optional)"
+fi
+
+# 5. If containers were restarted, check database connectivity
 if [ $RECOVERY_NEEDED -eq 1 ]; then
     echo ""
     echo "🔍 Verifying database connectivity..."
@@ -138,8 +240,20 @@ if [ $RECOVERY_NEEDED -eq 1 ]; then
     echo ""
     echo "Please verify:"
     echo "  1. Check logs: tail -f logs/combined.log"
-    echo "  2. Test API: curl http://localhost:3000/health"
-    echo "  3. Check Admin UI: http://localhost:3001"
+    echo "  2. Test API: curl http://localhost:8080/health"
+    echo "  3. Check Admin UI: http://localhost:3000"
+    if command -v prometheus &> /dev/null; then
+        echo "  4. Check Prometheus: http://localhost:9090"
+        echo "  5. Prometheus logs: tail -f logs/prometheus.log"
+    fi
 else
     echo "✅ No recovery needed - all services healthy"
+    echo ""
+    echo "Services checked:"
+    echo "  • PostgreSQL (port 5432)"
+    echo "  • Redis (port 6379)"
+    echo "  • FlexGate API (port 8080)"
+    if command -v prometheus &> /dev/null; then
+        echo "  • Prometheus (port 9090)"
+    fi
 fi

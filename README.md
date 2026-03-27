@@ -272,6 +272,63 @@ Modern React-based dashboard for managing your proxy:
 
 [**See Admin UI docs →**](docs/features/01-admin-ui.md)
 
+### 🖥️ Command-Line Interface (CLI)
+Powerful CLI for automation, CI/CD, and headless operation:
+
+- **🤖 AI Incident Tracking**: Complete incident management from terminal
+  - List, filter, and search incidents
+  - View detailed incident information with recommendations
+  - Create incidents from AI events
+  - Record decisions and action outcomes
+  - View analytics and ROI metrics
+  - Export data (JSON/CSV)
+  - Real-time monitoring (watch mode)
+
+- **⚙️ Configuration Management**: Manage FlexGate from command line
+  - Initialize and configure settings
+  - Import/export configurations
+  - Test database and Redis connections
+  - Health checks and diagnostics
+
+- **🔄 Automation-Friendly**: Built for scripting and integration
+  - JSON output for parsing
+  - Exit codes for success/failure
+  - CI/CD pipeline integration
+  - Slack/webhook notifications
+  - Prometheus alert integration
+
+**Quick Examples:**
+```bash
+# List open critical incidents
+flexgate ai incidents --status OPEN --severity CRITICAL
+
+# Show incident details
+flexgate ai show evt_abc123
+
+# Create incident and add recommendation
+flexgate ai create --type LATENCY_ANOMALY --severity WARNING
+flexgate ai recommend evt_abc123 --action RESTART_SERVICE --confidence 0.9
+
+# View analytics dashboard
+flexgate ai analytics --days 30
+
+# Watch for new incidents in real-time
+flexgate ai watch
+
+# Export incidents to CSV
+flexgate ai export --format csv --output incidents.csv
+
+# Initialize FlexGate configuration
+flexgate init --interactive
+
+# Test connections
+flexgate db test
+flexgate redis test
+flexgate health
+```
+
+[**See full CLI docs →**](AI_CLI_COMPLETE.md)
+
 ### ⚡ Real-Time Metrics (NATS JetStream)
 High-performance streaming metrics powered by NATS JetStream:
 

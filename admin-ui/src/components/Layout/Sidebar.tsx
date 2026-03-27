@@ -18,6 +18,9 @@ import {
   Webhook as WebhookIcon,
   Settings as SettingsIcon,
   Build as TroubleshootingIcon,
+  Psychology as AIIcon,
+  ReportProblem as IncidentIcon,
+  BarChart as AnalyticsIcon,
 } from '@mui/icons-material';
 
 const DRAWER_WIDTH = 240;
@@ -34,9 +37,12 @@ const menuItems: MenuItem[] = [
   { text: 'Metrics', icon: <MetricsIcon />, path: '/metrics' },
   { text: 'Logs', icon: <LogsIcon />, path: '/logs' },
   { text: 'Webhooks', icon: <WebhookIcon />, path: '/webhooks' },
+  { text: 'AI Incidents', icon: <IncidentIcon />, path: '/ai-incidents' },
+  { text: 'AI Analytics', icon: <AnalyticsIcon />, path: '/ai-analytics' },
 ];
 
 const bottomMenuItems: MenuItem[] = [
+  { text: 'AI Testing', icon: <AIIcon />, path: '/ai-testing' },
   { text: 'Troubleshooting', icon: <TroubleshootingIcon />, path: '/troubleshooting' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
 ];

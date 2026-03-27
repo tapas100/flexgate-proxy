@@ -141,21 +141,6 @@ services:
       - flexgate-network
     restart: unless-stopped
 
-  # Grafana - Metrics visualization
-  grafana:
-    image: grafana/grafana:latest
-    container_name: flexgate-grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana-data:/var/lib/grafana
-    ports:
-      - "3001:3000"
-    networks:
-      - flexgate-network
-    restart: unless-stopped
-
   # Admin UI - FlexGate Management Dashboard
   admin-ui:
     image: localhost/flexgate-admin-ui:latest
@@ -185,4 +170,3 @@ networks:
 volumes:
   postgres-data:
   prometheus-data:
-  grafana-data:

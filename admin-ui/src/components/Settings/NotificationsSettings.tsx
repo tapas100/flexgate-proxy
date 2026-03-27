@@ -7,7 +7,7 @@ import {
   Switch,
   FormControlLabel,
   Button,
-  Grid,
+  Stack,
   Divider,
   Alert,
   IconButton,
@@ -320,8 +320,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               SMTP Configuration
             </Typography>
 
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+            <Stack spacing={3}>
+              <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
                 <TextField
                   fullWidth
                   label="SMTP Host"
@@ -336,8 +336,8 @@ const NotificationsSettingsComponent: React.FC = () => {
                     })
                   }
                 />
-              </Grid>
-              <Grid item xs={12} md={6}>
+              </Box>
+              <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
                 <TextField
                   fullWidth
                   label="SMTP Port"
@@ -353,8 +353,8 @@ const NotificationsSettingsComponent: React.FC = () => {
                     })
                   }
                 />
-              </Grid>
-              <Grid item xs={12} md={6}>
+              </Box>
+              <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
                 <TextField
                   fullWidth
                   label="SMTP User"
@@ -369,8 +369,8 @@ const NotificationsSettingsComponent: React.FC = () => {
                     })
                   }
                 />
-              </Grid>
-              <Grid item xs={12} md={6}>
+              </Box>
+              <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
                 <TextField
                   fullWidth
                   label="From Address"
@@ -385,8 +385,8 @@ const NotificationsSettingsComponent: React.FC = () => {
                     })
                   }
                 />
-              </Grid>
-              <Grid item xs={12}>
+              </Box>
+              <Box sx={{ width: "100%" }}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -404,8 +404,8 @@ const NotificationsSettingsComponent: React.FC = () => {
                   }
                   label="Use TLS/SSL"
                 />
-              </Grid>
-            </Grid>
+              </Box>
+            </Stack>
 
             <Divider sx={{ my: 3 }} />
 
@@ -537,8 +537,8 @@ const NotificationsSettingsComponent: React.FC = () => {
           Choose which events trigger notifications
         </Typography>
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
+        <Stack spacing={2}>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <FormControlLabel
               control={
                 <Switch
@@ -553,8 +553,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               }
               label="Route Errors"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <FormControlLabel
               control={
                 <Switch
@@ -569,8 +569,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               }
               label="Rate Limit Exceeded"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <FormControlLabel
               control={
                 <Switch
@@ -585,8 +585,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               }
               label="Circuit Breaker Open"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <FormControlLabel
               control={
                 <Switch
@@ -601,8 +601,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               }
               label="Health Check Failures"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <FormControlLabel
               control={
                 <Switch
@@ -617,8 +617,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               }
               label="Configuration Changes"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <FormControlLabel
               control={
                 <Switch
@@ -633,8 +633,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               }
               label="Admin Login Events"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <FormControlLabel
               control={
                 <Switch
@@ -649,8 +649,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               }
               label="Critical Errors"
             />
-          </Grid>
-        </Grid>
+          </Box>
+        </Stack>
       </Paper>
 
       {/* Alert Thresholds */}
@@ -662,8 +662,8 @@ const NotificationsSettingsComponent: React.FC = () => {
           Configure thresholds for automatic alerts
         </Typography>
 
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
+        <Stack spacing={3}>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <TextField
               fullWidth
               label="Error Rate (%)"
@@ -681,8 +681,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               inputProps={{ min: 0, max: 100, step: 0.1 }}
               helperText="Alert when error rate exceeds this percentage"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <TextField
               fullWidth
               label="Response Time (ms)"
@@ -699,8 +699,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               }
               helperText="Alert when response time exceeds this value"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <TextField
               fullWidth
               label="CPU Usage (%)"
@@ -718,8 +718,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               inputProps={{ min: 0, max: 100 }}
               helperText="Alert when CPU usage exceeds this percentage"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
             <TextField
               fullWidth
               label="Memory Usage (%)"
@@ -737,8 +737,8 @@ const NotificationsSettingsComponent: React.FC = () => {
               inputProps={{ min: 0, max: 100 }}
               helperText="Alert when memory usage exceeds this percentage"
             />
-          </Grid>
-        </Grid>
+          </Box>
+        </Stack>
       </Paper>
 
       {/* Save Button */}

@@ -25,18 +25,16 @@ elif command -v docker &> /dev/null; then
     docker rm -f $(docker ps -aq --filter "name=flexgate") 2>/dev/null || true
 fi
 
-# 3. Remove node_modules
-echo "🗑️  Step 3/10: Cleaning dependencies..."
+# 3. Remove node_modules (BACKEND ONLY - keep Admin UI running)
+echo "🗑️  Step 3/10: Cleaning backend dependencies..."
 rm -rf node_modules
-rm -rf admin-ui/node_modules
 rm -rf package-lock.json
-rm -rf admin-ui/package-lock.json
+# NOTE: We keep admin-ui/node_modules so the UI stays running during installation
 
-# 4. Clean build artifacts
-echo "🗑️  Step 4/10: Cleaning build artifacts..."
+# 4. Clean build artifacts (BACKEND ONLY)
+echo "🗑️  Step 4/10: Cleaning backend build artifacts..."
 rm -rf dist
-rm -rf admin-ui/build
-rm -rf admin-ui/.cache
+# NOTE: We keep admin-ui/build so the UI stays accessible
 
 # 5. Clean npm cache
 echo "🧼 Step 5/10: Cleaning npm cache..."
@@ -51,16 +49,9 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 7. Reinstall Admin UI dependencies
-echo "📦 Step 7/10: Installing Admin UI dependencies..."
-cd admin-ui
-npm install
-
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to install Admin UI dependencies"
-    exit 1
-fi
-cd ..
+# 7. Admin UI dependencies (SKIP - keep UI running)
+echo "ℹ️  Step 7/10: Admin UI dependencies (keeping existing for uninterrupted access)..."
+# NOTE: We don't touch admin-ui/node_modules to keep the UI functional
 
 # 8. Build FlexGate
 echo "🔨 Step 8/10: Building FlexGate..."
@@ -71,15 +62,9 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 9. Build Admin UI
-echo "🔨 Step 9/10: Building Admin UI..."
-cd admin-ui
-npm run build
-
-if [ $? -ne 0 ]; then
-    echo "⚠️  Failed to build Admin UI (continuing anyway)"
-fi
-cd ..
+# 9. Admin UI build (SKIP - keep UI running)
+echo "ℹ️  Step 9/10: Admin UI build (keeping existing for uninterrupted access)..."
+# NOTE: We don't rebuild the Admin UI to keep it functional during the process
 
 # 10. Start database services
 echo "🚀 Step 10/10: Starting database services..."

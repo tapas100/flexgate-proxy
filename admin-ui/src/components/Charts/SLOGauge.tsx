@@ -1,24 +1,50 @@
-import React from 'react';
-import { Paper, Typography, Box, CircularProgress, LinearProgress } from '@mui/material';
+import React, { useMemo, useState } from 'react';
+import { Paper, Typography, Box, CircularProgress, LinearProgress, Chip } from '@mui/material';
 import { SLOMetrics } from '../../types';
 import { getSLOStatusColor } from '../../utils/metricsHelpers';
+import { getAvailableMethod, ProcessingMethod } from '../../utils/metricsProcessor';
 
 interface SLOGaugeProps {
   slo: SLOMetrics;
 }
 
 const SLOGauge: React.FC<SLOGaugeProps> = ({ slo }) => {
-  const availabilityPercentage = (slo.availability.current / slo.availability.target) * 100;
-  const availabilityColor = getSLOStatusColor(slo.availability.current, slo.availability.target);
+  const [processingMethod] = useState<ProcessingMethod>(getAvailableMethod());
 
-  const latencyP95Ok = slo.latency.p95 <= slo.latency.targetP95;
-  const latencyP99Ok = slo.latency.p99 <= slo.latency.targetP99;
+  const metrics = useMemo(() => {
+    const availabilityPercentage = (slo.availability.current / slo.availability.target) * 100;
+    const availabilityColor = getSLOStatusColor(slo.availability.current, slo.availability.target);
+    const latencyP95Ok = slo.latency.p95 <= slo.latency.targetP95;
+    const latencyP99Ok = slo.latency.p99 <= slo.latency.targetP99;
+    
+    return {
+      availabilityPercentage,
+      availabilityColor,
+      latencyP95Ok,
+      latencyP99Ok,
+    };
+  }, [slo]);
+
+  // Performance badge
+  const performanceBadge = useMemo(() => {
+    switch (processingMethod) {
+      case ProcessingMethod.WASM:
+        return <Chip label="🔥 WASM" size="small" color="success" sx={{ ml: 1 }} />;
+      case ProcessingMethod.WORKER:
+        return <Chip label="⚡ Worker" size="small" color="primary" sx={{ ml: 1 }} />;
+      default:
+        return <Chip label="📊 JS" size="small" color="default" sx={{ ml: 1 }} />;
+    }
+  }, [processingMethod]);
 
   return (
     <Paper sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        SLO Compliance
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <Typography variant="h6">
+          SLO Compliance
+        </Typography>
+        {performanceBadge}
+      </Box>
 
       {/* Availability SLO */}
       <Box sx={{ mb: 3 }}>
@@ -26,7 +52,7 @@ const SLOGauge: React.FC<SLOGaugeProps> = ({ slo }) => {
           <Typography variant="body2" color="text.secondary">
             Availability
           </Typography>
-          <Typography variant="body2" fontWeight="bold" sx={{ color: availabilityColor }}>
+          <Typography variant="body2" fontWeight="bold" sx={{ color: metrics.availabilityColor }}>
             {slo.availability.current.toFixed(2)}%
           </Typography>
         </Box>
@@ -34,13 +60,13 @@ const SLOGauge: React.FC<SLOGaugeProps> = ({ slo }) => {
           <Box sx={{ width: '100%' }}>
             <LinearProgress
               variant="determinate"
-              value={Math.min(100, availabilityPercentage)}
+              value={Math.min(100, metrics.availabilityPercentage)}
               sx={{
                 height: 10,
                 borderRadius: 5,
                 backgroundColor: '#e0e0e0',
                 '& .MuiLinearProgress-bar': {
-                  backgroundColor: availabilityColor,
+                  backgroundColor: metrics.availabilityColor,
                 },
               }}
             />
@@ -61,7 +87,7 @@ const SLOGauge: React.FC<SLOGaugeProps> = ({ slo }) => {
           <Typography
             variant="caption"
             fontWeight="bold"
-            sx={{ color: latencyP95Ok ? '#4caf50' : '#f44336' }}
+            sx={{ color: metrics.latencyP95Ok ? '#4caf50' : '#f44336' }}
           >
             {slo.latency.p95.toFixed(0)}ms / {slo.latency.targetP95}ms
           </Typography>
@@ -71,7 +97,7 @@ const SLOGauge: React.FC<SLOGaugeProps> = ({ slo }) => {
           <Typography
             variant="caption"
             fontWeight="bold"
-            sx={{ color: latencyP99Ok ? '#4caf50' : '#f44336' }}
+            sx={{ color: metrics.latencyP99Ok ? '#4caf50' : '#f44336' }}
           >
             {slo.latency.p99.toFixed(0)}ms / {slo.latency.targetP99}ms
           </Typography>
@@ -100,4 +126,4 @@ const SLOGauge: React.FC<SLOGaugeProps> = ({ slo }) => {
   );
 };
 
-export default SLOGauge;
+export default React.memo(SLOGauge);
