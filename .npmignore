@@ -1,0 +1,144 @@
+# Source files (users get compiled dist/ only)
+src/
+bin/*.ts
+app.ts
+*.ts
+!dist/**/*.d.ts
+tsconfig*.json
+
+# Development files
+admin-ui/
+__tests__/
+tests/
+test-files-to-copy/
+benchmarks/
+scripts/setup/
+scripts/deployment/
+scripts/testing/
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+server.log
+
+# Config files
+.github/
+.vscode/
+.idea/
+*.config.js
+!dist/**/*.js
+jest.config.json
+.eslintrc*
+.prettierrc*
+.editorconfig
+
+# Documentation (keep only essential)
+docs/
+*.md
+!README.md
+!LICENSE
+!CHANGELOG.md
+!QUICK_START.md
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# CI/CD
+.travis.yml
+.gitlab-ci.yml
+azure-pipelines.yml
+.circleci/
+.jenkins/
+
+# Package managers
+.npm/
+.yarn/
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+
+# Build artifacts
+dist/*.map
+*.tsbuildinfo
+
+# Docker (keep Dockerfile, ignore compose)
+docker-compose*.yml
+.dockerignore
+
+# Kubernetes
+infra/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+*.code-workspace
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Test files
+*.test.ts
+*.spec.ts
+*.test.js
+*.spec.js
+test/
+e2e/
+
+# Launch plans (internal docs)
+launch/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+migrations/*.sql.bak
+
+# Planning docs (internal)
+*_PLAN.md
+*_SUMMARY.md
+*_STATUS.md
+*_FIX.md
+*_ROADMAP.md
+AUTOMATION_IMPLEMENTATION.md
+DATABASE_ROUTES_FIX.md
+DOCS_INDEX.md
+DOCUMENTATION_STATUS.md
+EVENT_IMPLEMENTATION_STATUS.md
+NPM_RELEASE_PLAN.md
+PRODUCT*.md
+PROJECT_SUMMARY.md
+QUICK_TEST_UPDATE.md
+ROUTE_API_FIX.md
+SECURITY_SETUP.md
+SESSION_SUMMARY.md
+TEST_IMPROVEMENTS.md
+TESTING_GUIDE.md
+API_RESPONSE_FIX.md
+
+# Backup files
+*.backup
+*.bak
+routes/*.backup

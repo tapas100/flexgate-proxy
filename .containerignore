@@ -1,0 +1,91 @@
+# Containerfile ignore file (Podman equivalent of .dockerignore)
+
+# Node modules
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build output
+dist
+
+# Development files
+*.md
+!README.md
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# Test files
+__tests__
+coverage
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+jest.config.json
+
+# Logs
+logs
+*.log
+server.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.npmrc
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+
+# Documentation
+docs
+launch
+benchmarks
+test-files-to-copy
+
+# CI/CD
+.github
+.gitlab-ci.yml
+azure-pipelines.yml
+
+# Podman/Docker
+Containerfile
+Dockerfile
+.containerignore
+.dockerignore
+podman-compose.yml
+docker-compose*.yml
+
+# Development tools
+Makefile
+*.sh
+scripts
+
+# Database
+*.db
+*.sqlite
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Admin UI (built separately)
+admin-ui/node_modules
+admin-ui/build
+admin-ui/coverage
+
+# HAProxy configs (mounted as volumes)
+haproxy
+
+# Kubernetes configs (deployed separately)
+infra
+
+# Backup files
+*.bak
+*.backup
+backups
