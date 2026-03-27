@@ -1,11 +1,5 @@
 # Cost-Aware API Management Playbook
 
-**Implementation Time:** 30 minutes  
-**Difficulty:** Beginner  
-**ROI:** $23,270/year (prevent cost explosions)
-
----
-
 ## Overview
 
 Stop discovering API cost overruns at month-end invoices. This playbook shows you how to set up FlexGate's AI-powered cost tracking that detects anomalies in real-time, analyzes root causes with Claude, and automatically applies optimizations.

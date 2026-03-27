@@ -1,11 +1,5 @@
 # Autonomous Service Recovery Playbook
 
-**Implementation Time:** 35 minutes  
-**Difficulty:** Intermediate  
-**ROI:** $108,400/year (80% auto-heal rate)
-
----
-
 ## Overview
 
 Stop waiting for engineers to manually recover from common failures. This playbook shows you how to set up FlexGate's AI-powered autonomous recovery system that detects failures, generates recovery plans with Claude, and executes fixes automatically with human-in-loop safety controls.
