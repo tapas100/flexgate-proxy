@@ -390,12 +390,19 @@
 ## API Management
 
 ### ✅ REST API
-- [x] `/api/routes` - Route CRUD operations
-- [x] `/api/webhooks` - Webhook CRUD operations
-- [x] `/api/metrics` - Current metrics
-- [x] `/api/logs` - Audit logs with pagination
+- [x] `/api/routes` - Route CRUD operations (admin rate-limited)
+- [x] `/api/webhooks` - Webhook CRUD operations (admin rate-limited)
+- [x] `/api/metrics` - Current metrics (admin rate-limited)
+- [x] `/api/logs` - Audit logs with pagination (admin rate-limited)
+- [x] `/api/settings` - General settings GET/PUT/POST (admin rate-limited)
+- [x] `/api/settings/ai` - AI provider settings (admin rate-limited)
+- [x] `/api/settings/claude` - Claude-specific settings (admin rate-limited)
+- [x] `/api/ai` - AI analysis endpoints (admin rate-limited)
+- [x] `/api/ai-incidents` - AI incident tracking CRUD (admin rate-limited)
+- [x] `/api/troubleshooting` - Diagnostics & health tools (admin rate-limited)
 - [x] `/api/stream/metrics` - SSE metrics stream
 - [x] `/api/stream/alerts` - SSE alerts stream
+- [x] `/api/auth` - Authentication (strict rate-limited: 5 req/15min)
 - [x] `/health` - Basic health check
 - [x] `/health/live` - Liveness probe
 - [x] `/health/ready` - Readiness probe
@@ -406,8 +413,11 @@
 - [x] JSON request/response
 - [x] Error handling with standard codes
 - [x] Request validation
-- [x] CORS support
-- [x] Rate limiting on API endpoints
+- [x] CORS restricted to `ALLOWED_ORIGINS` env var (comma-separated list)
+- [x] Tiered API rate limiting:
+  - Global: 100 req/min on all `/api/*`
+  - Admin APIs: 60 req/min (routes, webhooks, settings, logs, metrics, AI)
+  - Auth: 5 req/15min (brute-force protection)
 - [x] API versioning ready
 - [x] OpenAPI/Swagger ready
 
@@ -418,9 +428,10 @@
 ### ✅ Dependencies
 - [x] **PostgreSQL** - Primary database
 - [x] **Redis** - Rate limiting and caching
-- [x] **NATS JetStream** - Real-time streaming
+- [x] **NATS JetStream** - Real-time streaming (optional; falls back to HTTP polling)
 - [x] **Node.js 18+** - Runtime
 - [x] **Express.js** - Web framework
+- [x] **Anthropic Claude SDK** (`@anthropic-ai/sdk`) - AI-native incident analysis
 
 ### ✅ Deployment Support
 - [x] Docker/Podman containerization
@@ -476,7 +487,7 @@
 
 ---
 
-## Recent Additions (January 2026)
+## Recent Additions (January–March 2026)
 
 1. ✅ NATS JetStream integration
 2. ✅ Real-time SSE metrics streaming
@@ -487,6 +498,12 @@
 7. ✅ Mobile-friendly dialog forms
 8. ✅ Webhook delivery tracking
 9. ✅ Comprehensive API documentation
+10. ✅ Settings API backend (`/api/settings`) with validation, sanitization, backup
+11. ✅ Troubleshooting API (`/api/troubleshooting`) with diagnostics
+12. ✅ AI incident tracking (`/api/ai-incidents`) with Claude integration
+13. ✅ Tiered API rate limiting (global / admin / auth)
+14. ✅ Restricted CORS via `ALLOWED_ORIGINS` environment variable
+15. ✅ Security: removed `jade` dependency (4 CVEs); upgraded `http-proxy-middleware` to v3, `morgan` to 1.10.1; 0 vulnerabilities
 
 ---
 

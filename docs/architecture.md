@@ -4,7 +4,28 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                         CLIENT LAYER                            │
+│   │  ┌──────────────────────────────  │  /health/live      → Liveness probe                 │  │
+  │  /health/ready     → Readiness probe                │  │
+  │  /health/deep      → Detailed health                │  │
+  │  /metrics          → Prometheus metrics             │  │
+  │  /api/routes       → Route CRUD (admin rate-limited)│  │
+  │  /api/webhooks     → Webhook CRUD (admin rate-limited)│ │
+  │  /api/metrics      → Metrics API (admin rate-limited)│  │
+  │  /api/logs         → Logs API (admin rate-limited)  │  │
+  │  /api/settings     → Settings API (admin rate-limited)│ │
+  │  /api/ai           → AI analysis API                │  │
+  │  /api/ai-incidents → AI incident tracking           │  │
+  │  /api/stream/*     → SSE real-time streams          │  │
+  │  /api/auth         → Auth (strict rate-limited)     │  │──────────────────┐  │
+│  │              Middleware Stack                        │  │
+│  │                                                       │  │
+│  │  1. Morgan (HTTP logging)                            │  │
+│  │  2. Body Parser (JSON, max 10MB)                     │  │
+│  │  3. CORS (restricted to ALLOWED_ORIGINS)             │  │
+│  │  4. Global API Rate Limiter (100 req/min on /api)    │  │
+│  │  5. Request Logger (correlation IDs)                 │  │
+│  │  6. Metrics Collector (Prometheus)                   │  │
+│  └──────────────────────────────────────────────────────┘  │               CLIENT LAYER                            │
 │  Web Browser, Mobile App, Internal Service, External API       │
 └────────────────────┬───────────────────────────────────────────┘
                      │
@@ -319,14 +340,15 @@ Request from Internet
 |-------|-----------|---------|
 | **Runtime** | Node.js 20 | JavaScript execution |
 | **Framework** | Express.js | HTTP server |
-| **Proxy** | http-proxy-middleware | Request forwarding |
+| **Proxy** | http-proxy-middleware v3 | Request forwarding |
 | **State** | Redis | Distributed rate limiting |
 | **Logging** | Winston | Structured JSON logs |
 | **Metrics** | Prometheus | Time-series metrics |
 | **Visualization** | Grafana | Dashboards |
-| **Container** | Docker | Containerization |
+| **Container** | Podman | Containerization |
 | **Orchestration** | Kubernetes | Container management |
-| **Config** | YAML | Configuration format |
+| **Config** | YAML / JSON | Configuration format |
+| **AI** | Anthropic Claude SDK | AI-native incident analysis |
 
 ---
 

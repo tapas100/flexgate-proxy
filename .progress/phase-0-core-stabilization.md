@@ -21,9 +21,10 @@
 
 #### 📋 Current Dependencies (package.json)
 - Express 4.18.2
-- http-proxy-middleware 2.0.6
+- http-proxy-middleware 3.0.5 _(upgraded from 2.0.6 — v3 API: handlers moved to `on: { proxyReq, proxyRes, error }`)_
 - prom-client 15.1.0
 - winston 3.11.0
+- morgan 1.10.1 _(upgraded from 1.9.1 — fixes on-headers vuln)_
 - rate-limit-redis 4.2.0
 - redis 4.6.12
 

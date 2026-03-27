@@ -23,7 +23,12 @@ import routeRoutes from './routes/routes';
 import metricsRoutes from './routes/metrics';
 import logsRoutes from './routes/logs';
 import troubleshootingRoutes from './routes/troubleshooting';
+import settingsRoutes from './routes/settings';
 import streamRoutes from './src/routes/stream';
+import aiRoutes from './routes/ai';
+import aiIncidentRoutes from './src/routes/ai-incidents';
+import claudeSettingsRoutes from './src/routes/settings-claude';
+import aiSettingsRoutes from './src/routes/settings-ai';
 import database from './src/database/index';
 import { jetStreamService } from './src/services/jetstream';
 import { MetricsPublisher } from './src/services/metricsPublisher';
@@ -31,6 +36,11 @@ import { metricsMiddleware } from './src/middleware/metrics';
 import { WebhookManager } from './src/webhooks/WebhookManager';
 import webhooksRepository from './src/database/repositories/webhooksRepository';
 import { WebhookDeliveriesRepository } from './src/database/repositories/webhookDeliveriesRepository';
+import {
+  authRateLimiter,
+  adminApiRateLimiter,
+  globalApiRateLimiter,
+} from './src/middleware/rateLimiting';
 
 // Extend Express Request type
 declare global {
@@ -109,30 +119,69 @@ upstreams.forEach((upstream: Upstream) => {
 const healthCheckMonitor = new HealthCheckMonitor(upstreams);
 healthCheckMonitor.start();
 
+// CORS Configuration - Restrict to allowed origins
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:8080',  // For proxy requests from admin UI
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:8080',
+      'http://local.flexgate.io:3000',
+      'http://local.flexgate.io:8080',
+    ];
+
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      logger.warn('CORS: Blocked request from unauthorized origin', { origin });
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['X-API-Version', 'X-Config-Version'],
+  maxAge: 86400, // 24 hours
+};
+
+logger.info('CORS configured with allowed origins:', { origins: allowedOrigins });
+
 // Basic middleware
 app.use(morgan('combined', { stream: { write: (message: string) => logger.info(message.trim()) } }));
 app.use(express.json({ limit: config.get<string>('proxy.maxBodySize', '10mb') || '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: config.get<string>('proxy.maxBodySize', '10mb') || '10mb' }));
 app.use(cookieParser());
-app.use(cors());
+app.use(cors(corsOptions));
 
-// Mount authentication routes
-app.use('/api/auth', authRoutes);
+// Global API rate limiting (excludes internal proxy traffic)
+app.use('/api', globalApiRateLimiter);
 
-// Mount routes management API
-app.use('/api/routes', routeRoutes);
+logger.info('Rate limiting enabled for API endpoints');
 
-// Mount webhook routes
-app.use('/api/webhooks', webhookRoutes);
+// Mount authentication routes with strict rate limiting
+app.use('/api/auth', authRateLimiter, authRoutes);
 
-// Mount metrics API
-app.use('/api/metrics', metricsRoutes);
-
-// Mount logs API
-app.use('/api/logs', logsRoutes);
-
-// Mount troubleshooting API
-app.use('/api/troubleshooting', troubleshootingRoutes);
+// Mount admin routes with rate limiting
+app.use('/api/routes', adminApiRateLimiter, routeRoutes);
+app.use('/api/webhooks', adminApiRateLimiter, webhookRoutes);
+app.use('/api/metrics', adminApiRateLimiter, metricsRoutes);
+app.use('/api/logs', adminApiRateLimiter, logsRoutes);
+app.use('/api/troubleshooting', adminApiRateLimiter, troubleshootingRoutes);
+app.use('/api/settings', adminApiRateLimiter, settingsRoutes);
+app.use('/api/settings/ai', adminApiRateLimiter, aiSettingsRoutes);
+app.use('/api/settings/claude', adminApiRateLimiter, claudeSettingsRoutes);
+app.use('/api/ai', adminApiRateLimiter, aiRoutes);
+app.use('/api/ai-incidents', adminApiRateLimiter, aiIncidentRoutes);
 
 // Mount stream API (SSE for real-time metrics)
 app.use('/api/stream', streamRoutes);
@@ -353,149 +402,151 @@ function setupProxyRoute(route: ProxyRoute) {
     pathRewrite,
     timeout: route.timeout || upstream.timeout || config.get<number>('timeouts.request', 30000) || 30000,
     
-    onProxyReq: (proxyReq: any, req: any, _res: any) => {
-      // Add correlation ID
-      if (req.correlationId) {
-        proxyReq.setHeader('X-Correlation-ID', req.correlationId);
-      }
+    on: {
+      proxyReq: (proxyReq: any, req: any, _res: any) => {
+        // Add correlation ID
+        if (req.correlationId) {
+          proxyReq.setHeader('X-Correlation-ID', req.correlationId);
+        }
+        
+        // Store upstream name and start time for metrics
+        req.upstream = upstreamName;
+        req.upstreamStartTime = Date.now();
+        
+        // Record upstream request metric
+        metrics.upstreamRequestsTotal.inc({
+          upstream: upstreamName,
+          upstream_host: new URL(upstreamUrl).host,
+          route: route.path,
+          status: 'pending'
+        });
+        
+        // Emit proxy request started event
+        eventBus.emitEvent(EventType.PROXY_REQUEST_STARTED, {
+          timestamp: new Date().toISOString(),
+          source: 'proxy-middleware',
+          routeId: route.path,
+          routePath: route.path,
+          method: req.method,
+          path: req.path,
+          target: upstreamUrl,
+          correlationId: req.correlationId,
+        } as any);
+        
+        logger.debug('proxy.request', {
+          correlationId: req.correlationId,
+          upstream: upstreamName,
+          targetUrl: `${upstreamUrl}${proxyReq.path}`
+        });
+      },
       
-      // Store upstream name and start time for metrics
-      req.upstream = upstreamName;
-      req.upstreamStartTime = Date.now();
-      
-      // Record upstream request metric
-      metrics.upstreamRequestsTotal.inc({
-        upstream: upstreamName,
-        upstream_host: new URL(upstreamUrl).host,
-        route: route.path,
-        status: 'pending'
-      });
-      
-      // Emit proxy request started event
-      eventBus.emitEvent(EventType.PROXY_REQUEST_STARTED, {
-        timestamp: new Date().toISOString(),
-        source: 'proxy-middleware',
-        routeId: route.path,
-        routePath: route.path,
-        method: req.method,
-        path: req.path,
-        target: upstreamUrl,
-        correlationId: req.correlationId,
-      } as any);
-      
-      logger.debug('proxy.request', {
-        correlationId: req.correlationId,
-        upstream: upstreamName,
-        targetUrl: `${upstreamUrl}${proxyReq.path}`
-      });
-    },
-    
-    onProxyRes: (proxyRes: any, req: any, _res: any) => {
-      const duration = Date.now() - (req.upstreamStartTime || Date.now());
-      
-      // Record upstream metrics
-      metrics.upstreamRequestsTotal.inc({
-        upstream: upstreamName,
-        upstream_host: new URL(upstreamUrl).host,
-        route: route.path,
-        status: proxyRes.statusCode.toString()
-      });
-      
-      metrics.upstreamRequestDuration.observe({
-        upstream: upstreamName,
-        upstream_host: new URL(upstreamUrl).host,
-        route: route.path
-      }, duration);
-      
-      // Mark upstream as available
-      metrics.upstreamAvailability.set({
-        upstream: upstreamName,
-        upstream_host: new URL(upstreamUrl).host
-      }, 1);
-      
-      // Emit proxy request completed event
-      eventBus.emitEvent(EventType.PROXY_REQUEST_COMPLETED, {
-        timestamp: new Date().toISOString(),
-        source: 'proxy-middleware',
-        routeId: route.path,
-        routePath: route.path,
-        method: req.method,
-        statusCode: proxyRes.statusCode,
-        duration,
-        target: upstreamUrl,
-        correlationId: req.correlationId,
-      } as any);
-      
-      logger.debug('proxy.response', {
-        correlationId: req.correlationId,
-        upstream: upstreamName,
-        statusCode: proxyRes.statusCode,
-        duration
-      });
-    },
-    
-    onError: (err: Error, req: any, res: any) => {
-      const duration = Date.now() - (req.upstreamStartTime || Date.now());
-      const errorType = err.message.includes('timeout') ? 'timeout' : 
-                       err.message.includes('ECONNREFUSED') ? 'connection_refused' :
-                       err.message.includes('ENOTFOUND') ? 'dns_error' : 'unknown';
-      
-      // Record upstream error metrics
-      metrics.upstreamErrorsTotal.inc({
-        upstream: upstreamName,
-        upstream_host: new URL(upstreamUrl).host,
-        route: route.path,
-        error_type: errorType
-      });
-      
-      // Record timeout metric if applicable
-      if (errorType === 'timeout') {
-        metrics.upstreamTimeoutsTotal.inc({
+      proxyRes: (proxyRes: any, req: any, _res: any) => {
+        const duration = Date.now() - (req.upstreamStartTime || Date.now());
+        
+        // Record upstream metrics
+        metrics.upstreamRequestsTotal.inc({
+          upstream: upstreamName,
+          upstream_host: new URL(upstreamUrl).host,
+          route: route.path,
+          status: proxyRes.statusCode.toString()
+        });
+        
+        metrics.upstreamRequestDuration.observe({
           upstream: upstreamName,
           upstream_host: new URL(upstreamUrl).host,
           route: route.path
+        }, duration);
+        
+        // Mark upstream as available
+        metrics.upstreamAvailability.set({
+          upstream: upstreamName,
+          upstream_host: new URL(upstreamUrl).host
+        }, 1);
+        
+        // Emit proxy request completed event
+        eventBus.emitEvent(EventType.PROXY_REQUEST_COMPLETED, {
+          timestamp: new Date().toISOString(),
+          source: 'proxy-middleware',
+          routeId: route.path,
+          routePath: route.path,
+          method: req.method,
+          statusCode: proxyRes.statusCode,
+          duration,
+          target: upstreamUrl,
+          correlationId: req.correlationId,
+        } as any);
+        
+        logger.debug('proxy.response', {
+          correlationId: req.correlationId,
+          upstream: upstreamName,
+          statusCode: proxyRes.statusCode,
+          duration
+        });
+      },
+      
+      error: (err: Error, req: any, res: any) => {
+        const duration = Date.now() - (req.upstreamStartTime || Date.now());
+        const errorType = err.message.includes('timeout') ? 'timeout' : 
+                         err.message.includes('ECONNREFUSED') ? 'connection_refused' :
+                         err.message.includes('ENOTFOUND') ? 'dns_error' : 'unknown';
+        
+        // Record upstream error metrics
+        metrics.upstreamErrorsTotal.inc({
+          upstream: upstreamName,
+          upstream_host: new URL(upstreamUrl).host,
+          route: route.path,
+          error_type: errorType
+        });
+        
+        // Record timeout metric if applicable
+        if (errorType === 'timeout') {
+          metrics.upstreamTimeoutsTotal.inc({
+            upstream: upstreamName,
+            upstream_host: new URL(upstreamUrl).host,
+            route: route.path
+          });
+        }
+        
+        // Mark upstream as potentially unavailable
+        metrics.upstreamAvailability.set({
+          upstream: upstreamName,
+          upstream_host: new URL(upstreamUrl).host
+        }, 0);
+        
+        // Emit proxy request failed event
+        eventBus.emitEvent(EventType.PROXY_REQUEST_FAILED, {
+          timestamp: new Date().toISOString(),
+          source: 'proxy-middleware',
+          routeId: route.path,
+          routePath: route.path,
+          method: req.method,
+          error: err.message,
+          errorType,
+          duration,
+          target: upstreamUrl,
+          correlationId: req.correlationId,
+        } as any);
+        
+        logger.error('proxy.error', {
+          correlationId: req.correlationId,
+          upstream: upstreamName,
+          error: err.message,
+          errorType,
+          duration
+        });
+        
+        // Record circuit breaker failure
+        const cb = circuitBreakers.get(upstreamName);
+        if (cb) {
+          cb.onFailure();
+        }
+        
+        res.status(502).json({
+          error: 'Bad Gateway',
+          message: process.env.NODE_ENV === 'development' ? err.message : 'Upstream error',
+          correlationId: req.correlationId
         });
       }
-      
-      // Mark upstream as potentially unavailable
-      metrics.upstreamAvailability.set({
-        upstream: upstreamName,
-        upstream_host: new URL(upstreamUrl).host
-      }, 0);
-      
-      // Emit proxy request failed event
-      eventBus.emitEvent(EventType.PROXY_REQUEST_FAILED, {
-        timestamp: new Date().toISOString(),
-        source: 'proxy-middleware',
-        routeId: route.path,
-        routePath: route.path,
-        method: req.method,
-        error: err.message,
-        errorType,
-        duration,
-        target: upstreamUrl,
-        correlationId: req.correlationId,
-      } as any);
-      
-      logger.error('proxy.error', {
-        correlationId: req.correlationId,
-        upstream: upstreamName,
-        error: err.message,
-        errorType,
-        duration
-      });
-      
-      // Record circuit breaker failure
-      const cb = circuitBreakers.get(upstreamName);
-      if (cb) {
-        cb.onFailure();
-      }
-      
-      res.status(502).json({
-        error: 'Bad Gateway',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Upstream error',
-        correlationId: req.correlationId
-      });
     }
   };
   

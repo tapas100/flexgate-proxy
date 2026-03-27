@@ -7,7 +7,7 @@
 - [ ] All tests passing (unit + integration)
 - [ ] Test coverage > 70%
 - [ ] No critical linting errors
-- [ ] No security vulnerabilities (run `npm audit`)
+- [x] No security vulnerabilities (0 found — `npm audit` clean as of 2026-03-27)
 
 ### Documentation
 - [x] README.md complete with installation instructions
