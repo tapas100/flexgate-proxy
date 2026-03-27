@@ -1,105 +1,126 @@
 # FlexGate Proxy
 
-<div class="hero" markdown>
+**The AI-native API gateway** that detects failures, analyzes root causes with Claude, and auto-heals 80% of incidents — in under 10 minutes.
 
-# FlexGate Proxy
-
-**The AI-native API gateway that detects failures, analyzes root causes with Claude, and auto-heals 80% of incidents — in under 10 minutes.**
-
-<div class="btn-group" markdown>
-[Get Started](getting-started/quickstart.md){ .md-button .md-button--primary }
-[View on GitHub](https://github.com/tapas100/flexgate-proxy){ .md-button }
-[npm install](https://www.npmjs.com/package/flexgate-proxy){ .md-button }
-</div>
-
-</div>
-
-## Why FlexGate?
-
-<div class="feature-grid" markdown>
-
-<div class="feature-card" markdown>
-<div class="icon">🤖</div>
-**AI-Native Signals**  
-Stop exporting logs to Claude. Native AI event types with pre-digested, structured context. No hallucinations.
-</div>
-
-<div class="feature-card" markdown>
-<div class="icon">🛡️</div>
-**Production Security**  
-SSRF protection, HMAC API keys, tiered rate limiting, restricted CORS, and 0 npm CVEs.
-</div>
-
-<div class="feature-card" markdown>
-<div class="icon">⚡</div>
-**Circuit Breakers**  
-Per-upstream circuit breaking with automatic recovery. Never let one bad upstream take down everything.
-</div>
-
-<div class="feature-card" markdown>
-<div class="icon">📊</div>
-**Real-time Observability**  
-Prometheus metrics, Winston structured logs, SSE live dashboard, and PostgreSQL persistence.
-</div>
-
-<div class="feature-card" markdown>
-<div class="icon">🖥️</div>
-**Admin UI**  
-Full React dashboard for routes, webhooks, logs, metrics, settings, and AI incident management.
-</div>
-
-<div class="feature-card" markdown>
-<div class="icon">💰</div>
-**Token-Optimised**  
-87% cheaper than Grafana + PagerDuty. Clean AI signals cost < $5/day vs $50–500/day for traditional stacks.
-</div>
-
-</div>
+[![npm](https://img.shields.io/npm/v/flexgate-proxy?label=npm&color=blue)](https://www.npmjs.com/package/flexgate-proxy)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/tapas100/flexgate-proxy/blob/main/LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+[![Security: 0 CVEs](https://img.shields.io/badge/security-0%20CVEs-success)](https://github.com/tapas100/flexgate-proxy/security)
 
 ---
 
 ## Quick Install
 
-=== "npm"
+```bash
+npm install -g flexgate-proxy
 
-    ```bash
-    npm install -g flexgate-proxy
-    flexgate init
-    flexgate start
-    ```
-
-=== "From source"
-
-    ```bash
-    git clone https://github.com/tapas100/flexgate-proxy.git
-    cd flexgate-proxy
-    npm install && npm run build
-    npm start
-    ```
+flexgate init       # generates config/flexgate.json
+flexgate migrate    # sets up the database schema
+flexgate start      # starts gateway on :3001, Admin UI on :3000
+```
 
 ---
 
-## Current Version
+## What is FlexGate?
 
-| Package | Version | Status |
-|---------|---------|--------|
-| `flexgate-proxy` | `0.1.0-beta.2` | ⚠️ Beta |
-| Node.js | `>=18.0.0` | ✅ |
-| npm | `>=9.0.0` | ✅ |
+FlexGate is a **production-grade reverse proxy and API gateway** built on Node.js. It sits in front of your upstream services and gives you intelligent traffic control, real-time observability, and AI-native incident response — all in one package.
 
-!!! warning "Beta Release"
-    This is a **beta** release. Not recommended for production use yet.  
-    [Report issues →](https://github.com/tapas100/flexgate-proxy/issues)
+### 🤖 AI-Native Signals
+
+Stop copy-pasting logs into Claude. FlexGate emits 10 structured event types (`CIRCUIT_BREAKER_OPENED`, `HIGH_LATENCY`, `ERROR_RATE_SPIKE`, ...) that AI agents can reason about directly — no dashboards, no noisy logs.
+
+### 🛡️ Production Security
+
+SSRF protection, HMAC-SHA256 API keys, tiered rate limiting (global / admin / auth), restricted CORS via `ALLOWED_ORIGINS`, and **0 npm vulnerabilities**.
+
+### ⚡ Circuit Breakers & Retries
+
+Per-upstream circuit breaking with configurable thresholds and automatic recovery. Exponential backoff retries with jitter. Never let one bad upstream take down everything.
+
+### 📊 Real-time Observability
+
+Prometheus metrics, Winston structured JSON logs, Server-Sent Events for live dashboard streaming, and full PostgreSQL persistence for every request.
+
+### 🖥️ Admin UI — No Extra Setup
+
+Full React dashboard built-in: manage routes, webhooks, logs, metrics, settings, and AI incidents from a single URL at `http://localhost:3000`.
+
+### 💰 Token-Optimised
+
+~$5/day for AI-assisted incident response vs $50–500/day for Grafana + PagerDuty + on-call. Clean, pre-digested signals mean fewer tokens and less hallucination risk.
 
 ---
 
-## What's New in beta.2
+## How It Compares
 
-!!! success "0 npm vulnerabilities"
-    Removed `jade` (4 CVEs), upgraded `http-proxy-middleware` → v3, `morgan` → 1.10.1. Full details in the [Changelog](changelog.md).
+| Feature | FlexGate | Kong | AWS API GW | Nginx |
+|---------|----------|------|------------|-------|
+| Admin UI | ✅ Built-in, free | ✅ Enterprise only | ✅ Paid | ❌ |
+| AI-native events | ✅ | ❌ | ❌ | ❌ |
+| npm installable | ✅ | ❌ | ❌ | ❌ |
+| Circuit breakers | ✅ Built-in | ✅ Plugin | ❌ | ❌ |
+| PostgreSQL backend | ✅ | ✅ | ✅ | ❌ |
+| Open source | ✅ MIT | ✅ / Enterprise | ❌ | ✅ |
 
-- ✅ Settings API (`/api/settings`) with validation, backup, and sanitization  
-- ✅ AI incident tracking (`/api/ai-incidents`) with Claude integration  
-- ✅ Tiered API rate limiting (global / admin / auth)  
-- ✅ CORS restricted to `ALLOWED_ORIGINS` env var  
-- ✅ 26/26 integration tests passing  
+---
+
+## Architecture
+
+```
+Incoming Request
+       │
+       ▼
+┌──────────────────────────────────────┐
+│             FlexGate Proxy           │
+│                                      │
+│  CORS  ──►  Rate Limit  ──►  Auth   │
+│                   │                  │
+│            Route Matching            │
+│                   │                  │
+│           Circuit Breaker            │
+│                   │                  │
+│          Upstream Request            │
+│                   │                  │
+│       Metrics + Structured Logs      │
+└──────────────────────────────────────┘
+       │                    │
+       ▼                    ▼
+   Response           AI Event Bus
+                            │
+                     AI Incident Record
+                            │
+                     Claude Analysis
+                     (root cause + fix)
+```
+
+---
+
+## Documentation
+
+| | |
+|---|---|
+| [Getting Started](getting-started/index.md) | Install, configure, run your first gateway |
+| [Guides](guides/index.md) | Routes, webhooks, Admin UI, observability, traffic control |
+| [AI Features](ai/index.md) | AI events, incident response playbooks, cost control |
+| [API Reference](api/index.md) | Full REST API — all endpoints with request/response |
+| [CLI Reference](cli/index.md) | `flexgate init`, `start`, `migrate`, `status` |
+| [Architecture](architecture/index.md) | System design, threat model, trade-offs |
+| [Deployment](deployment/index.md) | AWS EC2, cloud comparison, production hardening |
+| [Contributing](contributing/index.md) | Dev setup, project structure, PR guidelines |
+
+---
+
+## What's New in v0.1.0-beta.2
+
+- **0 npm vulnerabilities** — removed `jade` (4 CVEs), upgraded `http-proxy-middleware` to v3, `morgan` to 1.10.1
+- **Settings API** — `GET/PUT/POST /api/settings` with validation, sanitization, and backup
+- **AI incident tracking** — full CRUD at `/api/ai-incidents` with Claude integration
+- **Tiered rate limiting** — global / admin / auth layers
+- **Restricted CORS** — configured via `ALLOWED_ORIGINS` environment variable
+- **26/26 integration tests passing**
+
+See the full [Changelog](changelog.md).
+
+---
+
+> **Beta notice:** Not recommended for production use yet. [Report issues on GitHub.](https://github.com/tapas100/flexgate-proxy/issues)

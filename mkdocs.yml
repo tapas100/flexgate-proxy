@@ -43,7 +43,6 @@ theme:
     - search.share                  # Shareable search URLs
     - content.code.copy             # Copy button on all code blocks
     - content.code.annotate         # Code annotations
-    - content.tabs.link             # Linkable content tabs
     - content.tooltips              # Inline tooltips
     - toc.follow                    # TOC auto-scrolls with page
 
@@ -69,16 +68,13 @@ markdown_extensions:
       pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets:
-      base_path: ['.']           # lets --8<-- "CHANGELOG.md" resolve from repo root
-  - pymdownx.tabbed:
-      alternate_style: true         # Material-style tabbed content
+      base_path: ['.']              # lets --8<-- "CHANGELOG.md" resolve from repo root
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - attr_list
-  - md_in_html
   - tables
   - toc:
       permalink: true               # Anchor links on all headings
@@ -86,8 +82,6 @@ markdown_extensions:
 
 # Extra — social links + analytics ready
 extra:
-  version:
-    provider: mike
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/tapas100/flexgate-proxy
