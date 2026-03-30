@@ -42,6 +42,8 @@ import {
   adminApiRateLimiter,
   globalApiRateLimiter,
 } from './src/middleware/rateLimiting';
+import { ruleRouter, ruleEngineMiddleware } from './src/intelligence/rules';
+import { signalRouter, signalEngineMiddleware } from './src/intelligence/signals';
 
 // Extend Express Request type
 declare global {
@@ -184,6 +186,10 @@ app.use('/api/settings/ai', adminApiRateLimiter, aiSettingsRoutes);
 app.use('/api/settings/claude', adminApiRateLimiter, claudeSettingsRoutes);
 app.use('/api/ai', adminApiRateLimiter, aiRoutes);
 app.use('/api/ai-incidents', adminApiRateLimiter, aiIncidentRoutes);
+
+// Mount Rule Engine and Signal Engine admin APIs
+app.use('/api/intelligence/rules', adminApiRateLimiter, ruleRouter);
+app.use('/api/intelligence/signals', adminApiRateLimiter, signalRouter);
 
 // Mount stream API (SSE for real-time metrics)
 app.use('/api/stream', streamRoutes);
@@ -396,7 +402,13 @@ function setupProxyRoute(route: ProxyRoute) {
     const limitConfig = route.rateLimit || routeLimit;
     app.use(expressPath, rateLimiter.createLimiter(limitConfig as RateLimitConfig));
   }
-  
+
+  // Signal engine middleware: records latency/status for every proxied request
+  app.use(expressPath, signalEngineMiddleware({ upstream: upstreamName }));
+
+  // Rule engine middleware: evaluates threshold rules and enforces actions
+  app.use(expressPath, ruleEngineMiddleware({ upstream: upstreamName }));
+
   // Create proxy middleware
   const proxyOptions: ProxyOptions = {
     target: upstreamUrl,
@@ -627,6 +639,7 @@ async function loadAndSetupRoutes() {
       '/api/metrics',
       '/api/logs',
       '/api/stream',
+      '/api/intelligence',
       '/health',
       '/prometheus-metrics',
       '/version'
