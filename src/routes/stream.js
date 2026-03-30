@@ -196,24 +196,12 @@ router.get('/logs', async (req, res) => {
     'Access-Control-Allow-Origin': '*',
   });
 
-  res.write(`event: connected\n`);
+  res.write('event: connected\n');
   res.write(`data: ${JSON.stringify({ type: 'logs', connected: true, ts: Date.now() })}\n\n`);
 
   const intervalMs = Math.max(250, Math.min(5000, parseInt(req.query.interval, 10) || 1000));
   const limit = Math.max(1, Math.min(200, parseInt(req.query.limit, 10) || 50));
   let lastTotal = -1;
-
-  const readLogs = async () => {
-    try {
-      // Use the existing logs API to avoid duplicating file parsing logic.
-      // We call it internally via a direct import to keep this endpoint stable.
-      const logsRouter = require('../../routes/logs').default || require('../../routes/logs');
-      // If we can't resolve the router (unexpected), just noop.
-      if (!logsRouter) return;
-    } catch {
-      // ignore
-    }
-  };
 
   // Simple internal fetch via filesystem by reusing the same logic as routes/logs.ts is not trivial in JS.
   // Instead, we implement a minimal tail-like reader here.
@@ -276,11 +264,11 @@ router.get('/logs', async (req, res) => {
       // only push when something changes to reduce noise
       if (total !== lastTotal) {
         lastTotal = total;
-        res.write(`event: logs\n`);
+        res.write('event: logs\n');
         res.write(`data: ${JSON.stringify({ logs: page, total, limit, ts: Date.now() })}\n\n`);
       }
     } catch (err) {
-      res.write(`event: error\n`);
+      res.write('event: error\n');
       res.write(`data: ${JSON.stringify({ error: 'Failed to stream logs', message: err?.message, ts: Date.now() })}\n\n`);
     }
   };

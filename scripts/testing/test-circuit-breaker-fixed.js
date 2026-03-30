@@ -41,7 +41,7 @@ async function runTest() {
   console.log('='.repeat(80) + '\n');
   
   try {
-    const response = await axios.post(`${PROXY_URL}/api/routes`, {
+    await axios.post(`${PROXY_URL}/api/routes`, {
       path: '/failing-service/*',
       upstream: 'http://invalid-host-12345.local:9999',
       methods: ['GET', 'POST'],

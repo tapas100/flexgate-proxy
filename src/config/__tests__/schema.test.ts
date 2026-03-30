@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Configuration Schema Tests
  * Tests for schema validation, versioning, and migration
  */
 
 import { validateConfig, getSchemaVersion, migrateConfig, SCHEMA_VERSION } from '../schema';
-import type { ProxyConfig } from '../../types';
 
 describe('Config Schema', () => {
   describe('Schema Version', () => {

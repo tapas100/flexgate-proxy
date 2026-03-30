@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * JSON Configuration Loader
  * 
@@ -135,7 +136,7 @@ function loadSchema(): any {
     const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
     return JSON.parse(schemaContent);
   } catch (error) {
-    console.error(`❌ Failed to load schema:`, error);
+    console.error('❌ Failed to load schema:', error);
     return null;
   }
 }

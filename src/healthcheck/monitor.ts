@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Health Check Monitor
  * Periodically polls upstream health check endpoints and emits events

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Configuration Loader
  * Handles loading, validation, and reloading of proxy configuration
@@ -121,7 +122,7 @@ class Config implements IConfigLoader {
     if (!this.config) {
       try {
         this.load();
-      } catch (error) {
+      } catch {
         // If auto-load fails, return default or null
         return defaultValue !== undefined ? defaultValue as T : null;
       }

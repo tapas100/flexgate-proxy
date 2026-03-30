@@ -1,4 +1,5 @@
 // @ts-nocheck
+/* eslint-disable jest/no-conditional-expect, jest/no-jasmine-globals */
 import { oauthService } from '../oauth';
 import type { OAuthProviderConfig } from '../../types';
 

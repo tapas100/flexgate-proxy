@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * AI Incident Tracking Routes
  * 
@@ -254,10 +255,10 @@ router.patch('/:id',  async (req: Request, res: Response): Promise<void> => {
       values.push(status);
       
       if (status === 'resolved') {
-        updates.push(`resolved_at = NOW()`);
+        updates.push('resolved_at = NOW()');
       }
       if (status === 'acknowledged') {
-        updates.push(`acknowledged_at = NOW()`);
+        updates.push('acknowledged_at = NOW()');
       }
     }
     
@@ -276,7 +277,7 @@ router.patch('/:id',  async (req: Request, res: Response): Promise<void> => {
       values.push(resolved_by);
     }
     
-    updates.push(`updated_at = NOW()`);
+    updates.push('updated_at = NOW()');
     
     const query = `
       UPDATE ai_incidents 
@@ -693,7 +694,7 @@ router.post('/:id/analyze', async (req: Request, res: Response): Promise<void> =
     // Check if demo mode is enabled
     if (config.demoMode) {
       // Use mock service for demo mode
-      console.log(`🎭 Demo mode: Using mock AI service`);
+      console.log('🎭 Demo mode: Using mock AI service');
       const mockResponse = generateMockAnalysis({
         event_type: incident.event_type,
         severity: incident.severity,
@@ -835,20 +836,20 @@ DETECTED AT: ${incident.detected_at}
 
   // Add metrics if available
   if (Object.keys(metrics).length > 0) {
-    prompt += `METRICS:\n`;
+    prompt += 'METRICS:\n';
     for (const [key, value] of Object.entries(metrics)) {
       prompt += `- ${key}: ${JSON.stringify(value)}\n`;
     }
-    prompt += `\n`;
+    prompt += '\n';
   }
 
   // Add context if available
   if (Object.keys(context).length > 0) {
-    prompt += `CONTEXT:\n`;
+    prompt += 'CONTEXT:\n';
     for (const [key, value] of Object.entries(context)) {
       prompt += `- ${key}: ${JSON.stringify(value)}\n`;
     }
-    prompt += `\n`;
+    prompt += '\n';
   }
 
   // Add AI hints if available
@@ -879,9 +880,9 @@ Provide your analysis in JSON format:
 }`;
 
   switch (eventType) {
-    case 'ERROR_RATE_SPIKE':
-    case 'ERROR_SPIKE':
-      return `ANALYSIS REQUIRED:
+  case 'ERROR_RATE_SPIKE':
+  case 'ERROR_SPIKE':
+    return `ANALYSIS REQUIRED:
 1. What is the root cause of the error rate spike?
 2. Which service/component is failing?
 3. Is this a new error pattern or existing issue escalating?
@@ -890,8 +891,8 @@ Provide your analysis in JSON format:
 
 ${baseFormat}`;
 
-    case 'LATENCY_ANOMALY':
-      return `ANALYSIS REQUIRED:
+  case 'LATENCY_ANOMALY':
+    return `ANALYSIS REQUIRED:
 1. What is causing the latency increase?
 2. Is it database, network, or application code?
 3. Are specific endpoints affected or system-wide?
@@ -899,8 +900,8 @@ ${baseFormat}`;
 
 ${baseFormat}`;
 
-    case 'CIRCUIT_BREAKER_CANDIDATE':
-      return `ANALYSIS REQUIRED:
+  case 'CIRCUIT_BREAKER_CANDIDATE':
+    return `ANALYSIS REQUIRED:
 1. Should a circuit breaker be activated?
 2. What is the upstream service failure pattern?
 3. What should be the circuit breaker threshold?
@@ -915,8 +916,8 @@ Include in JSON:
   ...other base fields
 }`;
 
-    case 'COST_ALERT':
-      return `ANALYSIS REQUIRED:
+  case 'COST_ALERT':
+    return `ANALYSIS REQUIRED:
 1. What is causing the cost spike?
 2. Which API/service is responsible?
 3. Is this legitimate traffic or waste?
@@ -930,8 +931,8 @@ Include in JSON:
   ...other base fields
 }`;
 
-    case 'RATE_LIMIT_BREACH':
-      return `ANALYSIS REQUIRED:
+  case 'RATE_LIMIT_BREACH':
+    return `ANALYSIS REQUIRED:
 1. Which client/user is hitting limits?
 2. Is this legitimate traffic or abuse?
 3. Should limits be adjusted or enforced?
@@ -939,9 +940,9 @@ Include in JSON:
 
 ${baseFormat}`;
 
-    case 'SECURITY_ANOMALY':
-    case 'SECURITY_ALERT':
-      return `ANALYSIS REQUIRED:
+  case 'SECURITY_ANOMALY':
+  case 'SECURITY_ALERT':
+    return `ANALYSIS REQUIRED:
 1. What type of security anomaly is this?
 2. Is this a potential attack or false positive?
 3. What immediate security actions are needed?
@@ -949,8 +950,8 @@ ${baseFormat}`;
 
 ${baseFormat}`;
 
-    default:
-      return `ANALYSIS REQUIRED:
+  default:
+    return `ANALYSIS REQUIRED:
 1. What is the root cause of this incident?
 2. What immediate actions should be taken?
 3. How can we prevent recurrence?
@@ -1056,7 +1057,7 @@ function parseRecommendationsFromAnalysis(analysis: string, eventType: string): 
     }
     
     // Extract confidence from analysis text near this recommendation
-    let confidence = 75 - (index * 5); // Decrease confidence for later items
+    const confidence = 75 - (index * 5); // Decrease confidence for later items
     
     recommendations.push({
       action_type: actionType,

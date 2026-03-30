@@ -2,10 +2,10 @@
  * JetStream Integration Tests
  * Tests for NATS JetStream service and metrics streaming
  */
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 
-const { describe, it, before, after, beforeEach, afterEach } = require('mocha');
+const { describe, it, before, after, afterEach } = require('mocha');
 const { expect } = require('chai');
-const sinon = require('sinon');
 const { connect } = require('nats');
 
 describe('JetStream Service Tests', () => {
@@ -45,7 +45,7 @@ describe('JetStream Service Tests', () => {
       // Cleanup test stream
       try {
         await jsm.streams.delete(TEST_STREAM);
-      } catch (error) {
+      } catch {
         // Ignore if stream doesn't exist
       }
     });
@@ -192,7 +192,7 @@ describe('JetStream Service Tests', () => {
     afterEach(async () => {
       try {
         await jsm.consumers.delete(TEST_STREAM, TEST_CONSUMER);
-      } catch (error) {
+      } catch {
         // Ignore if consumer doesn't exist
       }
     });
@@ -384,7 +384,7 @@ describe('JetStream Service Tests', () => {
   describe('Error Handling', () => {
     it('should handle connection timeout gracefully', async () => {
       try {
-        const badNc = await connect({ 
+        await connect({ 
           servers: 'nats://nonexistent:4222',
           timeout: 1000,
         });
@@ -465,7 +465,7 @@ describe('JetStream Service Tests', () => {
         );
       }
 
-      const consumer = await jsm.consumers.add(TEST_STREAM, {
+      await jsm.consumers.add(TEST_STREAM, {
         durable_name: 'order-test',
         ack_policy: 'explicit',
         deliver_policy: 'all',

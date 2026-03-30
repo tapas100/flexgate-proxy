@@ -2,6 +2,7 @@
  * SSE Endpoint Integration Tests
  * Tests for Server-Sent Events streaming endpoint
  */
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 
 const { describe, it, before, after } = require('mocha');
 const { expect } = require('chai');

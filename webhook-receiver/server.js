@@ -139,7 +139,7 @@ function displayEventSummary(eventType) {
   console.log(`  Count: ${colors.yellow}${eventStats.count}${colors.reset}`);
   
   if (eventStats.examples && eventStats.examples.length > 0) {
-    console.log(`  Recent Examples:`);
+    console.log('  Recent Examples:');
     eventStats.examples.slice(-3).forEach(ex => {
       console.log(`    - ${ex.timestamp}: ${ex.summary}`);
     });
@@ -273,7 +273,6 @@ app.all('/webhook', (req, res) => {
     eventType,
     message: responseMessage,
     processingTime: webhookData.processingTime,
-    message: 'Webhook received successfully',
   });
 });
 

@@ -217,7 +217,7 @@ function sendSSE(res, data) {
 /**
  * Helper: Check if a service is running on a port
  */
-async function checkPort(port, serviceName) {
+async function checkPort(port, _serviceName) {
   const { exec } = require('child_process');
   const { promisify } = require('util');
   const execAsync = promisify(exec);
@@ -225,7 +225,7 @@ async function checkPort(port, serviceName) {
   try {
     const { stdout } = await execAsync(`lsof -ti:${port}`);
     return stdout.trim().length > 0;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -253,7 +253,7 @@ async function checkAPIHealth() {
           try {
             const json = JSON.parse(data);
             resolve(json.status === 'healthy');
-          } catch (e) {
+          } catch {
             resolve(false);
           }
         });
@@ -267,7 +267,7 @@ async function checkAPIHealth() {
 
       req.end();
     });
-  } catch (error) {
+  } catch {
     return false;
   }
 }

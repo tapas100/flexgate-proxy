@@ -731,7 +731,7 @@ Be conservative - prioritize safety over speed.`,
     avg_max_tokens: number;
     avg_cost_usd: number;
     total_event_types_covered: number;
-  } {
+    } {
     const templates = Array.from(this.templates.values());
     
     return {

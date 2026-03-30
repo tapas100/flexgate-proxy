@@ -101,7 +101,7 @@ export class SLICalculator {
     availability: { target: number; met: boolean };
     latency: { target: number; met: boolean };
     errorBudget: { remaining: number; healthy: boolean };
-  } {
+    } {
     const availability = this.calculateAvailability(
       this.totalRequests,
       this.totalRequests - this.successfulRequests

@@ -169,8 +169,8 @@ class MetricsPublisher {
     const successfulRequests = parseInt(summary.successful_requests || '0');
     const availability = totalRequests > 0 ? (successfulRequests / totalRequests) * 100 : 100;
 
-  const latencySeriesRows = latencySeriesResult.rows || [];
-  const errorRateSeriesRows = errorRateSeriesResult.rows || [];
+    const latencySeriesRows = latencySeriesResult.rows || [];
+    const errorRateSeriesRows = errorRateSeriesResult.rows || [];
 
     return {
       summary: {

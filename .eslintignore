@@ -1,0 +1,6 @@
+node_modules/
+dist/
+admin-ui/build/
+admin-ui/node_modules/
+coverage/
+*.min.js

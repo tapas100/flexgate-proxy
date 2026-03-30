@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import express, { Request, Response } from 'express';
 import { exec, spawn } from 'child_process';
 import path from 'path';
@@ -481,7 +482,7 @@ router.post('/start-progress-server', async (req: Request, res: Response): Promi
         });
         return;
       }
-    } catch (error) {
+    } catch {
       // Not running, continue to start it
     }
 

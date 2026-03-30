@@ -2,10 +2,7 @@ import { apiService } from './api';
 import {
   MetricsData,
   TimeRange,
-  MetricPoint,
-  TimeSeriesMetric,
   SLOMetrics,
-  MetricsSummary,
   ApiResponse,
 } from '../types';
 

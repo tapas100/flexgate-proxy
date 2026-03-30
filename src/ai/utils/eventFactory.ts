@@ -310,30 +310,30 @@ export class AIEventFactory {
     const hints: string[] = [];
     
     switch (params.type) {
-      case AIEventType.LATENCY_ANOMALY:
-        hints.push('Check database query performance and connection pools');
-        hints.push('Consider caching opportunities');
-        break;
+    case AIEventType.LATENCY_ANOMALY:
+      hints.push('Check database query performance and connection pools');
+      hints.push('Consider caching opportunities');
+      break;
         
-      case AIEventType.ERROR_RATE_SPIKE:
-        hints.push('Review recent deployments or configuration changes');
-        hints.push('Check upstream service health');
-        break;
+    case AIEventType.ERROR_RATE_SPIKE:
+      hints.push('Review recent deployments or configuration changes');
+      hints.push('Check upstream service health');
+      break;
         
-      case AIEventType.COST_ALERT:
-        hints.push('Evaluate if traffic pattern is legitimate or abuse');
-        hints.push('Consider rate limiting or caching');
-        break;
+    case AIEventType.COST_ALERT:
+      hints.push('Evaluate if traffic pattern is legitimate or abuse');
+      hints.push('Consider rate limiting or caching');
+      break;
         
-      case AIEventType.CIRCUIT_BREAKER_CANDIDATE:
-        hints.push('Evaluate if circuit breaker should be opened');
-        hints.push('Check for cascading failures');
-        break;
+    case AIEventType.CIRCUIT_BREAKER_CANDIDATE:
+      hints.push('Evaluate if circuit breaker should be opened');
+      hints.push('Check for cascading failures');
+      break;
         
-      case AIEventType.SECURITY_ANOMALY:
-        hints.push('Investigate source IP and access patterns');
-        hints.push('Consider blocking or throttling suspicious actors');
-        break;
+    case AIEventType.SECURITY_ANOMALY:
+      hints.push('Investigate source IP and access patterns');
+      hints.push('Consider blocking or throttling suspicious actors');
+      break;
     }
     
     return hints;

@@ -338,28 +338,28 @@ async function main() {
   const { command, options } = parseArgs();
   
   switch (command) {
-    case 'start':
-      await startServer(options);
-      break;
-    case 'init':
-      await initConfig();
-      break;
-    case 'migrate':
-      await runMigrations();
-      break;
-    case 'status':
-      await checkStatus();
-      break;
-    case 'docs':
-      openDocs();
-      break;
-    case 'version':
-      showVersion();
-      break;
-    case 'help':
-    default:
-      showHelp();
-      break;
+  case 'start':
+    await startServer(options);
+    break;
+  case 'init':
+    await initConfig();
+    break;
+  case 'migrate':
+    await runMigrations();
+    break;
+  case 'status':
+    await checkStatus();
+    break;
+  case 'docs':
+    openDocs();
+    break;
+  case 'version':
+    showVersion();
+    break;
+  case 'help':
+  default:
+    showHelp();
+    break;
   }
 }
 

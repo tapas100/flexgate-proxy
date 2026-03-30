@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Multi-Provider AI Service
  * Supports: Claude, Gemini, OpenAI, Groq
@@ -340,7 +341,7 @@ export async function getGeminiModels(apiKey?: string): Promise<ModelInfo[]> {
   if (apiKey) {
     try {
       return await fetchGeminiModels(apiKey);
-    } catch (error) {
+    } catch {
       console.warn('Using static Gemini model list');
     }
   }
@@ -548,16 +549,16 @@ export async function callAIProvider(
   config: AIProviderConfig
 ): Promise<AIResponse> {
   switch (config.provider) {
-    case 'claude':
-      return callClaude(prompt, config);
-    case 'gemini':
-      return callGemini(prompt, config);
-    case 'openai':
-      return callOpenAI(prompt, config);
-    case 'groq':
-      return callGroq(prompt, config);
-    default:
-      throw new Error(`Unsupported provider: ${config.provider}`);
+  case 'claude':
+    return callClaude(prompt, config);
+  case 'gemini':
+    return callGemini(prompt, config);
+  case 'openai':
+    return callOpenAI(prompt, config);
+  case 'groq':
+    return callGroq(prompt, config);
+  default:
+    throw new Error(`Unsupported provider: ${config.provider}`);
   }
 }
 

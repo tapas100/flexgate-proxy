@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Webhook System Integration Test
  * 
@@ -212,8 +213,6 @@ describe('Webhook System', () => {
     it('should trigger webhooks when events are emitted', (done) => {
       // This test is more complex and would require mocking HTTP requests
       // For now, we verify that the webhook manager receives events
-      
-      let eventReceived = false;
 
       // Register a test webhook
       webhookManager.registerWebhook({

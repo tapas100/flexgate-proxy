@@ -10,10 +10,6 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const program = new Command();
 
@@ -71,7 +67,7 @@ async function loadConfig() {
   try {
     const data = await fs.readFile(CONFIG_FILE, 'utf-8');
     return JSON.parse(data);
-  } catch (error) {
+  } catch {
     return { ...DEFAULT_CONFIG };
   }
 }
@@ -662,7 +658,7 @@ aiCmd
       console.log(chalk.bold.cyan('\n💡 RECOMMENDATIONS'));
       console.log(chalk.gray('─'.repeat(60)));
       
-      incident.recommendations.forEach((rec, idx) => {
+      incident.recommendations.forEach((rec, _idx) => {
         console.log(`\n${chalk.bold(`#${rec.recommendation_rank} - ${rec.action_type}`)}`);
         console.log(`  ${chalk.gray('Confidence:')} ${formatPercentage(rec.confidence_score)} ${chalk.gray('|')} ${chalk.gray('Risk:')} ${rec.risk_level}`);
         console.log(`  ${chalk.gray('Reasoning:')} ${rec.reasoning}`);
@@ -1049,7 +1045,7 @@ program
       } else {
         console.log(chalk.red('❌ FlexGate API: unhealthy'));
       }
-    } catch (error) {
+    } catch {
       console.log(chalk.red('❌ FlexGate API: not responding'));
     }
     
@@ -1067,7 +1063,7 @@ program
       await client.query('SELECT 1');
       await client.end();
       console.log(chalk.green('✅ PostgreSQL: healthy'));
-    } catch (error) {
+    } catch {
       console.log(chalk.red('❌ PostgreSQL: unhealthy'));
     }
     
@@ -1085,7 +1081,7 @@ program
       await client.ping();
       await client.quit();
       console.log(chalk.green('✅ Redis: healthy'));
-    } catch (error) {
+    } catch {
       console.log(chalk.red('❌ Redis: unhealthy'));
     }
     

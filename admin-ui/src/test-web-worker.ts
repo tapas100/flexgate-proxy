@@ -4,11 +4,11 @@
  */
 
 // Test 1: Check if worker files exist
-console.log('🧪 Testing Web Worker Implementation...\n');
-
 // Test 2: Import and initialize
-import { initWorkerPool, isWorkerSupported, processTimeSeriesWorker } from './utils/workerMetricsProcessor';
+import { initWorkerPool, isWorkerSupported } from './utils/workerMetricsProcessor';
 import { getProcessorInfo, processTimeSeries } from './utils/metricsProcessor';
+
+console.log('🧪 Testing Web Worker Implementation...\n');
 
 async function testWebWorker() {
   console.log('1️⃣ Checking browser support...');

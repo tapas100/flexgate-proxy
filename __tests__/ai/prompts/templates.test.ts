@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Unit tests for Prompt Template Library
  */
 
-import { PromptTemplateLibrary, PromptTemplate } from '../../../src/ai/prompts/templates';
+import { PromptTemplateLibrary } from '../../../src/ai/prompts/templates';
 import { AIEventFactory } from '../../../src/ai/utils/eventFactory';
 import { AIEventType, EventSeverity, TrendDirection, Sample } from '../../../src/ai/types/events';
 

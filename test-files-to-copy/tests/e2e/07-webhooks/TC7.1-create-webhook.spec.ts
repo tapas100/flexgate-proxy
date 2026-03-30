@@ -59,7 +59,7 @@ test.describe('TC7.1: Create Webhook', () => {
     }
   });
 
-  test('should create webhook with all options @smoke @p0', async ({ page }) => {
+  test('should create webhook with all options @smoke @p0', async ({ page: _page }) => {
     const webhookUrl = webhookServer.getUrl();
     const webhookData = {
       url: webhookUrl,
@@ -114,7 +114,7 @@ test.describe('TC7.1: Create Webhook', () => {
     expect(createdWebhook?.enabled).toBe(true);
   });
 
-  test('should create webhook with minimal options @p1', async ({ page }) => {
+  test('should create webhook with minimal options @p1', async ({ page: _page }) => {
     const webhookUrl = webhookServer.getUrl() + '/minimal';
     
     const webhookData = {
@@ -129,7 +129,7 @@ test.describe('TC7.1: Create Webhook', () => {
     expect(await webhooksPage.webhookExists(webhookUrl)).toBeTruthy();
   });
 
-  test('should generate unique secret for each webhook @p1', async ({ page }) => {
+  test('should generate unique secret for each webhook @p1', async ({ page: _page }) => {
     // Create first webhook
     await webhooksPage.clickCreateWebhook();
     const secret1 = await webhooksPage.secretInput.inputValue();
@@ -146,7 +146,7 @@ test.describe('TC7.1: Create Webhook', () => {
     expect(secret2.length).toBeGreaterThan(20);
   });
 
-  test('should allow selecting multiple events @p1', async ({ page }) => {
+  test('should allow selecting multiple events @p1', async ({ page: _page }) => {
     const webhookUrl = webhookServer.getUrl() + '/multi-events';
     
     await webhooksPage.clickCreateWebhook();

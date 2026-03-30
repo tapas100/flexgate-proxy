@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createLogger, format, transports } from 'winston';
 import * as os from 'os';
 import config from './config/loader';

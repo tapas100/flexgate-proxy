@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Multi-Provider AI Settings Routes
  * Supports: Claude, Gemini, OpenAI, Groq
@@ -144,7 +145,7 @@ function loadExternalConfig(): boolean {
       console.log(`✅ Loaded config from: ${CONFIG_FILE_PATH}`);
       if (aiConfig.apiKey) {
         console.log(`🔐 API key loaded from config: ${maskApiKey(aiConfig.apiKey)}`);
-        console.log(`🔒 API key is LOCKED (write-once mode - delete to change)`);
+        console.log('🔒 API key is LOCKED (write-once mode - delete to change)');
       }
       return true;
     }
@@ -185,10 +186,10 @@ setTimeout(async () => {
       // Verify decrypted key works
       if (aiConfig.apiKey) {
         console.log(`🔐 Decrypted API key: ${maskApiKey(aiConfig.apiKey)}`);
-        console.log(`🔒 API key is LOCKED (write-once mode - delete to change)`);
+        console.log('🔒 API key is LOCKED (write-once mode - delete to change)');
       }
     }
-  } catch (error) {
+  } catch {
     console.log('ℹ️  No saved AI config found, using defaults');
   }
 }, 2000); // Wait 2 seconds for database to initialize
@@ -263,7 +264,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       aiConfig.apiKey = apiKey.trim();
       apiKeyLocked = true; // Lock after first save
       console.log(`🔐 API key updated for ${aiConfig.provider}: ${maskApiKey(apiKey)}`);
-      console.log(`🔒 API key is now LOCKED (write-once mode)`);
+      console.log('🔒 API key is now LOCKED (write-once mode)');
     }
 
     // Update model config

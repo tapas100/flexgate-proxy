@@ -43,7 +43,7 @@ test.describe('TC2.1: Create Route', () => {
     }
   });
 
-  test('should create route with valid data @smoke @p0', async ({ page }) => {
+  test('should create route with valid data @smoke @p0', async ({ page: _page }) => {
     const routeData = {
       path: '/api/test-route-' + Date.now(),
       target: 'http://httpbin.org/status/200',
@@ -75,7 +75,7 @@ test.describe('TC2.1: Create Route', () => {
     expect(isEnabled).toBe(true);
   });
 
-  test('should create route with minimal required fields @p1', async ({ page }) => {
+  test('should create route with minimal required fields @p1', async ({ page: _page }) => {
     const routeData = {
       path: '/api/test-minimal-' + Date.now(),
       target: 'http://httpbin.org/get',
@@ -87,7 +87,7 @@ test.describe('TC2.1: Create Route', () => {
     expect(await routesPage.routeExists(routeData.path)).toBeTruthy();
   });
 
-  test('should create route with custom timeout @p1', async ({ page }) => {
+  test('should create route with custom timeout @p1', async ({ page: _page }) => {
     const routeData = {
       path: '/api/test-timeout-' + Date.now(),
       target: 'http://httpbin.org/delay/3',
@@ -106,7 +106,7 @@ test.describe('TC2.1: Create Route', () => {
     expect(createdRoute?.timeout).toBe(10000);
   });
 
-  test('should close dialog when clicking Cancel @p2', async ({ page }) => {
+  test('should close dialog when clicking Cancel @p2', async ({ page: _page }) => {
     // Open create dialog
     await routesPage.clickCreateRoute();
     expect(await routesPage.dialog.isVisible()).toBeTruthy();
@@ -118,7 +118,7 @@ test.describe('TC2.1: Create Route', () => {
     await routesPage.dialog.waitFor({ state: 'hidden' });
   });
 
-  test('should reset form after successful creation @p2', async ({ page }) => {
+  test('should reset form after successful creation @p2', async ({ page: _page }) => {
     const routeData = {
       path: '/api/test-reset-' + Date.now(),
       target: 'http://httpbin.org/post',

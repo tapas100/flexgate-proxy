@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { logger } from './logger';
 import { metrics } from './metrics';
 import { CircuitBreakerMetricState } from './metrics/types';
@@ -192,7 +193,7 @@ class CircuitBreaker {
     // Update state gauge
     const stateValue = newState === 'CLOSED' ? CircuitBreakerMetricState.CLOSED
       : newState === 'HALF_OPEN' ? CircuitBreakerMetricState.HALF_OPEN
-      : CircuitBreakerMetricState.OPEN;
+        : CircuitBreakerMetricState.OPEN;
     
     metrics.circuitBreakerState.set(
       { upstream: this.name, route: this.name },

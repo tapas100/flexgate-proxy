@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Claude AI Settings Routes
  * 
@@ -13,7 +14,7 @@ const db = database;
 
 // In-memory store for API key (in production, use env variables or secure vault)
 let claudeApiKey = process.env.ANTHROPIC_API_KEY || '';
-let claudeConfig = {
+const claudeConfig = {
   model: process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022',
   maxTokens: parseInt(process.env.CLAUDE_MAX_TOKENS || '2000'),
   temperature: parseFloat(process.env.CLAUDE_TEMPERATURE || '0'),

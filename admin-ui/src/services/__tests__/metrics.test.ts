@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-conditional-expect */
 import { metricsService } from '../metrics';
 import { TimeRange } from '../../types';
 

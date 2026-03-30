@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import createError from 'http-errors';
 import express, { Request, Response, NextFunction, Application } from 'express';
 import cookieParser from 'cookie-parser';
@@ -44,6 +45,7 @@ import {
 
 // Extend Express Request type
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       correlationId?: string;
@@ -123,14 +125,14 @@ healthCheckMonitor.start();
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:8080',  // For proxy requests from admin UI
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:8080',
-      'http://local.flexgate.io:3000',
-      'http://local.flexgate.io:8080',
-    ];
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:8080',  // For proxy requests from admin UI
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:8080',
+    'http://local.flexgate.io:3000',
+    'http://local.flexgate.io:8080',
+  ];
 
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -487,8 +489,8 @@ function setupProxyRoute(route: ProxyRoute) {
       error: (err: Error, req: any, res: any) => {
         const duration = Date.now() - (req.upstreamStartTime || Date.now());
         const errorType = err.message.includes('timeout') ? 'timeout' : 
-                         err.message.includes('ECONNREFUSED') ? 'connection_refused' :
-                         err.message.includes('ENOTFOUND') ? 'dns_error' : 'unknown';
+          err.message.includes('ECONNREFUSED') ? 'connection_refused' :
+            err.message.includes('ENOTFOUND') ? 'dns_error' : 'unknown';
         
         // Record upstream error metrics
         metrics.upstreamErrorsTotal.inc({

@@ -57,7 +57,7 @@ async function runTests() {
     await sleep(DELAY_MS);
   }
   
-  console.log(chalk.bold.yellow(`\n  ✓ Should trigger: rate_limit.approaching`));
+  console.log(chalk.bold.yellow('\n  ✓ Should trigger: rate_limit.approaching'));
   console.log(chalk.gray(`  → Successful: ${successCount}, Failed: ${failedCount}\n`));
   
   console.log(chalk.bold('\n' + '='.repeat(80)));
@@ -79,7 +79,7 @@ async function runTests() {
     await sleep(DELAY_MS);
   }
   
-  console.log(chalk.bold.red(`\n  ✓ Should trigger: rate_limit.exceeded\n`));
+  console.log(chalk.bold.red('\n  ✓ Should trigger: rate_limit.exceeded\n'));
   
   console.log(chalk.bold('\n' + '='.repeat(80)));
   console.log(chalk.bold('  STEP 3: Wait for Rate Limit Window to Reset'));
@@ -115,13 +115,8 @@ async function runTests() {
   console.log('Fetching rate limit event deliveries from database...\n');
   
   const { exec } = require('child_process');
-  exec(`psql -d flexgate -c "SELECT webhook_id, event_type, status, response_code, created_at FROM webhook_deliveries WHERE event_type LIKE 'rate_limit.%' ORDER BY created_at DESC LIMIT 10;"`, 
-    (error, stdout, stderr) => {
-      if (error) {
-        console.log(chalk.red(`Error querying database: ${error.message}`));
-      } else {
-        console.log(stdout);
-      }
+  exec('psql -d flexgate -c "SELECT webhook_id, event_type, status, response_code, created_at FROM webhook_deliveries WHERE event_type LIKE \'rate_limit.%\' ORDER BY created_at DESC LIMIT 10;"', 
+    (_error, _stdout, _stderr) => {
       
       console.log(chalk.bold('\n' + '='.repeat(80)));
       console.log(chalk.bold('  TEST SUMMARY'));

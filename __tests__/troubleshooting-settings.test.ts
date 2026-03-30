@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Troubleshooting & Settings UI/API Integration Tests
  * 
@@ -11,7 +12,7 @@
  * - Admin UI running on http://localhost:3002
  */
 
-import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, test, expect, beforeAll } from '@jest/globals';
 import axios, { AxiosInstance } from 'axios';
 
 const API_BASE_URL = process.env.API_URL || 'http://localhost:3000';
@@ -416,8 +417,8 @@ describe('Integration Tests - UI Button → API Response', () => {
       console.log('📊 UI would display:');
       response.data.healthChecks?.forEach((check: any) => {
         const icon = check.status === 'healthy' ? '✅' : 
-                     check.status === 'unhealthy' ? '❌' : 
-                     check.status === 'warning' ? '⚠️' : 'ℹ️';
+          check.status === 'unhealthy' ? '❌' : 
+            check.status === 'warning' ? '⚠️' : 'ℹ️';
         console.log(`  ${icon} ${check.name}: ${check.message}`);
       });
 
@@ -437,7 +438,7 @@ describe('Integration Tests - UI Button → API Response', () => {
       console.log('📊 UI would display:');
       response.data.systemChecks?.forEach((check: any) => {
         const icon = check.status === 'healthy' ? '✅' : 
-                     check.status === 'unhealthy' ? '❌' : '⚠️';
+          check.status === 'unhealthy' ? '❌' : '⚠️';
         console.log(`  ${icon} ${check.name}: ${check.message}`);
       });
 

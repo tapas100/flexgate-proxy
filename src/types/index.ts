@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * FlexGate Proxy Type Definitions
  * Core types for configuration, health checks, and validation
@@ -259,6 +260,7 @@ export interface ErrorLogContext {
 // ============================================================================
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       correlationId?: string;

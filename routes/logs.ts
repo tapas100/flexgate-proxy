@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -66,7 +67,7 @@ router.get('/', async (req: Request, res: Response) => {
         })
         .reverse(); // Most recent first
       
-    } catch (error) {
+    } catch {
       // Log file doesn't exist or can't be read
       console.log('No log file found, returning empty array');
     }
@@ -188,7 +189,7 @@ router.get('/stats/summary', async (_req: Request, res: Response) => {
         stats.total++;
         
         const level = parsed.level?.toUpperCase() || 'INFO';
-        if (stats.byLevel.hasOwnProperty(level)) {
+        if (Object.prototype.hasOwnProperty.call(stats.byLevel, level)) {
           (stats.byLevel as any)[level]++;
         }
         

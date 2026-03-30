@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
 import { createClient, RedisClientType } from 'redis';
@@ -123,7 +124,7 @@ class RateLimiter {
     // Use Redis store if available
     if (this.redisClient && this.rateLimitConfig.backend === 'redis') {
       limiterOptions.store = new RedisStore({
-        // @ts-ignore - RedisStore typing issue
+        // @ts-expect-error - RedisStore typing issue
         client: this.redisClient,
         prefix: 'ratelimit:'
       });

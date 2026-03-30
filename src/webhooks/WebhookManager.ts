@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import crypto from 'crypto';
 import axios, { AxiosError } from 'axios';
 import { logger } from '../logger';

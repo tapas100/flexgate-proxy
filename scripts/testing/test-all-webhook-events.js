@@ -196,7 +196,7 @@ async function checkResults() {
   return new Promise((resolve) => {
     exec(
       'psql -d flexgate -c "SELECT event_type, COUNT(*) as count FROM webhook_deliveries WHERE created_at > NOW() - INTERVAL \'5 minutes\' GROUP BY event_type ORDER BY count DESC;"',
-      (error, stdout, stderr) => {
+      (error, stdout, _stderr) => {
         if (error) {
           console.log(chalk.red(`Database query error: ${error.message}`));
         } else {

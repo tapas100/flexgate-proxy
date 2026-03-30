@@ -53,7 +53,7 @@ test.describe('TC1.2: Invalid Login', () => {
     expect(page.url()).toContain('/login');
   });
 
-  test('should clear previous error on new login attempt @p1', async ({ page }) => {
+  test('should clear previous error on new login attempt @p1', async ({ page: _page }) => {
     // First failed attempt
     await loginPage.login('wrong@example.com', 'Wrong123!');
     expect(await loginPage.hasError()).toBeTruthy();
@@ -75,7 +75,7 @@ test.describe('TC1.2: Invalid Login', () => {
 
   test('should handle SQL injection attempt safely @p1 @security', async ({ page }) => {
     // Attempt SQL injection in email field
-    await loginPage.login("admin'--", "password");
+    await loginPage.login('admin\'--', 'password');
 
     // Should show error, not execute SQL
     expect(await loginPage.hasError()).toBeTruthy();

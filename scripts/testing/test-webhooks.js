@@ -158,7 +158,7 @@ async function triggerCircuitBreakerEvent() {
       await fetch(`${BASE_URL}${failingRoute}`, {
         headers: { 'user-agent': 'webhook-event-trigger' },
       });
-    } catch (err) {
+    } catch {
       // Expected to fail
     }
     await sleep(200);
@@ -181,7 +181,7 @@ async function triggerRateLimitEvent() {
           'x-test-client': 'rate-limit-test',
         },
       });
-    } catch (err) {
+    } catch {
       // May fail if rate limited
     }
   }
@@ -210,7 +210,7 @@ async function triggerProxyRequestEvents() {
         },
         body: method === 'POST' ? JSON.stringify({ test: true }) : undefined,
       });
-    } catch (err) {
+    } catch {
       // Handle errors
     }
     await sleep(500);
@@ -246,10 +246,10 @@ async function monitorWebhookDeliveries(webhooks, duration = 10000) {
         console.log(`   Avg Delivery Time: ${stats.avgDeliveryTime || 0}ms`);
         
         if (stats.recentDeliveries && stats.recentDeliveries.length > 0) {
-          console.log(`   Recent Deliveries:`);
+          console.log('   Recent Deliveries:');
           stats.recentDeliveries.slice(0, 3).forEach(delivery => {
             const status = delivery.status === 'success' ? '✅' : 
-                          delivery.status === 'failed' ? '❌' : '⏳';
+              delivery.status === 'failed' ? '❌' : '⏳';
             console.log(`     ${status} ${delivery.event} - ${delivery.attempts} attempt(s)`);
           });
         }

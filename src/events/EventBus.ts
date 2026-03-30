@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'events';
 import { logger } from '../logger';
 
@@ -241,7 +242,7 @@ export class EventBus extends EventEmitter {
     totalEvents: number;
     eventsByType: Record<string, number>;
     recentEvents: number;
-  } {
+    } {
     const eventsByType: Record<string, number> = {};
 
     this.eventHistory.forEach(event => {

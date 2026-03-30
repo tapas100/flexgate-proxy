@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Database Connection Pool
  * PostgreSQL connection management with automatic reconnection

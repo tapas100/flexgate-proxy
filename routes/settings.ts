@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Settings API Routes
  * 
@@ -331,7 +332,7 @@ router.put('/', async (req: Request, res: Response) => {
       // Create backup of current config
       try {
         await fs.copyFile(CONFIG_FILE, backupFile);
-      } catch (err) {
+      } catch {
         // Backup file doesn't exist, that's ok
       }
 
@@ -351,7 +352,7 @@ router.put('/', async (req: Request, res: Response) => {
       // Restore from backup if write failed
       try {
         await fs.copyFile(backupFile, CONFIG_FILE);
-      } catch (restoreError) {
+      } catch {
         // Couldn't restore, but that's secondary
       }
       throw writeError;
@@ -377,22 +378,22 @@ router.post('/test/:service', async (req: Request, res: Response) => {
     let result: any = {};
 
     switch (service) {
-      case 'database':
-        // Test database connection
-        result = await testDatabaseConnection(req.body);
-        break;
+    case 'database':
+      // Test database connection
+      result = await testDatabaseConnection(req.body);
+      break;
 
-      case 'redis':
-        // Test Redis connection
-        result = await testRedisConnection(req.body);
-        break;
+    case 'redis':
+      // Test Redis connection
+      result = await testRedisConnection(req.body);
+      break;
 
-      default:
-        res.status(400).json({
-          success: false,
-          error: `Unknown service: ${service}`,
-        });
-        return;
+    default:
+      res.status(400).json({
+        success: false,
+        error: `Unknown service: ${service}`,
+      });
+      return;
     }
 
     res.json({

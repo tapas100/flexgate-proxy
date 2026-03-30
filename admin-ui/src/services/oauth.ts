@@ -315,7 +315,6 @@ class OAuthService {
    */
   private generateMockProviders(): OAuthProvider[] {
     const now = Date.now();
-    const dayAgo = now - 24 * 60 * 60 * 1000;
 
     return [
       {

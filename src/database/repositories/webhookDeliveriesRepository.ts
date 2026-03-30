@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Pool } from 'pg';
 import { randomUUID as uuidv4 } from 'crypto';
 

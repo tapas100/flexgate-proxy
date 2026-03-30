@@ -1,4 +1,5 @@
 // @ts-nocheck
+/* eslint-disable jest/no-conditional-expect */
 import { logService } from '../logs';
 import type { LogFilter, LogLevel, LogSource, DetailedLogEntry } from '../../types';
 

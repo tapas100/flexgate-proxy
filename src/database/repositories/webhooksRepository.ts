@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import database from '../index';
 
 export interface Webhook {
@@ -142,7 +143,7 @@ export async function update(
     return findByWebhookId(webhookId);
   }
 
-  updates.push(`updated_at = NOW()`);
+  updates.push('updated_at = NOW()');
   values.push(webhookId);
 
   const result = await database.query<Webhook>(

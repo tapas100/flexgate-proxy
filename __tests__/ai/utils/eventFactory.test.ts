@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Unit tests for AI Event Factory
  */
 
-import { AIEventFactory, CreateEventParams, ValidationResult } from '../../../src/ai/utils/eventFactory';
+import { AIEventFactory, CreateEventParams } from '../../../src/ai/utils/eventFactory';
 import {
-  AIEvent,
   AIEventType,
   EventSeverity,
   TrendDirection,
@@ -253,10 +253,6 @@ describe('AIEventFactory', () => {
       const event_critical = AIEventFactory.create({
         ...validParams,
         severity: EventSeverity.CRITICAL,
-      });
-      const event_info = AIEventFactory.create({
-        ...validParams,
-        severity: EventSeverity.INFO,
       });
 
       const hasAttentionHint = event_critical.ai_metadata.reasoning_hints?.some(hint => 

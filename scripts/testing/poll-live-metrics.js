@@ -90,6 +90,7 @@ async function startSse() {
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -138,11 +139,10 @@ async function main() {
   }
 
   let lastTotal;
-  let trafficTicker = 0;
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     if (GENERATE_TRAFFIC) {
-      trafficTicker += INTERVAL_MS;
       // generate 1-2 requests per polling cycle depending on configured rates
       const hits = Math.max(1, Math.round(INTERVAL_MS / Math.max(250, TRAFFIC_EVERY_MS)));
       for (let i = 0; i < hits; i++) {

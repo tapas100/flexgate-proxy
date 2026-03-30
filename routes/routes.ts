@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { logger } from '../src/logger';
@@ -429,7 +430,7 @@ const updateRouteHandler = async (req: Request, res: Response): Promise<any> => 
       values.push(updateData.rateLimit.message);
     }
 
-    updates.push(`updated_at = NOW()`);
+    updates.push('updated_at = NOW()');
     values.push(id);
 
     const result = await database.query(

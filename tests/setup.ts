@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Jest Setup
  * Global test configuration and utilities
@@ -22,6 +23,7 @@ global.console = {
 
 // Define global test helpers type
 declare global {
+  // eslint-disable-next-line no-var
   var testHelpers: {
     waitFor: (condition: () => boolean, timeout?: number) => Promise<void>;
     mockRequest: (options?: Partial<MockRequest>) => MockRequest;
