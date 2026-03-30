@@ -1,0 +1,102 @@
+{
+  "name": "default",
+  "version": 1,
+  "rules": [
+    {
+      "id": "critical-error-block",
+      "name": "Block when error rate > 50% AND rps > 100",
+      "priority": 5,
+      "enabled": true,
+      "condition": {
+        "type": "and",
+        "conditions": [
+          { "type": "threshold", "metric": "errorRate", "operator": ">", "value": 0.5 },
+          { "type": "threshold", "metric": "rps", "operator": ">", "value": 100 }
+        ]
+      },
+      "action": {
+        "type": "block",
+        "statusCode": 503,
+        "message": "Upstream is unhealthy — requests blocked until recovery"
+      },
+      "continueOnMatch": false,
+      "cooldownMs": 30000
+    },
+    {
+      "id": "rps-throttle",
+      "name": "Throttle on RPS > 1000",
+      "priority": 10,
+      "enabled": true,
+      "condition": {
+        "type": "threshold",
+        "metric": "rps",
+        "operator": ">",
+        "value": 1000
+      },
+      "action": {
+        "type": "throttle",
+        "rps": 500,
+        "message": "Traffic spike detected — request throttled"
+      },
+      "continueOnMatch": false,
+      "cooldownMs": 5000
+    },
+    {
+      "id": "high-stress-alert",
+      "name": "Alert on stress score > 0.7",
+      "priority": 15,
+      "enabled": true,
+      "condition": {
+        "type": "threshold",
+        "metric": "stressScore",
+        "operator": ">",
+        "value": 0.7
+      },
+      "action": {
+        "type": "alert",
+        "severity": "critical",
+        "message": "Stress score exceeded 0.7 — upstream under significant strain"
+      },
+      "continueOnMatch": true,
+      "cooldownMs": 60000
+    },
+    {
+      "id": "error-rate-alert",
+      "name": "Alert on error rate >= 10%",
+      "priority": 20,
+      "enabled": true,
+      "condition": {
+        "type": "threshold",
+        "metric": "errorRate",
+        "operator": ">=",
+        "value": 0.1
+      },
+      "action": {
+        "type": "alert",
+        "severity": "warning",
+        "message": "Error rate has exceeded 10% in the last window"
+      },
+      "continueOnMatch": true,
+      "cooldownMs": 30000
+    },
+    {
+      "id": "latency-alert",
+      "name": "Alert on p95 latency > 2s",
+      "priority": 30,
+      "enabled": true,
+      "condition": {
+        "type": "threshold",
+        "metric": "p95LatencyMs",
+        "operator": ">",
+        "value": 2000
+      },
+      "action": {
+        "type": "alert",
+        "severity": "warning",
+        "message": "p95 latency exceeded 2000 ms — possible upstream degradation"
+      },
+      "continueOnMatch": true,
+      "cooldownMs": 30000
+    }
+  ]
+}

@@ -102,6 +102,8 @@ export function parseRuleSetFile(filePath: string, raw: string): RuleSet {
       version: r.version ?? 1,
       createdAt: r.createdAt ?? nowIso(),
       updatedAt: r.updatedAt ?? nowIso(),
+      ...(typeof r.cooldownMs === 'number' ? { cooldownMs: r.cooldownMs } : {}),
+      ...(typeof r.expiresAt === 'string'  ? { expiresAt: r.expiresAt }   : {}),
     };
 
     const errors = validateRule(rule, `rules[${i}]`);

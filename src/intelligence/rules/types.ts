@@ -30,7 +30,9 @@ export type MetricKey =
   | 'maxLatencyMs'
   | 'requestCount'
   | 'avgRequestBytes'
-  | 'avgResponseBytes';
+  | 'avgResponseBytes'
+  /** Derived stress index [0–1]: 0.5·errorRate + 0.3·clamp(p95ZScore/3) + 0.2·clamp(rpsZScore/3) */
+  | 'stressScore';
 
 // ── Operators ─────────────────────────────────────────────────────────────────
 
@@ -181,6 +183,17 @@ export interface Rule {
   readonly version: number;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /**
+   * After a rule fires, suppress re-firing for the same upstream+path key for
+   * this many milliseconds. Omit or set to 0 to disable.
+   */
+  readonly cooldownMs?: number;
+  /**
+   * ISO 8601 expiry timestamp. If set and the current time is past this value
+   * the rule is treated as disabled (without modifying the ruleset on disk).
+   * Example: "2026-12-31T23:59:59.000Z"
+   */
+  readonly expiresAt?: string;
 }
 
 // ── RuleSet ───────────────────────────────────────────────────────────────────

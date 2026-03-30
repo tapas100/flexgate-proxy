@@ -27,6 +27,7 @@ import {
   evaluateChain,
   validateCondition,
   validateRule,
+  computeStressScore,
 } from '../math';
 import { parseRuleSetFile } from '../loader';
 import type {
@@ -625,5 +626,184 @@ describe('End-to-end: RPS spike throttle', () => {
     expect(result.matches).toHaveLength(2); // both fired
     expect(result.matches[0]!.ruleId).toBe('error-alert');
     expect(result.decidingAction?.type).toBe('throttle');
+  });
+});
+
+// Auto-expiry
+
+describe('evaluateRule() auto-expiry', () => {
+  test('expired rule returns null', () => {
+    const past = new Date(Date.now() - 1000).toISOString();
+    const rule = makeRule({ expiresAt: past });
+    const input = makeInput({ rps: 2000 });
+    expect(evaluateRule(rule, input)).toBeNull();
+  });
+
+  test('non-expired rule still fires', () => {
+    const future = new Date(Date.now() + 60_000).toISOString();
+    const rule = makeRule({ expiresAt: future });
+    const input = makeInput({ rps: 2000 });
+    expect(evaluateRule(rule, input)).not.toBeNull();
+  });
+
+  test('rule without expiresAt fires normally', () => {
+    const rule = makeRule();
+    const input = makeInput({ rps: 2000 });
+    expect(evaluateRule(rule, input)).not.toBeNull();
+  });
+
+  test('expired rules are skipped in evaluateChain', () => {
+    const past = new Date(Date.now() - 1000).toISOString();
+    const rs = makeRuleSet([makeRule({ id: 'expired', expiresAt: past })]);
+    const result = evaluateChain(rs, makeInput({ rps: 2000 }));
+    expect(result.triggered).toBe(false);
+  });
+});
+
+// Cooldown
+
+describe('RuleEngine cooldown', () => {
+  test('rule does not re-fire within cooldown window', () => {
+    const engine = resetRuleEngine();
+    engine.addRule({
+      id: 'cd-rule',
+      name: 'Cooldown test',
+      priority: 10,
+      enabled: true,
+      condition: { type: 'threshold', metric: 'rps', operator: '>', value: 100 },
+      action: { type: 'alert', severity: 'info', message: 'rps spike' },
+      continueOnMatch: true,
+      cooldownMs: 30_000,
+    });
+
+    const input = makeInput({ rps: 500 });
+
+    const first = engine.evaluate(input);
+    expect(first.triggered).toBe(true);
+
+    // Second call within cooldown  same scope keywindow 
+    const second = engine.evaluate(input);
+    expect(second.triggered).toBe(false);
+  });
+
+  test('rule fires again after cooldown expires', () => {
+    const engine = resetRuleEngine();
+    engine.addRule({
+      id: 'cd-rule2',
+      name: 'Cooldown expiry test',
+      priority: 10,
+      enabled: true,
+      condition: { type: 'threshold', metric: 'rps', operator: '>', value: 100 },
+      action: { type: 'alert', severity: 'info', message: 'rps spike' },
+      continueOnMatch: true,
+      cooldownMs: 100, // 100 ms cooldown
+    });
+
+    const nowMs = Date.now();
+    const first = engine.evaluate(makeInput({ rps: 500 }, { evaluatedAtMs: nowMs }));
+    expect(first.triggered).toBe(true);
+
+    // Still within cooldown
+    const second = engine.evaluate(makeInput({ rps: 500 }, { evaluatedAtMs: nowMs + 50 }));
+    expect(second.triggered).toBe(false);
+
+    // After cooldown has elapsed
+    const third = engine.evaluate(makeInput({ rps: 500 }, { evaluatedAtMs: nowMs + 200 }));
+    expect(third.triggered).toBe(true);
+  });
+
+  test('cooldown is scoped per upstream+path', () => {
+    const engine = resetRuleEngine();
+    engine.addRule({
+      id: 'cd-scope',
+      name: 'Scope test',
+      priority: 10,
+      enabled: true,
+      condition: { type: 'threshold', metric: 'rps', operator: '>', value: 100 },
+      action: { type: 'alert', severity: 'info', message: 'rps spike' },
+      continueOnMatch: true,
+      cooldownMs: 30_000,
+    });
+
+    const svcA = makeInput({ rps: 500 }, { upstream: 'svc-a', path: '/api/a' });
+    const svcB = makeInput({ rps: 500 }, { upstream: 'svc-b', path: '/api/b' });
+
+    const firstA = engine.evaluate(svcA);
+    expect(firstA.triggered).toBe(true);
+
+    // Different  should fire despite cooldown on svc-ascope 
+    const firstB = engine.evaluate(svcB);
+    expect(firstB.triggered).toBe(true);
+
+    // svc-a still in cooldown
+    const secondA = engine.evaluate(svcA);
+    expect(secondA.triggered).toBe(false);
+  });
+
+  test('parseRuleSetFile preserves cooldownMs and expiresAt', () => {
+    const future = new Date(Date.now() + 60_000).toISOString();
+    const json = JSON.stringify({
+      rules: [{
+        id: 'r1',
+        name: 'R1',
+        priority: 100,
+        enabled: true,
+        condition: { type: 'threshold', metric: 'rps', operator: '>', value: 0 },
+        action: { type: 'alert', severity: 'info', message: 'ok' },
+        cooldownMs: 5000,
+        expiresAt: future,
+      }],
+    });
+    const rs = parseRuleSetFile('rules.json', json);
+    expect(rs.rules[0]!.cooldownMs).toBe(5000);
+    expect(rs.rules[0]!.expiresAt).toBe(future);
+  });
+});
+
+// Stress score
+
+describe('computeStressScore()', () => {
+  test('all zeros produce 0', () => {
+    expect(computeStressScore(0, 0, 0)).toBe(0);
+  });
+
+  test('max values produce 1', () => {
+    expect(computeStressScore(1, 3, 3)).toBeCloseTo(1.0);
+  });
+
+  test('only error rate contributes (50% weight)', () => {
+    expect(computeStressScore(1, 0, 0)).toBeCloseTo(0.5);
+  });
+
+  test('only p95 z-score at 3 contributes (30% weight)', () => {
+    expect(computeStressScore(0, 3, 0)).toBeCloseTo(0.3);
+  });
+
+  test('only rps z-score at 3 contributes (20% weight)', () => {
+    expect(computeStressScore(0, 0, 3)).toBeCloseTo(0.2);
+  });
+
+  test('negative z-scores are clamped to 0', () => {
+    expect(computeStressScore(0, -5, -5)).toBe(0);
+  });
+
+  test('z-scores > 3 are clamped to contribution ceiling', () => {
+    expect(computeStressScore(0, 99, 99)).toBeCloseTo(0.5); // 0.3 + 0.2
+  });
+
+  test('stressScore rule condition works end-to-end', () => {
+    const engine = resetRuleEngine();
+    engine.addRule({
+      id: 'stress-alert',
+      name: 'High stress',
+      priority: 10,
+      enabled: true,
+      condition: { type: 'threshold', metric: 'stressScore', operator: '>', value: 0.4 },
+      action: { type: 'alert', severity: 'critical', message: 'high stress' },
+      continueOnMatch: true,
+    });
+    const score = computeStressScore(1, 0, 0); // 0.5
+    const result = engine.evaluate(makeInput({ stressScore: score }));
+    expect(result.triggered).toBe(true);
   });
 });

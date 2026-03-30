@@ -37,6 +37,7 @@ export {
   validateCondition,
   validateAction,
   validateRule,
+  computeStressScore,
 } from './math';
 
 export {

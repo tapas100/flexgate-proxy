@@ -49,6 +49,12 @@ export class RuleEngine implements IRuleEngine {
   private readonly history: RuleSetHistoryEntry[] = [];
   private readonly cfg: RuleEngineConfig;
   private loader: RuleLoader | null = null;
+  /**
+   * Cooldown tracking: maps "ruleId:upstream:path" → lastFiredMs.
+   * Rules with cooldownMs set are suppressed if they fired within the interval
+   * for the same upstream+path combination.
+   */
+  private readonly cooldownState = new Map<string, number>();
 
   constructor(cfg: Partial<RuleEngineConfig> = {}) {
     this.cfg = { ...DEFAULT_RULE_ENGINE_CONFIG, ...cfg };
@@ -73,7 +79,32 @@ export class RuleEngine implements IRuleEngine {
   // ── Public API ──────────────────────────────────────────────────────────────
 
   evaluate(input: EvaluationInput): EvaluationResult {
-    return evaluateChain(this.ruleSet, input);
+    const nowMs = input.evaluatedAtMs;
+    const scopeKey = `${input.upstream ?? ''}:${input.path ?? ''}`;
+
+    // Build a view of the ruleset with cooldown-suppressed rules disabled
+    const filteredRules = this.ruleSet.rules.map((rule) => {
+      if (rule.cooldownMs && rule.cooldownMs > 0) {
+        const cdKey = `${rule.id}:${scopeKey}`;
+        const lastFired = this.cooldownState.get(cdKey);
+        if (lastFired !== undefined && nowMs - lastFired < rule.cooldownMs) {
+          return { ...rule, enabled: false };
+        }
+      }
+      return rule;
+    });
+
+    const result = evaluateChain({ ...this.ruleSet, rules: filteredRules }, input);
+
+    // Record cooldown timestamps for every rule that just fired
+    for (const match of result.matches) {
+      const rule = this.ruleSet.rules.find((r) => r.id === match.ruleId);
+      if (rule?.cooldownMs && rule.cooldownMs > 0) {
+        this.cooldownState.set(`${rule.id}:${scopeKey}`, nowMs);
+      }
+    }
+
+    return result;
   }
 
   getRules(): Rule[] {

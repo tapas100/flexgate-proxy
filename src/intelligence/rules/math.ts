@@ -116,12 +116,26 @@ export function evaluateCondition(
 /**
  * Test a single rule against an EvaluationInput.
  * Returns a RuleMatch if the rule fires, or null if it does not.
+ *
+ * Checks are applied in order:
+ *   1. disabled flag
+ *   2. expiresAt — expired rules are treated as disabled
+ *   3. condition evaluation
  */
 export function evaluateRule(
   rule: Rule,
   input: EvaluationInput,
 ): RuleMatch | null {
   if (!rule.enabled) return null;
+
+  // Auto-expiry: treat expired rules as disabled without mutating state
+  if (rule.expiresAt) {
+    const expiryMs = Date.parse(rule.expiresAt);
+    if (!isNaN(expiryMs) && input.evaluatedAtMs >= expiryMs) {
+      return null;
+    }
+  }
+
   if (!evaluateCondition(rule.condition, input)) return null;
   return {
     ruleId: rule.id,
@@ -186,6 +200,7 @@ const VALID_METRIC_KEYS = new Set<string>([
   'rps', 'errorRate', 'clientErrorRate',
   'meanLatencyMs', 'p50LatencyMs', 'p95LatencyMs', 'p99LatencyMs', 'maxLatencyMs',
   'requestCount', 'avgRequestBytes', 'avgResponseBytes',
+  'stressScore',
 ]);
 
 const VALID_OPERATORS = new Set<string>(['>', '>=', '<', '<=', '==', '!=']);
@@ -303,4 +318,33 @@ export function validateRule(rule: Partial<Rule>, path = 'rule'): string[] {
     errors.push(`${path}: action is required`);
   }
   return errors;
+}
+
+// Stress Score
+
+/**
+ * Compute a normalised stress index in [0, 1] that combines error rate and
+ * anomaly z-scores for p95 latency and RPS.
+ *
+ * Formula:
+ *   stressScore = 0.5 * errorRate
+ *               + 0.3 * clamp(p95ZScore / 3, 0, 1)
+ *               + 0.2 * clamp(rpsZScore  / 3, 0, 1)
+ *
+ * @param errorRate   - fraction of requests that returned 5xx (1)0
+ * @param p95ZScore   - z-score for p95 latency (from AnomalyEngine)
+ * @param rpsZScore   - z-score for RPS (from AnomalyEngine)
+ * @returns           - stress score in [0, 1]
+ */
+export function computeStressScore(
+  errorRate: number,
+  p95ZScore: number,
+  rpsZScore: number,
+): number {
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  return (
+    0.5 * clamp(errorRate) +
+    0.3 * clamp(p95ZScore / 3) +
+    0.2 * clamp(rpsZScore / 3)
+  );
 }

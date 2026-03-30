@@ -23,6 +23,7 @@ import { logger } from '../../logger';
 import { eventBus, EventType } from '../../events/EventBus';
 import { getRuleEngine } from './RuleEngine';
 import { getSignalEngine } from '../signals/SignalEngine';
+import { computeStressScore } from './math';
 import type { EvaluationInput, MetricKey, ThrottleAction } from './types';
 
 // ── Token Bucket (throttle) ───────────────────────────────────────────────────
@@ -108,6 +109,8 @@ export function ruleEngineMiddleware(opts: RuleMiddlewareOptions = {}) {
             requestCount: snap.requestCount,
             avgRequestBytes: snap.avgRequestBytes,
             avgResponseBytes: snap.avgResponseBytes,
+            // stressScore uses 0 for z-scores when anomaly engine not wired here
+            stressScore: computeStressScore(snap.errorRate, 0, 0),
           }
         : {};
 
