@@ -21,6 +21,7 @@ import {
   Psychology as AIIcon,
   ReportProblem as IncidentIcon,
   BarChart as AnalyticsIcon,
+  Rule as RuleIcon,
 } from '@mui/icons-material';
 
 const DRAWER_WIDTH = 240;
@@ -34,6 +35,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Routes', icon: <RouteIcon />, path: '/routes' },
+  { text: 'Rules', icon: <RuleIcon />, path: '/rules' },
   { text: 'Metrics', icon: <MetricsIcon />, path: '/metrics' },
   { text: 'Logs', icon: <LogsIcon />, path: '/logs' },
   { text: 'Webhooks', icon: <WebhookIcon />, path: '/webhooks' },

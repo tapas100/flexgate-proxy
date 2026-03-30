@@ -8,6 +8,7 @@ import { initProcessors, getProcessorInfo } from './utils/metricsProcessor';
 import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard';
 import RoutesPage from './pages/Routes';
+import RulesPage from './pages/Rules';
 import Metrics from './pages/Metrics';
 import Logs from './pages/Logs';
 import OAuthProviders from './pages/OAuthProviders';
@@ -79,6 +80,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <RoutesPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rules"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <RulesPage />
                 </Layout>
               </ProtectedRoute>
             }
