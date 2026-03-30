@@ -11,6 +11,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createHash } from 'crypto';
 import { getSignalEngine } from './SignalEngine';
+import { getAnomalyEngine } from '../anomaly/AnomalyEngine';
 import { RequestEvent } from './types';
 
 /**
@@ -49,6 +50,7 @@ export interface SignalMiddlewareOptions {
 
 export function signalEngineMiddleware(opts: SignalMiddlewareOptions = {}) {
   const engine = getSignalEngine();
+  const anomalyEngine = getAnomalyEngine();
 
   return function signalCapture(
     req: Request,
@@ -83,6 +85,14 @@ export function signalEngineMiddleware(opts: SignalMiddlewareOptions = {}) {
         };
 
         engine.record(event);
+
+        // Feed AnomalyEngine baseline with per-window metrics
+        const snap = engine.snapshot(upstream);
+        if (snap) {
+          anomalyEngine.record('rps', snap.rps);
+          anomalyEngine.record('p95LatencyMs', snap.p95LatencyMs);
+          anomalyEngine.record('errorRate', snap.errorRate);
+        }
       } catch {
         // Signal recording must never throw into the request path
       }

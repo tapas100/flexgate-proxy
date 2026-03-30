@@ -23,6 +23,7 @@ import { logger } from '../../logger';
 import { eventBus, EventType } from '../../events/EventBus';
 import { getRuleEngine } from './RuleEngine';
 import { getSignalEngine } from '../signals/SignalEngine';
+import { getAnomalyEngine } from '../anomaly/AnomalyEngine';
 import { computeStressScore } from './math';
 import type { EvaluationInput, MetricKey, ThrottleAction } from './types';
 
@@ -79,6 +80,7 @@ export interface RuleMiddlewareOptions {
 export function ruleEngineMiddleware(opts: RuleMiddlewareOptions = {}) {
   const engine = getRuleEngine();
   const signalEngine = getSignalEngine();
+  const anomalyEngine = getAnomalyEngine();
 
   return function ruleCheck(
     req: Request,
@@ -97,21 +99,28 @@ export function ruleEngineMiddleware(opts: RuleMiddlewareOptions = {}) {
 
       // Build EvaluationInput from snapshot (or zeros if no data yet)
       const metrics: Partial<Record<MetricKey, number>> = snap
-        ? {
-            rps: snap.rps,
-            errorRate: snap.errorRate,
-            clientErrorRate: snap.clientErrorRate,
-            meanLatencyMs: snap.meanLatencyMs,
-            p50LatencyMs: snap.p50LatencyMs,
-            p95LatencyMs: snap.p95LatencyMs,
-            p99LatencyMs: snap.p99LatencyMs,
-            maxLatencyMs: snap.maxLatencyMs,
-            requestCount: snap.requestCount,
-            avgRequestBytes: snap.avgRequestBytes,
-            avgResponseBytes: snap.avgResponseBytes,
-            // stressScore uses 0 for z-scores when anomaly engine not wired here
-            stressScore: computeStressScore(snap.errorRate, 0, 0),
-          }
+        ? (() => {
+            const rpsSignal = anomalyEngine.analyze('rps', snap.rps, []);
+            const p95Signal = anomalyEngine.analyze('p95LatencyMs', snap.p95LatencyMs, []);
+            return {
+              rps: snap.rps,
+              errorRate: snap.errorRate,
+              clientErrorRate: snap.clientErrorRate,
+              meanLatencyMs: snap.meanLatencyMs,
+              p50LatencyMs: snap.p50LatencyMs,
+              p95LatencyMs: snap.p95LatencyMs,
+              p99LatencyMs: snap.p99LatencyMs,
+              maxLatencyMs: snap.maxLatencyMs,
+              requestCount: snap.requestCount,
+              avgRequestBytes: snap.avgRequestBytes,
+              avgResponseBytes: snap.avgResponseBytes,
+              stressScore: computeStressScore(
+                snap.errorRate,
+                rpsSignal.zScore.zScore,
+                p95Signal.zScore.zScore,
+              ),
+            };
+          })()
         : {};
 
       const input: EvaluationInput = {
