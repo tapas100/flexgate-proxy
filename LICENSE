@@ -1,6 +1,10 @@
-MIT License
+FlexGate Proxy — Dual License
+Copyright (c) 2026 Tapas Adhikary. All rights reserved.
 
-Copyright (c) 2026 Tapas Adhikary
+===============================================================================
+PART 1 — MIT License
+Applies to: all files EXCEPT those under src/intelligence/
+===============================================================================
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +23,77 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+===============================================================================
+PART 2 — Business Source License 1.1 (BUSL-1.1)
+Applies to: all files under src/intelligence/ (the Runtime Intelligence Layer)
+===============================================================================
+
+Parameters
+
+  Licensor:             Tapas Adhikary
+  Licensed Work:        FlexGate Runtime Intelligence Layer
+                        (all source files under src/intelligence/)
+  Additional Use Grant: You may use the Licensed Work for any purpose that does
+                        not constitute a Competing Use (defined below), including
+                        personal, internal, educational, and research purposes,
+                        free of charge.
+  Change Date:          2030-04-06
+  Change License:       MIT License (as stated in PART 1 above)
+
+Terms
+
+  The Licensor hereby grants you the right to copy, modify, create derivative
+  works, redistribute, and make non-production use of the Licensed Work.
+
+  Effective on the Change Date (2030-04-06), the Licensor grants you rights
+  under the terms of the Change License (MIT), and the terms of the BUSL-1.1
+  for the Licensed Work cease to apply.
+
+  If your use of the Licensed Work does not comply with the requirements
+  currently in effect as described in this License, you must purchase a
+  commercial license from the Licensor, its affiliated entities, or authorised
+  resellers, or you must refrain from using the Licensed Work.
+
+  "Competing Use" means making the functionality of the Licensed Work or a
+  Substantial Portion of it available to third parties as a hosted or managed
+  service, where the service provides users with access to substantially the
+  same features and functionality as the Licensed Work. Examples of Competing
+  Use include but are not limited to: offering the FlexGate Runtime Intelligence
+  Layer as part of a commercial API gateway product, SaaS platform, or managed
+  proxy service.
+
+  All copies of the original and modified Licensed Work, and derivative works
+  of the Licensed Work, are subject to this License. This License applies
+  separately for each version of the Licensed Work and the Change Date may vary
+  for each version of the Licensed Work released by the Licensor.
+
+  You must conspicuously display this License on each original or modified copy
+  of the Licensed Work. If you receive the Licensed Work in original or
+  modified form from a third party, the terms and conditions set forth in this
+  License apply to your use of that work.
+
+  Any use of the Licensed Work in violation of this License will automatically
+  terminate your rights under this License for the current and all other
+  versions of the Licensed Work.
+
+  This License does not grant you any right in any trademark or logo of Licensor
+  or its affiliates (provided that you may use a trademark or logo of Licensor
+  as expressly required by this License).
+
+  TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED WORK IS PROVIDED ON
+  AN "AS IS" BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS,
+  EXPRESS OR IMPLIED, INCLUDING (WITHOUT LIMITATION) WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND
+  TITLE.
+
+  For commercial licensing enquiries contact: tapas100 (GitHub)
+
+  The Business Source License (this document, or the "BUSL") is not an Open
+  Source license. However, the Licensed Work will eventually be made available
+  under an Open Source License, as stated in this License.
+
+  For more information on the use of the Business Source License for MariaDB
+  products, please visit the MariaDB Business Source License FAQ. For more
+  information on the Business Source License generally, please visit
+  https://mariadb.com/bsl11/
