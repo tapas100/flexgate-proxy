@@ -124,3 +124,11 @@ site/
 # VitePress build output
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# Ignore all root-level markdown files except the standard ones
+/*.md
+!README.md
+!CHANGELOG.md
+!CONTRIBUTING.md
+!QUICK_START.md
+!FEATURES.md
