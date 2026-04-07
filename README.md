@@ -4,7 +4,7 @@
 
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/tapas100/flexgate-proxy/pulls)
 [![npm version](https://img.shields.io/npm/v/flexgate-proxy.svg)](https://www.npmjs.com/package/flexgate-proxy)
 [![npm downloads](https://img.shields.io/npm/dm/flexgate-proxy.svg)](https://www.npmjs.com/package/flexgate-proxy)
 [![npm downloads](https://img.shields.io/npm/dt/flexgate-proxy.svg?label=total%20downloads)](https://www.npmjs.com/package/flexgate-proxy)
@@ -118,8 +118,12 @@ createdb flexgate
 
 # Run migrations
 psql -d flexgate -f migrations/001_initial_schema.sql
-psql -d flexgate -f migrations/002_audit_logs.sql
+psql -d flexgate -f migrations/002_migration_tracking.sql
 psql -d flexgate -f migrations/003_requests_table.sql
+psql -d flexgate -f migrations/004_webhook_deliveries.sql
+psql -d flexgate -f migrations/005_update_webhook_deliveries_schema.sql
+psql -d flexgate -f migrations/006_fix_webhook_deliveries_fk.sql
+psql -d flexgate -f migrations/008_ai_incident_tracking.sql
 ```
 
 ### 3. Setup NATS JetStream (for real-time metrics)
@@ -212,7 +216,7 @@ npm run restart:all
 - **Grafana:** http://localhost:3001 (admin/admin)
 - **NATS Monitor:** http://localhost:8222
 
-[**See full management guide →**](MANAGEMENT_SCRIPTS.md)
+[**See full management guide →**](scripts/README.md)
 
 ### 8. Run Without Docker (Local Development)
 ```bash
@@ -330,7 +334,7 @@ flexgate redis test
 flexgate health
 ```
 
-[**See full CLI docs →**](AI_CLI_COMPLETE.md)
+[**See full CLI docs →**](docs/cli/README.md)
 
 ### ⚡ Real-Time Metrics (NATS JetStream)
 High-performance streaming metrics powered by NATS JetStream:
@@ -540,7 +544,7 @@ logging:
     errorRate: 1.0
 ```
 
-[**See full config reference →**](docs/configuration.md)
+[**See full config reference →**](config/proxy.yml)
 
 ---
 
@@ -706,7 +710,7 @@ Get audit logs with pagination.
 }
 ```
 
-#### `GET /prometheus/metrics`
+#### `GET /prometheus-metrics`
 Prometheus-compatible metrics endpoint.
 ```
 http_requests_total{method="GET",route="/api/users",status="200"} 12543
@@ -815,14 +819,16 @@ spec:
               key: redis-url
 ```
 
-[**See deployment guide →**](docs/deployment.md)
+[**See deployment guide →**](docs/deployment/)
 
 ---
 
 ## Monitoring
 
 ### Grafana Dashboard
-Import `grafana/dashboard.json` for:
+When running via `npm run start:all` (Podman stack), Grafana is available at `http://localhost:3001` (admin/admin).
+
+Dashboard includes:
 - Request rate (by route, status)
 - Latency percentiles (P50, P95, P99)
 - Error rate
@@ -830,6 +836,7 @@ Import `grafana/dashboard.json` for:
 - Rate limit hits
 
 ### Alerts
+Prometheus alert rules are in `infra/prometheus/alerts.yml`.
 ```yaml
 # Prometheus alerts
 groups:
@@ -975,7 +982,7 @@ Alert fires → Engineer fixes config
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md).
+We welcome contributions! Please see [CONTRIBUTING.md](https://github.com/tapas100/flexgate-proxy/blob/main/CONTRIBUTING.md).
 
 ### Development Setup
 ```bash
@@ -1009,11 +1016,11 @@ npm run benchmark
 - [x] **Circuit Breakers**: Per-route circuit breaking
 - [x] **Rate Limiting**: Redis-backed token bucket
 - [x] **Metrics Recording**: Request logging to database
+- [x] **Prometheus Metrics**: Prometheus-compatible endpoint at `/prometheus-metrics`
 
 ### 🚧 In Progress
 - [ ] **OAuth 2.0 / OIDC**: Social login for Admin UI
 - [ ] **OpenTelemetry**: Distributed tracing integration
-- [ ] **Metrics Export**: Prometheus /metrics endpoint
 
 ### 📋 Planned
 - [ ] **mTLS Support**: Mutual TLS to backends
@@ -1042,8 +1049,8 @@ Inspired by:
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/tapas100/proxy-server/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/tapas100/proxy-server/discussions)
+- **Issues**: [GitHub Issues](https://github.com/tapas100/flexgate-proxy/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/tapas100/flexgate-proxy/discussions)
 - **Email**: support@example.com
 
 ---

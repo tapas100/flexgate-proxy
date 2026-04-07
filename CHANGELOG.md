@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.3] - 2026-04-07
+
+### Fixed
+
+- **README: migration file names corrected** — `002_audit_logs.sql` never existed; corrected to `002_migration_tracking.sql` and added all missing migrations (`004` through `008`)
+- **README: Prometheus endpoint path corrected** — was documented as `GET /prometheus/metrics`; actual endpoint is `GET /prometheus-metrics` (renamed to avoid conflict with admin UI)
+- **README: Support/Issues links fixed** — were pointing to old `tapas100/proxy-server` repo; updated to `tapas100/flexgate-proxy`
+- **README: Broken doc links fixed** — `MANAGEMENT_SCRIPTS.md`, `AI_CLI_COMPLETE.md`, `CONTRIBUTING.md`, `docs/configuration.md`, `docs/deployment.md` were all missing; links updated to existing paths
+- **README: Grafana dashboard reference fixed** — `grafana/dashboard.json` does not exist; updated to reference the live Grafana instance in the Podman stack and `infra/prometheus/alerts.yml`
+- **Roadmap: Prometheus metrics moved to Completed** — `/prometheus-metrics` endpoint was already implemented in `app.ts`
+
 ## [0.1.0-beta.2] - 2026-03-27
 
 ### 🔒 Security

@@ -1,6 +1,6 @@
 {
   "name": "flexgate-proxy",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "description": "FlexGate - Production-grade API Gateway with built-in observability, security, and reliability. The flexible alternative to Kong and AWS API Gateway.",
   "main": "dist/app.js",
   "types": "dist/app.d.ts",
