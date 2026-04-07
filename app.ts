@@ -42,8 +42,8 @@ import {
   adminApiRateLimiter,
   globalApiRateLimiter,
 } from './src/middleware/rateLimiting';
-import { ruleRouter, ruleEngineMiddleware } from './src/intelligence/rules';
-import { signalRouter, signalEngineMiddleware } from './src/intelligence/signals';
+import { intelligenceProxy } from './src/services/intelligenceClient';
+import { adminAuthMiddleware } from './src/middleware/adminAuth';
 
 // Extend Express Request type
 declare global {
@@ -187,9 +187,10 @@ app.use('/api/settings/claude', adminApiRateLimiter, claudeSettingsRoutes);
 app.use('/api/ai', adminApiRateLimiter, aiRoutes);
 app.use('/api/ai-incidents', adminApiRateLimiter, aiIncidentRoutes);
 
-// Mount Rule Engine and Signal Engine admin APIs
-app.use('/api/intelligence/rules', adminApiRateLimiter, ruleRouter);
-app.use('/api/intelligence/signals', adminApiRateLimiter, signalRouter);
+// ── Intelligence & Admin routes — proxied to @flexgate/intelligence microservice ──
+// Protect with admin key then forward to the intelligence service on INTELLIGENCE_URL
+app.use('/intelligence', adminAuthMiddleware, intelligenceProxy);
+app.use('/admin',        adminAuthMiddleware, intelligenceProxy);
 
 // Mount stream API (SSE for real-time metrics)
 app.use('/api/stream', streamRoutes);
@@ -295,11 +296,13 @@ app.get('/health/live', (_req: Request, res: Response) => {
 });
 
 app.get('/health/ready', async (_req: Request, res: Response) => {
+  const INTELLIGENCE_URL = process.env.INTELLIGENCE_URL || 'http://localhost:4000';
   const checks: Record<string, string> = {
     config: 'UP',
-    upstreams: 'UP'
+    upstreams: 'UP',
+    intelligence: 'UNKNOWN',
   };
-  
+
   // Check circuit breakers
   let allUpstreamsHealthy = true;
   circuitBreakers.forEach((cb: CircuitBreaker, _name: string) => {
@@ -308,13 +311,21 @@ app.get('/health/ready', async (_req: Request, res: Response) => {
       checks.upstreams = 'DEGRADED';
     }
   });
-  
-  const overallStatus = allUpstreamsHealthy ? 'UP' : 'DEGRADED';
-  
+
+  // Check intelligence microservice
+  try {
+    const resp = await fetch(`${INTELLIGENCE_URL}/health`, { signal: AbortSignal.timeout(2000) });
+    checks.intelligence = resp.ok ? 'UP' : 'DEGRADED';
+  } catch {
+    checks.intelligence = 'DOWN';
+  }
+
+  const overallStatus = allUpstreamsHealthy && checks.intelligence !== 'DOWN' ? 'UP' : 'DEGRADED';
+
   res.status(overallStatus === 'UP' ? 200 : 503).json({
     status: overallStatus,
     checks,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -403,11 +414,8 @@ function setupProxyRoute(route: ProxyRoute) {
     app.use(expressPath, rateLimiter.createLimiter(limitConfig as RateLimitConfig));
   }
 
-  // Signal engine middleware: records latency/status for every proxied request
-  app.use(expressPath, signalEngineMiddleware({ upstream: upstreamName }));
-
-  // Rule engine middleware: evaluates threshold rules and enforces actions
-  app.use(expressPath, ruleEngineMiddleware({ upstream: upstreamName }));
+  // Signal & Rule engine middleware are handled by the @flexgate/intelligence microservice.
+  // Telemetry is forwarded via the intelligence proxy on /intelligence/* and /admin/*.
 
   // Create proxy middleware
   const proxyOptions: ProxyOptions = {

@@ -94,5 +94,33 @@ function onListening(): void {
     ? 'pipe ' + addr
     : 'port ' + (addr as AddressInfo).port;
   log('Listening on ' + bind);
-  console.log('🚀 FlexGate Proxy listening on ' + bind);
+
+  const port = typeof addr === 'string' ? addr : (addr as AddressInfo).port;
+  const intelligenceUrl  = process.env.INTELLIGENCE_URL  || `http://localhost:4000`;
+  const adminKeySet      = !!process.env.ADMIN_API_KEY;
+  const modeLabel        = adminKeySet ? '🔒 Secured (ADMIN_API_KEY set)' : '� Open — set ADMIN_API_KEY before deploying';
+
+  console.log(`
+╔══════════════════════════════════════════════════════════════════╗
+║           FlexGate Proxy — Server Started                        ║
+╠══════════════════════════════════════════════════════════════════╣
+║  The server is running on port ${port}.                              
+║  All 14 engines initialised successfully.                        ║
+╠═══════════════════════╦══════════════════════════════════════════╣
+║  Endpoint             ║  URL                                     ║
+╠═══════════════════════╬══════════════════════════════════════════╣
+║  🟢 Liveness          ║  http://localhost:${port}/health              
+║  🟢 Readiness         ║  http://localhost:${port}/health/ready        
+║  🟢 Intelligence      ║  http://localhost:${port}/intelligence/status 
+║  🟢 Admin API         ║  http://localhost:${port}/admin/status        
+╠═══════════════════════╩══════════════════════════════════════════╣
+║  Intelligence backend : ${intelligenceUrl}                           
+║  Mode                 : ${modeLabel}  
+╚══════════════════════════════════════════════════════════════════╝
+  `);
+
+  if (!adminKeySet) {
+    console.warn('  ⚠️  ADMIN_API_KEY is not set — admin routes are open in development mode.');
+    console.warn('     Set it in .env before deploying to staging/production.\n');
+  }
 }
