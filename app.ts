@@ -42,7 +42,7 @@ import {
   adminApiRateLimiter,
   globalApiRateLimiter,
 } from './src/middleware/rateLimiting';
-import { intelligenceProxy } from './src/services/intelligenceClient';
+import { intelligenceProxyMiddleware, adminProxyMiddleware } from './src/services/intelligenceClient';
 import { adminAuthMiddleware } from './src/middleware/adminAuth';
 
 // Extend Express Request type
@@ -189,8 +189,8 @@ app.use('/api/ai-incidents', adminApiRateLimiter, aiIncidentRoutes);
 
 // ── Intelligence & Admin routes — proxied to @flexgate/intelligence microservice ──
 // Protect with admin key then forward to the intelligence service on INTELLIGENCE_URL
-app.use('/intelligence', adminAuthMiddleware, intelligenceProxy);
-app.use('/admin',        adminAuthMiddleware, intelligenceProxy);
+app.use('/intelligence', adminAuthMiddleware, intelligenceProxyMiddleware);
+app.use('/admin',        adminAuthMiddleware, adminProxyMiddleware);
 
 // Mount stream API (SSE for real-time metrics)
 app.use('/api/stream', streamRoutes);
@@ -686,10 +686,12 @@ database.initialize()
 
     // Handle client-side routing - send all non-proxy requests to index.html
     app.get('*', (req: Request, res: Response, next: NextFunction) => {
-      // Skip API routes, health endpoints, and proxy routes
+      // Skip API routes, health endpoints, proxy routes, and intelligence/admin routes
       if (req.path.startsWith('/api/') || 
           req.path.startsWith('/health') || 
           req.path.startsWith('/prometheus-metrics') ||
+          req.path.startsWith('/intelligence') ||
+          req.path.startsWith('/admin') ||
           req.path.startsWith('/httpbin/') ||
           req.path.startsWith('/external/') ||
           req.path.startsWith('/test-api/')) {
@@ -730,7 +732,14 @@ database.initialize()
     // Still register admin UI even if database fails
     const adminUIPath = path.join(__dirname, '..', 'admin-ui', 'build');
     app.use(express.static(adminUIPath));
-    app.get('*', (_req: Request, res: Response) => {
+    app.get('*', (req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith('/api/') ||
+          req.path.startsWith('/health') ||
+          req.path.startsWith('/intelligence') ||
+          req.path.startsWith('/admin') ||
+          req.path.startsWith('/prometheus-metrics')) {
+        return next();
+      }
       res.sendFile(path.join(adminUIPath, 'index.html'));
     });
   });
