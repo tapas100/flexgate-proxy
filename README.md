@@ -5,6 +5,9 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![npm version](https://img.shields.io/npm/v/flexgate-proxy.svg)](https://www.npmjs.com/package/flexgate-proxy)
+[![npm downloads](https://img.shields.io/npm/dm/flexgate-proxy.svg)](https://www.npmjs.com/package/flexgate-proxy)
+[![npm downloads](https://img.shields.io/npm/dt/flexgate-proxy.svg?label=total%20downloads)](https://www.npmjs.com/package/flexgate-proxy)
 
 ---
 
