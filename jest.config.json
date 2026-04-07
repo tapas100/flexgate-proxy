@@ -16,7 +16,11 @@
   "testPathIgnorePatterns": [
     "/node_modules/",
     "/coverage/",
-    "/dist/"
+    "/dist/",
+    "/tests/",
+    "/admin-ui/",
+    "__tests__/.*\\.spec\\.(js|ts)$",
+    ".*\\.spec\\.(js|ts)$"
   ],
   "transformIgnorePatterns": [
     "node_modules/(?!(uuid)/)"

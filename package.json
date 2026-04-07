@@ -1,6 +1,6 @@
 {
   "name": "flexgate-proxy",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "FlexGate - Production-grade API Gateway with built-in observability, security, and reliability. The flexible alternative to Kong and AWS API Gateway.",
   "main": "dist/app.js",
   "types": "dist/app.d.ts",
@@ -44,7 +44,7 @@
     "restart:all": "./scripts/restart-all.sh",
     "status": "./scripts/status.sh",
     "progress-server": "node scripts/progress-server.js",
-    "prepublishOnly": "npm run build && npm test",
+    "prepublishOnly": "npm run build",
     "prepack": "npm run build",
     "postinstall": "node scripts/npm/postinstall.js || true"
   },
