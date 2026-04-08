@@ -3,13 +3,15 @@ pipeline {
 
     // ── NodeJS Plugin: installs Node and puts node/npm on PATH ───────────────
     // Prerequisite: Jenkins → Manage Jenkins → Tools → NodeJS installations
-    //   Add an installation named exactly "NodeJS 20" with version 20.x
+    //   Name: "NodeJS 18"  |  Version: 18.20.8  |  Install automatically: ✅
+    //   Node 18 LTS is used because Node 20+ requires libatomic which may not
+    //   be present on minimal Jenkins agent images (no root access to install).
     tools {
-        nodejs 'NodeJS 20'
+        nodejs 'NodeJS 18'
     }
 
     environment {
-        NODE_VERSION   = '20'
+        NODE_VERSION   = '18'
         NPM_TOKEN      = credentials('registry-token')     // npm auth token stored in Jenkins credentials
         CI             = 'true'
     }
@@ -36,20 +38,9 @@ pipeline {
         }
 
         // ── 2. Verify Node ───────────────────────────────────────────────────
-        // Installs libatomic if missing — required by Node 20+ on Alpine/Debian-slim
         stage('Setup Node.js') {
             steps {
                 sh '''
-                    # Install libatomic if not present (needed by Node 20+ on minimal Linux images)
-                    if ! ldconfig -p 2>/dev/null | grep -q libatomic; then
-                        if command -v apt-get >/dev/null 2>&1; then
-                            apt-get update -qq && apt-get install -y -qq libatomic1
-                        elif command -v apk >/dev/null 2>&1; then
-                            apk add --no-cache libatomic
-                        elif command -v yum >/dev/null 2>&1; then
-                            yum install -y libatomic
-                        fi
-                    fi
                     echo "Node: $(node --version)"
                     echo "npm:  $(npm --version)"
                 '''
