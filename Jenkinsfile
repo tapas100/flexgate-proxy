@@ -1,6 +1,13 @@
 pipeline {
     agent any
 
+    // ── NodeJS Plugin: installs Node 20 and puts node/npm on PATH ────────────
+    // Prerequisite: Jenkins → Manage Jenkins → Tools → NodeJS installations
+    //   Add an installation named exactly "NodeJS 20" with version 20.x
+    tools {
+        nodejs 'NodeJS 20'
+    }
+
     environment {
         NODE_VERSION   = '20'
         NPM_TOKEN      = credentials('registry-token')     // npm auth token stored in Jenkins credentials
@@ -28,12 +35,12 @@ pipeline {
             }
         }
 
-        // ── 2. Setup Node ────────────────────────────────────────────────────
+        // ── 2. Verify Node ───────────────────────────────────────────────────
         stage('Setup Node.js') {
             steps {
                 sh '''
-                    node --version
-                    npm --version
+                    echo "Node: $(node --version)"
+                    echo "npm:  $(npm --version)"
                 '''
             }
         }
