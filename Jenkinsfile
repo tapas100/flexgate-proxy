@@ -1,7 +1,7 @@
 pipeline {
     agent any
 
-    // ── NodeJS Plugin: installs Node 20 and puts node/npm on PATH ────────────
+    // ── NodeJS Plugin: installs Node and puts node/npm on PATH ───────────────
     // Prerequisite: Jenkins → Manage Jenkins → Tools → NodeJS installations
     //   Add an installation named exactly "NodeJS 20" with version 20.x
     tools {
@@ -36,9 +36,20 @@ pipeline {
         }
 
         // ── 2. Verify Node ───────────────────────────────────────────────────
+        // Installs libatomic if missing — required by Node 20+ on Alpine/Debian-slim
         stage('Setup Node.js') {
             steps {
                 sh '''
+                    # Install libatomic if not present (needed by Node 20+ on minimal Linux images)
+                    if ! ldconfig -p 2>/dev/null | grep -q libatomic; then
+                        if command -v apt-get >/dev/null 2>&1; then
+                            apt-get update -qq && apt-get install -y -qq libatomic1
+                        elif command -v apk >/dev/null 2>&1; then
+                            apk add --no-cache libatomic
+                        elif command -v yum >/dev/null 2>&1; then
+                            yum install -y libatomic
+                        fi
+                    fi
                     echo "Node: $(node --version)"
                     echo "npm:  $(npm --version)"
                 '''
