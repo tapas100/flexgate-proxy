@@ -302,7 +302,7 @@ pipeline is defined in `Jenkinsfile` at the repository root.
 > ⚠️ **Never run `npm publish` manually.** All publishing goes through Jenkins.
 
 ### Jenkins Setup (one-time)
-1. Add npm token as Jenkins credential → **ID must be exactly `NPM_TOKEN`** (type: Secret text)
+1. Add npm token as Jenkins credential → **ID must be exactly `registry-token`** (type: Secret text)
 2. Install [NodeJS Plugin](https://plugins.jenkins.io/nodejs/) and configure a Node 20 installation
 3. Install [GitHub Plugin](https://plugins.jenkins.io/github/) for webhook trigger
 4. Create a **Pipeline** job pointing to this repository (`Jenkinsfile` at root)

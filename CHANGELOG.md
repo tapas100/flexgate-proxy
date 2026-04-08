@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Publish is fully automated through Jenkins — **do not run `npm publish` manually**
   - Version guard added: if `package.json` version is already on npm, publish stage is skipped safely (not failed)
   - `.npmrc` is written at publish time from Jenkins credential `NPM_TOKEN` and deleted immediately after
-  - Jenkins credential required: `NPM_TOKEN` (Secret text, scoped to publish stage only)
+  - Jenkins credential required: `registry-token` (Secret text, scoped to publish stage only)
 
 ### Fixed
 

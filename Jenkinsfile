@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         NODE_VERSION   = '20'
-        NPM_TOKEN      = credentials('NPM_TOKEN')          // npm auth token stored in Jenkins credentials
+        NPM_TOKEN      = credentials('registry-token')     // npm auth token stored in Jenkins credentials
         CI             = 'true'
     }
 
