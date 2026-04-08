@@ -71,11 +71,17 @@ pipeline {
         // ── 6. Test ──────────────────────────────────────────────────────────
         stage('Test') {
             environment {
-                NODE_ENV    = 'test'
+                NODE_ENV     = 'test'
                 DATABASE_URL = 'postgresql://flexgate:flexgate@localhost:5432/flexgate_test'
+                // Dummy 64-char hex key — satisfies the ENCRYPTION_KEY length check in tests
+                ENCRYPTION_KEY = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+                // Dummy values to prevent other env-guard throws during test suite init
+                DEMO_MODE    = 'false'
             }
             steps {
-                sh 'npm run test:ci'
+                // --forceExit prevents circular-JSON crash in jest-worker when
+                // open HTTP sockets (Socket._httpMessage) remain after test teardown
+                sh 'npx jest --coverage --ci --maxWorkers=2 --forceExit'
             }
             post {
                 always {
