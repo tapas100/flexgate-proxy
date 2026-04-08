@@ -1149,40 +1149,45 @@ npm test -- __tests__/ai/integration.test.ts --detectOpenHandles
 
 ## Continuous Integration
 
-### GitHub Actions Workflow
-```yaml
-name: AI Module Tests
+### Jenkins Pipeline
 
-on: [push, pull_request]
+> FlexGate uses **Jenkins** for CI/CD. GitHub Actions have been removed.
+> The `Jenkinsfile` at the repo root runs all tests automatically on every push
+> or merge to `main`.
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run AI tests
-        run: npm test -- __tests__/ai/ --coverage
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/coverage-final.json
-      
-      - name: Run integration tests
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: npm test -- __tests__/ai/integration.test.ts
-        continue-on-error: true
+Relevant stage for AI tests:
+
+```groovy
+stage('Test') {
+    environment {
+        NODE_ENV         = 'test'
+        DATABASE_URL     = 'postgresql://flexgate:flexgate@localhost:5432/flexgate_test'
+        // ANTHROPIC_API_KEY is injected via Jenkins credential for integration tests
+    }
+    steps {
+        sh 'npm run test:ci'
+    }
+    post {
+        always {
+            junit allowEmptyResults: true, testResults: 'test-results/**/*.xml'
+            publishHTML(target: [
+                reportDir  : 'coverage/lcov-report',
+                reportFiles: 'index.html',
+                reportName : 'Coverage Report'
+            ])
+        }
+    }
+}
+```
+
+To run AI-specific tests locally:
+
+```bash
+# Unit tests only
+npm test -- __tests__/ai/ --coverage
+
+# Integration tests (requires ANTHROPIC_API_KEY)
+ANTHROPIC_API_KEY=sk-... npm test -- __tests__/ai/integration.test.ts
 ```
 
 ---

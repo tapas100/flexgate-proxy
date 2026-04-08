@@ -583,28 +583,30 @@ git push origin main
 
 ---
 
-## 🔄 CI/CD with GitHub Actions (Docker-Free)
+## 🔄 CI/CD with Jenkins
 
-```yaml
-name: Deploy to Render
+> FlexGate has migrated from GitHub Actions to Jenkins. The full pipeline is defined
+> in `Jenkinsfile` at the repository root. GitHub Actions workflows have been removed.
 
-on:
-  push:
-    branches: [main]
+The Jenkins pipeline triggers on every push or merge to `main` and runs:
+`Lint → Type Check → Test → Build → Build Admin UI → Publish to npm`
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to Render
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: |
-          curl -X POST \
-            https://api.render.com/deploy/srv-xxxxx?key=$RENDER_API_KEY
+For Render deployments, add a **Deploy Hook** in the Render dashboard and call it
+from the Jenkins post-build step:
+
+```groovy
+// Add to Jenkinsfile post { success { ... } } block if deploying to Render
+sh '''
+  curl -X POST \
+    "https://api.render.com/deploy/srv-xxxxx?key=${RENDER_DEPLOY_KEY}"
+'''
 ```
+
+Add `RENDER_DEPLOY_KEY` as a Jenkins credential (Secret text).
+
+See `Jenkinsfile` in the repo root and
+[`docs/deployment/DEPLOYMENT_STRATEGY.md`](DEPLOYMENT_STRATEGY.md) for the full
+pipeline reference.
 
 ---
 

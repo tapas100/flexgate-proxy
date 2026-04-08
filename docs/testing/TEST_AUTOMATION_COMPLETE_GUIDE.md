@@ -24,7 +24,7 @@
 - ✅ `TC7.1-create-webhook.spec.ts` - Create webhook test
 
 #### CI/CD
-- ✅ `.github/workflows/tests.yml` - GitHub Actions workflow
+- ✅ `Jenkinsfile` (repo root) — Jenkins pipeline replaces GitHub Actions; E2E tests run in the `Test` stage on every push/merge to `main`
 
 #### Documentation
 - ✅ `ALL_TEST_FILES_REFERENCE.md` - Complete code reference

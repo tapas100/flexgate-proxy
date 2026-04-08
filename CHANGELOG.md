@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-beta.4] - 2026-04-08
+
+### Changed
+
+- **CI/CD migrated from GitHub Actions to Jenkins**
+  - Removed `.github/workflows/ci.yml`, `codeql.yml`, `dependabot-auto-merge.yml`, `docs.yml`
+  - Added `Jenkinsfile` at repo root — triggers on push/merge to `main`
+  - Pipeline stages: Lint → Type-check → Test (with coverage) → Build → Build Admin UI → **npm publish + tag latest**
+  - Publish is fully automated through Jenkins — **do not run `npm publish` manually**
+  - Version guard added: if `package.json` version is already on npm, publish stage is skipped safely (not failed)
+  - `.npmrc` is written at publish time from Jenkins credential `NPM_TOKEN` and deleted immediately after
+  - Jenkins credential required: `NPM_TOKEN` (Secret text, scoped to publish stage only)
+
+### Fixed
+
+- **docs/testing.md**: GitHub Actions CI example replaced with Jenkins pipeline snippet
+- **docs/deployment/DEPLOYMENT_STRATEGY.md**: GitHub Actions CI/CD section replaced with Jenkins, checklist updated
+- **docs/cli/README.md**: CLI `--version` output updated to `0.1.0-beta.4`
+- **.github/WORKFLOWS.md**: Rewritten to reflect Jenkins migration, removed stale workflow references
+
 ## [0.1.0-beta.3] - 2026-04-07
 
 ### Fixed

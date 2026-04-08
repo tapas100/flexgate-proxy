@@ -370,8 +370,8 @@ curl http://localhost:3000/api/stream/metrics
    - Add troubleshooting guide
 
 2. **CI/CD Integration**
-   - Add test jobs to GitHub Actions
-   - Include NATS container in CI pipeline
+   - NATS container already included in Jenkins pipeline (add as sidecar service in Jenkins agent)
+   - Tests run via `npm run test:ci` in the Jenkins `Test` stage
 
 3. **Monitoring Setup**
    - Add Prometheus metrics for NATS

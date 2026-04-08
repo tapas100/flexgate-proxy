@@ -271,104 +271,50 @@ networks:
 
 ## 🔧 CI/CD Pipeline
 
-### GitHub Actions Workflow (`.github/workflows/deploy.yml`):
+FlexGate uses **Jenkins** for CI/CD (GitHub Actions have been removed). The full
+pipeline is defined in `Jenkinsfile` at the repository root.
 
-```yaml
-name: Build and Deploy FlexGate
+### Triggers
+- Push to `main`
+- Merge PR into `main` (via GitHub webhook → Jenkins)
 
-on:
-  push:
-    branches: [main, dev]
-  pull_request:
-    branches: [main]
+### Pipeline Stages (`Jenkinsfile`)
 
-jobs:
-  # Test Backend
-  test-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+```
+1. Checkout
+2. Setup Node.js    → node --version / npm --version
+3. Install          → npm ci
+4. Lint             → npm run lint
+5. Type Check       → npm run typecheck
+6. Test             → npm run test:ci  (JUnit + Coverage HTML published)
+7. Build            → npm run build
+8. Build Admin UI   → cd admin-ui && npm ci && npm run build
+9. Publish to npm   → main branch only (see rules below)
+```
 
-  # Test Admin UI
-  test-admin-ui:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./admin-ui
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+**Publish rules (stage 9):**
+- Only runs when `GIT_BRANCH == main`
+- Reads version from `package.json` — bump the version before merging to trigger a new release
+- **Version guard**: if `package.json` version is already on npm the stage is skipped, not failed — so repeated pushes to `main` are safe
+- Publishes with `--access public` and immediately tags as `latest`
+- `.npmrc` is written at publish time from the `NPM_TOKEN` credential and deleted immediately after — the token is never stored on disk
 
-  # Build Docker Image
-  build:
-    needs: [test-backend, test-admin-ui]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build and push
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: |
-            tapas100/flexgate-proxy:latest
-            tapas100/flexgate-proxy:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+> ⚠️ **Never run `npm publish` manually.** All publishing goes through Jenkins.
 
-  # Deploy to Staging
-  deploy-staging:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev'
-    environment: staging
-    steps:
-      - name: Deploy to Kubernetes (Staging)
-        run: |
-          kubectl set image deployment/flexgate-proxy \
-            flexgate-proxy=tapas100/flexgate-proxy:${{ github.sha }} \
-            --namespace=staging
+### Jenkins Setup (one-time)
+1. Add npm token as Jenkins credential → **ID must be exactly `NPM_TOKEN`** (type: Secret text)
+2. Install [NodeJS Plugin](https://plugins.jenkins.io/nodejs/) and configure a Node 20 installation
+3. Install [GitHub Plugin](https://plugins.jenkins.io/github/) for webhook trigger
+4. Create a **Pipeline** job pointing to this repository (`Jenkinsfile` at root)
 
-  # Deploy to Production
-  deploy-production:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - name: Deploy to Kubernetes (Production)
-        run: |
-          kubectl set image deployment/flexgate-proxy \
-            flexgate-proxy=tapas100/flexgate-proxy:${{ github.sha }} \
-            --namespace=production
-      
-      - name: Verify Deployment
-        run: |
-          kubectl rollout status deployment/flexgate-proxy -n production
+### Deploying to Kubernetes after Jenkins build
+
+```bash
+kubectl set image deployment/flexgate-proxy \
+  flexgate-proxy=tapas100/flexgate-proxy:latest \
+  --namespace=production
+
+kubectl rollout status deployment/flexgate-proxy -n production
 ```
 
 ---
@@ -676,7 +622,7 @@ kubectl patch service flexgate-proxy -p '{"spec":{"selector":{"version":"blue"}}
 ## 📋 Next Steps
 
 1. **Create Docker multi-stage build** (this week)
-2. **Setup GitHub Actions CI/CD** (this week)
+2. **Configure Jenkins pipeline** (see `Jenkinsfile` in repo root)
 3. **Deploy to staging** (next week)
 4. **Deploy to production** (end of Phase 2)
 5. **Add CDN** (Phase 3)
@@ -690,7 +636,7 @@ kubectl patch service flexgate-proxy -p '{"spec":{"selector":{"version":"blue"}}
 - [ ] Create start.sh script
 - [ ] Update docker-compose.yml
 - [ ] Create Kubernetes manifests
-- [ ] Setup GitHub Actions
+- [x] Configure Jenkins CI/CD (`Jenkinsfile`)
 - [ ] Configure secrets management
 - [ ] Setup monitoring
 - [ ] Test rollback procedures

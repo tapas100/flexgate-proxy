@@ -980,6 +980,24 @@ Alert fires → Engineer fixes config
 
 ---
 
+## CI/CD
+
+FlexGate uses **Jenkins** (not GitHub Actions) for all build, test, and publish pipelines.
+
+| Trigger | Pipeline |
+|---|---|
+| Push to `main` | Lint → Type-check → Test → Build → **npm publish** |
+| Merge PR into `main` | Same as above |
+
+The full pipeline is defined in [`Jenkinsfile`](Jenkinsfile) at the repo root.
+
+**Jenkins credentials required:**
+- `NPM_TOKEN` — npm publish token (add under Jenkins → Manage Credentials)
+
+See [`.github/WORKFLOWS.md`](.github/WORKFLOWS.md) for full Jenkins setup instructions.
+
+---
+
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](https://github.com/tapas100/flexgate-proxy/blob/main/CONTRIBUTING.md).

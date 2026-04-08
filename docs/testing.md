@@ -321,27 +321,37 @@ spy.mockRestore();
 
 ## CI/CD Integration
 
-### GitHub Actions Example
+### Jenkins Pipeline
 
-```yaml
-name: Test
+FlexGate uses **Jenkins** (not GitHub Actions) for CI/CD. The `Jenkinsfile` at the
+repo root defines the full pipeline. Tests run automatically on every push or merge
+to `main`.
 
-on: [push, pull_request]
+Relevant Jenkins stages:
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - run: npm ci
-      - run: npm run test:ci
-      - uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/lcov.info
+```groovy
+stage('Test') {
+    environment {
+        NODE_ENV     = 'test'
+        DATABASE_URL = 'postgresql://flexgate:flexgate@localhost:5432/flexgate_test'
+    }
+    steps {
+        sh 'npm run test:ci'
+    }
+    post {
+        always {
+            junit allowEmptyResults: true, testResults: 'test-results/**/*.xml'
+            publishHTML(target: [
+                reportDir  : 'coverage/lcov-report',
+                reportFiles: 'index.html',
+                reportName : 'Coverage Report'
+            ])
+        }
+    }
+}
 ```
+
+See the full `Jenkinsfile` in the repo root for the complete pipeline definition.
 
 ### Pre-commit Hook
 
@@ -551,6 +561,6 @@ As of Phase 0 completion:
 
 ---
 
-**Last Updated:** January 27, 2026  
+**Last Updated:** April 8, 2026  
 **Testing Framework:** Jest 29.7.0  
 **Coverage Threshold:** 80%

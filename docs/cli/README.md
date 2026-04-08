@@ -36,7 +36,7 @@ npm install -g flexgate-proxy
 **Verify:**
 ```bash
 flexgate --version
-# Output: 0.1.0-beta.1
+# Output: 0.1.0-beta.4
 ```
 
 ### Local Project
@@ -552,14 +552,16 @@ CMD ["npm", "start"]
 
 ### 3. CI/CD Pipeline
 
-**GitHub Actions:**
-```yaml
-- name: Configure FlexGate
-  run: |
-    npm install -g flexgate-proxy
-    flexgate config import config/production.json
-    flexgate db test
-    flexgate redis test
+**Jenkins (`Jenkinsfile`):**
+```groovy
+stage('Configure FlexGate') {
+    steps {
+        sh 'npm install -g flexgate-proxy'
+        sh 'flexgate config import config/production.json'
+        sh 'flexgate db test'
+        sh 'flexgate redis test'
+    }
+}
 ```
 
 ---

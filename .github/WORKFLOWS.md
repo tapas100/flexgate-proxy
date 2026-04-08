@@ -1,92 +1,58 @@
-# 🤖 GitHub Automation Configuration
+# 🤖 GitHub Repository Configuration
 
-This directory contains all GitHub-specific automation, security, and CI/CD configurations.
+This directory contains GitHub-specific configuration (Dependabot dependency updates).
+
+> **CI/CD has moved to Jenkins.** See `Jenkinsfile` in the repo root.
 
 ## 📁 Structure
 
 ```
 .github/
-├── workflows/                    # GitHub Actions workflows
-│   ├── ci.yml                   # Main CI pipeline (tests + build)
-│   ├── codeql.yml              # CodeQL security scanning
-│   └── dependabot-auto-merge.yml # Auto-merge for Dependabot PRs
-├── dependabot.yml               # Dependabot configuration
+├── dependabot.yml               # Dependabot dependency-update config
+├── WORKFLOWS.md                 # This file
 └── SECURITY_AUTOMATION.md       # Security automation documentation
 ```
 
-## 🔄 Workflows
+## 🔄 CI/CD — Jenkins (not GitHub Actions)
 
-### `ci.yml` - Continuous Integration
-**Triggers**: Push to main/dev, Pull requests
-**What it does**:
-- Runs backend tests (Node 18.x & 20.x)
-- Runs admin UI tests
-- Builds TypeScript
-- Uploads code coverage
-- **Required** for Dependabot auto-merge
+All build, test, and npm publish pipelines run in **Jenkins** via the `Jenkinsfile`
+at the repository root.
 
-### `codeql.yml` - Security Scanning
-**Triggers**: Push, PR, Weekly schedule
-**What it does**:
-- Analyzes JavaScript/TypeScript code
-- Detects security vulnerabilities
-- Uploads results to Security tab
+| Stage | What it does |
+|---|---|
+| Checkout | Checks out the branch/commit |
+| Setup Node.js | Verifies Node & npm versions |
+| Install Dependencies | `npm ci` |
+| Lint | `npm run lint` |
+| Type Check | `npm run typecheck` |
+| Test | `npm run test:ci` with coverage report |
+| Build | `npm run build` (TypeScript → dist/) |
+| Build Admin UI | `cd admin-ui && npm ci && npm run build` |
+| **Publish to npm** | `npm publish` + `npm dist-tag add ... latest` **(main branch only)** |
 
-### `dependabot-auto-merge.yml` - Auto-Merge
-**Triggers**: Dependabot PR opened/updated
-**What it does**:
-- Auto-approves patch/minor updates
-- Enables auto-merge after CI passes
-- Requires manual review for major updates
+### Trigger
+- **Push to `main`** — full pipeline including npm publish
+- **Merge PR into `main`** — same as above via GitHub webhook
 
-## 🛡️ Security Features
+### Jenkins Setup (one-time)
+1. Add an **npm token** as a Jenkins credential with ID `NPM_TOKEN`
+2. Install the [NodeJS Plugin](https://plugins.jenkins.io/nodejs/) on Jenkins
+3. Install the [GitHub Plugin](https://plugins.jenkins.io/github/) for webhook trigger
+4. Create a Pipeline job pointing to this repo — Jenkins auto-discovers the `Jenkinsfile`
 
-1. **Dependabot Alerts** - Automatic vulnerability detection
-2. **Dependabot Security Updates** - Auto-PRs for patches
-3. **CodeQL Scanning** - Code-level security analysis
-4. **Auto-Merge** - Safe, automated dependency updates
+## �️ Dependabot (still active)
 
-## ⚙️ Configuration
+Dependabot still opens PRs for dependency updates weekly — **human review is required**
+before merging (no auto-merge workflow).
 
-### Enable in Repository Settings
-
-1. **Settings → General**
-   - ✅ Allow auto-merge
-
-2. **Settings → Security**
-   - ✅ Dependabot alerts
-   - ✅ Dependabot security updates
-   - ✅ Code scanning alerts
-
-3. **Settings → Branches** (Optional - for main branch)
-   - Add rule: Require status checks to pass
-   - Required checks: `All Checks Passed`
-
-## 🚀 Quick Start
-
-All automation is **pre-configured** and ready to use:
-
-1. Push this configuration to GitHub
-2. Enable Dependabot in Settings → Security
-3. Workflows will run automatically on next push/PR
+See `dependabot.yml` for configuration.
 
 ## 📊 Monitoring
 
-- **Actions tab**: See workflow runs
-- **Security tab**: See CodeQL results & Dependabot alerts
-- **Pull requests**: See auto-merge activity
-
-## 🔧 Customization
-
-### Adjust Dependabot schedule
-Edit `dependabot.yml` → `schedule.interval`
-
-### Modify CI tests
-Edit `workflows/ci.yml` → Add/remove test steps
-
-### Change auto-merge rules
-Edit `workflows/dependabot-auto-merge.yml` → Update conditions
+- **Jenkins**: See pipeline runs in your Jenkins instance
+- **npm**: https://www.npmjs.com/package/flexgate-proxy
+- **GitHub Security tab**: Dependabot alerts
 
 ---
 
-**Documentation**: See `SECURITY_AUTOMATION.md` for details
+**Last Updated:** April 8, 2026
