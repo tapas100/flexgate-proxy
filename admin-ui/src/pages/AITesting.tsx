@@ -34,8 +34,6 @@ import {
 } from '@mui/material';
 import {
   ContentCopy as CopyIcon,
-  PlayArrow as GenerateIcon,
-  Build as BuildIcon,
   TrackChanges as TrackIcon,
   Refresh as RefreshIcon,
   Send as SendIcon,

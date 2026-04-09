@@ -21,12 +21,10 @@ import {
   TextField,
   Typography,
   Alert,
-  Divider,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Tooltip,
   Stack,
 } from '@mui/material';
 import {
@@ -37,7 +35,6 @@ import {
   Check as CheckIcon,
   Close as CloseIcon,
   Refresh as RefreshIcon,
-  FilterList as FilterIcon,
   ChatBubble as ChatIcon,
   WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
@@ -199,6 +196,7 @@ const WebhookDetails: React.FC = () => {
       fetchStats();
       fetchDeliveryLogs();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchWebhookDetails = async () => {

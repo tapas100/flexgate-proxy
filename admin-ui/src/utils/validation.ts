@@ -21,7 +21,7 @@ export function validatePath(path: string): ValidationResult {
   }
 
   // Check for valid URL path characters
-  const validPathRegex = /^\/[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=%*]*$/;
+  const validPathRegex = /^\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%*]*$/;
   if (!validPathRegex.test(path)) {
     return { valid: false, error: 'Path contains invalid characters' };
   }

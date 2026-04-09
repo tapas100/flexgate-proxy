@@ -33,10 +33,8 @@ import {
   Cancel as ErrorCircleIcon,
   Warning as WarningIcon,
   Info as InfoIcon,
-  PlayArrow as PlayArrowIcon,
   Refresh as RefreshIcon,
   Build as BuildIcon,
-  DeleteForever as DeleteForeverIcon,
   Assignment as AssignmentIcon,
   BugReport as BugReportIcon,
 } from '@mui/icons-material';
@@ -81,6 +79,7 @@ const Troubleshooting: React.FC = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [nuclearResetDialog, setNuclearResetDialog] = useState(false);
   const [nuclearConfirmText, setNuclearConfirmText] = useState('');
   const [cleanInstallDialog, setCleanInstallDialog] = useState(false);
@@ -291,6 +290,7 @@ const Troubleshooting: React.FC = () => {
   };
 
   // Run nuclear reset
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const runNuclearReset = async () => {
     if (nuclearConfirmText !== 'DELETE EVERYTHING') {
       setPasswordError('Please type "DELETE EVERYTHING" to confirm');
@@ -320,6 +320,7 @@ const Troubleshooting: React.FC = () => {
         body: JSON.stringify({ adminPassword: nuclearResetPassword }),
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const data = await response.json();
 
       alert('Nuclear reset complete. You will need to reinstall FlexGate.');

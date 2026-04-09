@@ -25,7 +25,7 @@ import {
   Psychology as PsychologyIcon,
   AutoFixHigh as AutoFixHighIcon,
 } from '@mui/icons-material';
-import { MetricsData, TimeRange, RefreshInterval } from '../types';
+import { TimeRange, RefreshInterval } from '../types';
 import { formatLargeNumber } from '../utils/metricsHelpers';
 import RequestRateChart from '../components/Charts/RequestRateChart';
 import LatencyChart from '../components/Charts/LatencyChart';
@@ -149,6 +149,7 @@ const Metrics: React.FC = () => {
       return;
     }
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshInterval, timeRange]);
 
   useEffect(() => {

@@ -13,10 +13,7 @@ import {
   DialogTitle,
   FormControl,
   IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   Table,
   TableBody,
   TableCell,
@@ -133,6 +130,7 @@ const Webhooks: React.FC = () => {
   // Load webhooks
   useEffect(() => {
     fetchWebhooks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchWebhooks = async () => {

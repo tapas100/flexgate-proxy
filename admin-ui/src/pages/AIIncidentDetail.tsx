@@ -85,7 +85,6 @@ const AIIncidentDetail: React.FC = () => {
   const [promptDialog, setPromptDialog] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [promptMeta, setPromptMeta] = useState<any>(null);
-  const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [analysisMeta, setAnalysisMeta] = useState<any>(null);
@@ -131,6 +130,7 @@ const AIIncidentDetail: React.FC = () => {
   useEffect(() => {
     loadIncident();
     loadAIProvider(); // Load AI provider info
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
   
   // Analyze with AI API (Multi-Provider Integration)
@@ -166,10 +166,10 @@ const AIIncidentDetail: React.FC = () => {
   };
   
   // Load Claude prompt (for manual copy/paste)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const loadPrompt = async () => {
     if (!id) return;
     
-    setLoadingPrompt(true);
     setError(null);
     
     try {
@@ -186,8 +186,6 @@ const AIIncidentDetail: React.FC = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate prompt');
       console.error('Error loading prompt:', err);
-    } finally {
-      setLoadingPrompt(false);
     }
   };
   

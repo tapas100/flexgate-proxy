@@ -315,6 +315,7 @@ class OAuthService {
    */
   private generateMockProviders(): OAuthProvider[] {
     const now = Date.now();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const dayAgo = now - 24 * 60 * 60 * 1000;
 
     return [
