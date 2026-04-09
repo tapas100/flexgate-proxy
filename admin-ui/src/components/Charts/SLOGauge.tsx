@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Paper, Typography, Box, CircularProgress, LinearProgress, Chip } from '@mui/material';
+import { Paper, Typography, Box, LinearProgress, Chip } from '@mui/material';
 import { SLOMetrics } from '../../types';
 import { getSLOStatusColor } from '../../utils/metricsHelpers';
 import { getAvailableMethod, ProcessingMethod } from '../../utils/metricsProcessor';

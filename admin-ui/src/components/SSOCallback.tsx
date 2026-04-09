@@ -25,7 +25,7 @@ const SSOCallback: React.FC = () => {
         }
 
         // Send SAML response to backend for validation
-        const response = await authService.handleSSOCallback(samlResponse, relayState || undefined);
+        await authService.handleSSOCallback(samlResponse, relayState || undefined);
 
         // Response is SSOCallbackResponse with token and user
         // Token and user are already stored by the auth service

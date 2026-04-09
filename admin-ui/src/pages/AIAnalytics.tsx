@@ -65,6 +65,7 @@ const AIAnalytics: React.FC = () => {
 
   useEffect(() => {
     loadAnalytics();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
   // Utility functions

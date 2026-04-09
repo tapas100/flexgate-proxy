@@ -120,6 +120,7 @@ const AIIncidents: React.FC = () => {
 
   useEffect(() => {
     loadIncidents();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage, status, eventType, severity]);
 
   useEffect(() => {
@@ -130,6 +131,7 @@ const AIIncidents: React.FC = () => {
       }
     }, 500);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   // Severity color mapping
