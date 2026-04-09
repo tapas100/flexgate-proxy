@@ -54,21 +54,79 @@ pipeline {
             }
         }
 
-        // ── 4. Lint ──────────────────────────────────────────────────────────
+        // ── 4. Security Audit ────────────────────────────────────────────────
+        // Checks both root and admin-ui for known vulnerabilities.
+        // High/critical findings FAIL the build; moderate/low are warnings only.
+        // Results are archived as JSON for review in the build artefacts.
+        stage('Security Audit') {
+            steps {
+                // ── Root package ─────────────────────────────────────────────
+                sh '''
+                    echo "=== Root package audit ==="
+                    npm audit --json > audit-root.json 2>&1 || true
+                    HIGH=$(node -e "
+                      try {
+                        const r = require('./audit-root.json');
+                        const m = r.metadata && r.metadata.vulnerabilities;
+                        console.log((m && (m.high||0) + (m.critical||0)) || 0);
+                      } catch(e) { console.log(0); }
+                    ")
+                    echo "Root high+critical: ${HIGH}"
+                    if [ "${HIGH}" -gt 0 ]; then
+                      echo "❌ Root package has ${HIGH} high/critical vulnerabilities"
+                      npm audit --audit-level=high || true
+                      exit 1
+                    else
+                      echo "✅ Root package — no high/critical vulnerabilities"
+                    fi
+                '''
+                // ── Admin UI ─────────────────────────────────────────────────
+                sh '''
+                    echo "=== Admin-UI package audit ==="
+                    cd admin-ui
+                    npm audit --json > ../audit-admin-ui.json 2>&1 || true
+                    HIGH=$(node -e "
+                      try {
+                        const r = require('../audit-admin-ui.json');
+                        const m = r.metadata && r.metadata.vulnerabilities;
+                        console.log((m && (m.high||0) + (m.critical||0)) || 0);
+                      } catch(e) { console.log(0); }
+                    ")
+                    echo "Admin-UI high+critical: ${HIGH}"
+                    if [ "${HIGH}" -gt 0 ]; then
+                      echo "❌ Admin-UI has ${HIGH} high/critical vulnerabilities"
+                      npm audit --audit-level=high || true
+                      exit 1
+                    else
+                      echo "✅ Admin-UI — no high/critical vulnerabilities"
+                    fi
+                '''
+            }
+            post {
+                always {
+                    // Archive audit JSON reports for review even on failure
+                    archiveArtifacts allowEmptyArchive: true,
+                        artifacts: 'audit-root.json,audit-admin-ui.json',
+                        fingerprint: false
+                }
+            }
+        }
+
+        // ── 5. Lint ──────────────────────────────────────────────────────────
         stage('Lint') {
             steps {
                 sh 'npm run lint || echo "[WARN] Lint issues found — continuing"'
             }
         }
 
-        // ── 5. Type-check ────────────────────────────────────────────────────
+        // ── 6. Type-check ────────────────────────────────────────────────────
         stage('Type Check') {
             steps {
                 sh 'npm run typecheck'
             }
         }
 
-        // ── 6. Test ──────────────────────────────────────────────────────────
+        // ── 7. Test ──────────────────────────────────────────────────────────
         stage('Test') {
             environment {
                 NODE_ENV     = 'test'
@@ -116,14 +174,14 @@ pipeline {
             }
         }
 
-        // ── 7. Build TypeScript ──────────────────────────────────────────────
+        // ── 8. Build TypeScript ──────────────────────────────────────────────
         stage('Build') {
             steps {
                 sh 'npm run build'
             }
         }
 
-        // ── 8. Build Admin UI ────────────────────────────────────────────────
+        // ── 9. Build Admin UI ────────────────────────────────────────────────
         // Use `npm install` instead of `npm ci` because admin-ui has transitive
         // deps (e.g. yaml) whose resolved version differs between npm versions,
         // causing `npm ci` to fail with "Missing from lock file" on the Jenkins agent.
@@ -136,7 +194,7 @@ pipeline {
             }
         }
 
-        // ── 9. Publish to npm (main branch only) ─────────────────────────────
+        // ── 10. Publish to npm (main branch only) ────────────────────────────
         //
         //  Rules:
         //    • Only runs on the main branch (push or merged PR).
