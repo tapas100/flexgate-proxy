@@ -13,6 +13,11 @@
     "vitepress": "^1.0.0-rc.40",
     "vue": "^3.4.15"
   },
+  "overrides": {
+    "rollup": "^4.40.4",
+    "vite": "^6.2.6",
+    "esbuild": "^0.25.0"
+  },
   "keywords": [
     "documentation",
     "api-gateway",

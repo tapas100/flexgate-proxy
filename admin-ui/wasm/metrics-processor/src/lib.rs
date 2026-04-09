@@ -9,11 +9,6 @@
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 
-// Use wee_alloc as the global allocator for smaller binary size
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 /// Time-series data point
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeSeriesPoint {
