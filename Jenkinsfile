@@ -124,10 +124,13 @@ pipeline {
         }
 
         // ── 8. Build Admin UI ────────────────────────────────────────────────
+        // Use `npm install` instead of `npm ci` because admin-ui has transitive
+        // deps (e.g. yaml) whose resolved version differs between npm versions,
+        // causing `npm ci` to fail with "Missing from lock file" on the Jenkins agent.
         stage('Build Admin UI') {
             steps {
                 dir('admin-ui') {
-                    sh 'npm ci'
+                    sh 'npm install --legacy-peer-deps'
                     sh 'npm run build'
                 }
             }
