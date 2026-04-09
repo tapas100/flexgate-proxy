@@ -1,5 +1,8 @@
 # Logs
 logs/
+# Un-ignore admin-ui React components that live under a "Logs" folder
+!admin-ui/src/components/Logs/
+!admin-ui/src/components/Logs/**
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -116,6 +119,8 @@ temp/
 # TypeScript build output
 dist/
 *.d.ts
+# Un-ignore TypeScript declaration files that are part of admin-ui source
+!admin-ui/src/**/*.d.ts
 *.js.map
 
 # MkDocs build output (no longer used)
