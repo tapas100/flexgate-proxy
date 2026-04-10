@@ -590,7 +590,7 @@ pipeline {
                             -e "s|{ status: 'ok' }|{ status: 'UP' }|g"
                         # The proxy exposes Prometheus metrics at /prometheus-metrics, not /metrics.
                         find tests -name "*.ts" | xargs sed -i \
-                            -e "s|\.get('/metrics')|.get('/prometheus-metrics')|g"
+                            -e "s|\\.get('/metrics')|.get('/prometheus-metrics')|g"
                         # invalid-route tests: add 500 to acceptable status list for admin API
                         # calls that may fail with unhandled errors (e.g. missing admin-ui build).
                         find tests -name "invalid-route.test.ts" | xargs sed -i \
