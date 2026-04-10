@@ -108,14 +108,18 @@ pipeline {
             steps {
                 sh '''
                     if [ -d "${LABS_DIR}/.git" ]; then
-                        echo "=== Labs repo already exists — pulling latest ==="
+                        echo "=== Labs repo already exists — resetting and pulling latest ==="
+                        # Discard any in-place modifications from a previous run
+                        # (e.g. podman-compose.services.yml patched by patch-labs-compose.py)
+                        git -C "${LABS_DIR}" checkout -- .
+                        git -C "${LABS_DIR}" clean -fd
                         git -C "${LABS_DIR}" pull --rebase origin main
                     else
                         echo "=== Labs repo not found — cloning ==="
                         mkdir -p "$(dirname ${LABS_DIR})"
                         git clone "${LABS_REPO_URL}" "${LABS_DIR}"
                     fi
-                    echo "✅ Labs repo ready at ${LABS_DIR}"
+                    echo "Labs repo ready at ${LABS_DIR}"
                 '''
             }
         }
@@ -457,12 +461,13 @@ pipeline {
                 dir(env.LABS_DIR) {
                     sh '''
                         echo "=== Patching podman-compose.services.yml to join flexgate-ci network ==="
-                        # scripts/patch-labs-compose.py lives in the flexgate-proxy checkout.
-                        # WORKSPACE is set by Jenkins to the flexgate-proxy workspace root.
-                        python3 "${WORKSPACE}/scripts/patch-labs-compose.py" podman-compose.services.yml
+                        # Write patched compose to /tmp — never modifies the tracked file,
+                        # so 'git pull' on the next build won't see unstaged changes.
+                        CI_COMPOSE=/tmp/podman-compose.services.ci.yml
+                        python3 "${WORKSPACE}/scripts/patch-labs-compose.py" podman-compose.services.yml "$CI_COMPOSE"
 
                         echo "=== Starting labs mock services via podman-compose ==="
-                        podman-compose -f podman-compose.services.yml up -d --build
+                        podman-compose -f "$CI_COMPOSE" up -d --build
 
                         echo "--- Waiting for labs services (via container-name DNS) ---"
                         # wait-for-ready.sh hardcodes localhost which is unreachable from
@@ -648,7 +653,9 @@ pipeline {
                     // ── Stop labs mock services ───────────────────────────────
                     sh '''
                         echo "=== Tearing down labs mock services ==="
-                        cd "${LABS_DIR}" && podman-compose -f podman-compose.services.yml down || true
+                        cd "${LABS_DIR}" && podman-compose -f /tmp/podman-compose.services.ci.yml down 2>/dev/null \
+                            || podman-compose -f podman-compose.services.yml down 2>/dev/null \
+                            || true
                     '''
                     // ── Stop proxy ────────────────────────────────────────────
                     sh 'pm2 delete flexgate-proxy || true'
