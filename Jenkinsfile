@@ -448,16 +448,77 @@ pipeline {
         }
 
         // ── 13. Start Labs Mock Services ─────────────────────────────────────
-        // Brings up the flexgate-labs companion services and waits until the
-        // wait-for-ready script exits successfully.
+        // Brings up the flexgate-labs companion services on the flexgate-ci
+        // bridge network so Jenkins (also on that bridge) can reach them by
+        // container-name DNS.  wait-for-ready.sh hardcodes localhost so we
+        // bypass it and poll the container-name URLs ourselves.
         stage('Start Labs Services') {
             steps {
                 dir("${LABS_DIR}") {
                     sh '''
+                        echo "=== Patching podman-compose.services.yml to join flexgate-ci network ==="
+                        # Append the flexgate-ci external network declaration if not already present.
+                        # We do this with a Python one-liner so we don't need yq/jq on the agent.
+                        python3 - <<'PYEOF'
+import sys, re
+
+with open("podman-compose.services.yml", "r") as f:
+    content = f.read()
+
+# Already patched — nothing to do
+if "flexgate-ci" in content:
+    print("  flexgate-ci network already present, skipping patch")
+    sys.exit(0)
+
+# Append network declaration at end of file
+network_block = """
+networks:
+  flexgate-ci:
+    external: true
+"""
+content += network_block
+
+# Add "networks: [flexgate-ci]" to every service that doesn't have it
+# We insert it after each "container_name:" line
+content = re.sub(
+    r'(container_name:\s*\S+)',
+    r'\1\n    networks: [flexgate-ci]',
+    content
+)
+
+with open("podman-compose.services.yml", "w") as f:
+    f.write(content)
+
+print("  ✅ Patched podman-compose.services.yml")
+PYEOF
+
                         echo "=== Starting labs mock services via podman-compose ==="
                         podman-compose -f podman-compose.services.yml up -d --build
-                        echo "--- Waiting for labs services to be ready ---"
-                        bash scripts/wait-for-ready.sh
+
+                        echo "--- Waiting for labs services (via container-name DNS) ---"
+                        # wait-for-ready.sh hardcodes localhost which is unreachable from
+                        # inside the Jenkins container.  Poll the container names directly.
+                        wait_for() {
+                            local name="$1" url="$2" retries=30
+                            echo "⏳ Waiting for $name at $url..."
+                            while [ "$retries" -gt 0 ]; do
+                                if curl -sf --max-time 3 "$url" >/dev/null 2>&1; then
+                                    echo "  ✅ $name ready"
+                                    return 0
+                                fi
+                                retries=$((retries - 1))
+                                echo "  [$((30 - retries))/30] $name not ready, retrying in 3s..."
+                                sleep 3
+                            done
+                            echo "  ❌ $name failed to become ready after 90s"
+                            return 1
+                        }
+
+                        wait_for "api-users"       "http://flexgate-api-users:3001/health"
+                        wait_for "api-orders"      "http://flexgate-api-orders:3002/health"
+                        wait_for "flaky-service"   "http://flexgate-flaky:3003/health"
+                        wait_for "slow-service"    "http://flexgate-slow:3004/health"
+                        wait_for "webhook-receiver" "http://flexgate-webhook:3005/health"
                         echo "✅ Labs services ready"
                     '''
                 }
@@ -465,12 +526,27 @@ pipeline {
         }
 
         // ── 14. Seed Routes ──────────────────────────────────────────────────
+        // seed-routes.sh hardcodes localhost upstream URLs which don't work
+        // from inside Jenkins (containers are on flexgate-ci bridge).
+        // We rewrite them on-the-fly to use container-name DNS before seeding.
         stage('Seed Routes') {
             steps {
                 dir("${LABS_DIR}") {
                     sh '''
-                        echo "=== Seeding routes ==="
-                        bash scripts/seed-routes.sh
+                        echo "=== Seeding routes (with container-name upstreams) ==="
+                        # Patch seed-routes.sh to use container-name DNS for upstream targets.
+                        # The proxy itself is on the same bridge, so it can resolve these names
+                        # when forwarding requests.
+                        sed \
+                            -e 's|http://localhost:3001|http://flexgate-api-users:3001|g' \
+                            -e 's|http://localhost:3002|http://flexgate-api-orders:3002|g' \
+                            -e 's|http://localhost:3003|http://flexgate-flaky:3003|g' \
+                            -e 's|http://localhost:3004|http://flexgate-slow:3004|g' \
+                            -e 's|http://localhost:3005|http://flexgate-webhook:3005|g' \
+                            -e 's|http://localhost:3000|http://localhost:3000|g' \
+                            scripts/seed-routes.sh > /tmp/seed-routes-ci.sh
+                        chmod +x /tmp/seed-routes-ci.sh
+                        bash /tmp/seed-routes-ci.sh
                         echo "✅ Routes seeded"
                     '''
                 }
@@ -480,7 +556,18 @@ pipeline {
         // ── 15. Release Gate (Integration Tests) ─────────────────────────────
         // Runs the full jest integration suite from the labs workspace.
         // If ANY test fails the pipeline stops here — npm publish is NOT run.
+        // GATEWAY_URL = proxy on localhost (pm2 in same container, port 3000).
+        // Individual service URLs are overridden via env to use container names.
         stage('Release Gate') {
+            environment {
+                GATEWAY_URL          = 'http://localhost:3000'
+                WEBHOOK_RECEIVER_URL = 'http://flexgate-webhook:3005'
+                // Override hardcoded localhost references in e2e tests
+                API_USERS_URL   = 'http://flexgate-api-users:3001'
+                API_ORDERS_URL  = 'http://flexgate-api-orders:3002'
+                FLAKY_URL       = 'http://flexgate-flaky:3003'
+                SLOW_URL        = 'http://flexgate-slow:3004'
+            }
             steps {
                 dir("${LABS_DIR}") {
                     sh 'npx jest --config jest.config.ts --runInBand --forceExit'
