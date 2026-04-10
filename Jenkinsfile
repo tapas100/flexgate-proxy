@@ -585,16 +585,17 @@ pipeline {
                             -e "s|http://localhost:3005|http://flexgate-webhook:3005|g"
 
                         echo "=== Patching test assertions to match proxy behaviour ==="
-                        # The proxy /health returns { status: 'UP' } — labs tests expect 'ok'.
-                        find tests -name "*.ts" | xargs sed -i \
-                            -e "s|{ status: 'ok' }|{ status: 'UP' }|g"
-                        # The proxy exposes Prometheus metrics at /prometheus-metrics, not /metrics.
-                        find tests -name "*.ts" | xargs sed -i \
-                            -e "s|\\.get('/metrics')|.get('/prometheus-metrics')|g"
-                        # invalid-route tests: add 500 to acceptable status list for admin API
-                        # calls that may fail with unhandled errors (e.g. missing admin-ui build).
-                        find tests -name "invalid-route.test.ts" | xargs sed -i \
-                            -e 's|expect(\[200, 401, 403\])|expect([200, 401, 403, 500])|g'
+                        # Use a shell script file to avoid single-quote nesting inside the Groovy shell block.
+                        cat > /tmp/patch-labs-tests.sh << 'PATCH_EOF'
+#!/bin/sh
+# Patch 1: health status — proxy returns UP, not ok
+find tests -name "*.ts" | xargs sed -i -e "s|{ status: 'ok' }|{ status: 'UP' }|g"
+# Patch 2: metrics endpoint — proxy uses /prometheus-metrics not /metrics
+find tests -name "*.ts" | xargs sed -i -e "s|\.get('/metrics')|.get('/prometheus-metrics')|g"
+# Patch 3: invalid-route — widen acceptable status codes to include 500
+find tests -name "invalid-route.test.ts" | xargs sed -i -e 's|expect(\[200, 401, 403\])|expect([200, 401, 403, 500])|g'
+PATCH_EOF
+                        sh /tmp/patch-labs-tests.sh
 
                         echo "=== Running Release Gate tests ==="
                         ./node_modules/.bin/jest --config jest.config.ts --runInBand --forceExit
