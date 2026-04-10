@@ -662,10 +662,12 @@ pipeline {
                     // ── Stop infrastructure containers ────────────────────────
                     // --volumes removes the postgres-data volume so the next
                     // build starts with a clean database (no stale migrations).
-                    // Use the original workspace path explicitly — the post block
-                    // may run in a different workspace directory (workspace@2).
+                    // The post block runs in workspace@2 when the main workspace
+                    // is still locked. Strip the trailing @N to get the real path.
                     sh '''
-                        COMPOSE_FILE="${WORKSPACE}/podman-compose.dev.yml"
+                        # Strip trailing @<number> suffix Jenkins adds for parallel workspaces
+                        ORIG_WORKSPACE=$(echo "${WORKSPACE}" | sed 's/@[0-9]*$//')
+                        COMPOSE_FILE="${ORIG_WORKSPACE}/podman-compose.dev.yml"
                         if [ -f "$COMPOSE_FILE" ]; then
                             podman-compose -f "$COMPOSE_FILE" down --volumes || true
                         else
