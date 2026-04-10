@@ -585,7 +585,9 @@ pipeline {
                     // ── Stop proxy ────────────────────────────────────────────
                     sh 'pm2 delete flexgate-proxy || true'
                     // ── Stop infrastructure containers ────────────────────────
-                    sh 'podman-compose -f podman-compose.dev.yml down || true'
+                    // --volumes removes the postgres-data volume so the next
+                    // build starts with a clean database (no stale migrations).
+                    sh 'podman-compose -f podman-compose.dev.yml down --volumes || true'
                     // ── Clean workspace ───────────────────────────────────────
                     cleanWs()
                 }
