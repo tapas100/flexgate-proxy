@@ -21,6 +21,7 @@ import {
   getGeminiModels,
 } from '../services/aiProviders';
 import { deleteOperationRateLimiter } from '../middleware/rateLimiting';
+import { logger } from '../logger';
 
 const router = express.Router();
 const db = database;
@@ -141,10 +142,10 @@ function loadExternalConfig(): boolean {
         process.env.ENCRYPTION_KEY = config.security.encryptionKey;
       }
       
-      console.log(`✅ Loaded config from: ${CONFIG_FILE_PATH}`);
+      logger.info('AI settings: loaded external config', { path: CONFIG_FILE_PATH });
       if (aiConfig.apiKey) {
-        console.log(`🔐 API key loaded from config: ${maskApiKey(aiConfig.apiKey)}`);
-        console.log(`🔒 API key is LOCKED (write-once mode - delete to change)`);
+        logger.info('AI settings: API key loaded from external config', { maskedKey: maskApiKey(aiConfig.apiKey) });
+        logger.info('AI settings: API key is locked (write-once mode)');
       }
       return true;
     }
@@ -161,7 +162,7 @@ const configFileLoaded = loadExternalConfig();
 setTimeout(async () => {
   // Skip database load if config file was used
   if (configFileLoaded && aiConfig.apiKey) {
-    console.log('ℹ️  Using external config file, skipping database load');
+    logger.info('AI settings: using external config file, skipping database load');
     return;
   }
   
@@ -180,16 +181,16 @@ setTimeout(async () => {
       }
       
       aiConfig = { ...aiConfig, ...savedConfig };
-      console.log(`✅ Loaded AI config from database: ${aiConfig.provider}`);
+      logger.info('AI settings: loaded config from database', { provider: aiConfig.provider });
       
       // Verify decrypted key works
       if (aiConfig.apiKey) {
-        console.log(`🔐 Decrypted API key: ${maskApiKey(aiConfig.apiKey)}`);
-        console.log(`🔒 API key is LOCKED (write-once mode - delete to change)`);
+        logger.info('AI settings: API key decrypted from database', { maskedKey: maskApiKey(aiConfig.apiKey) });
+        logger.info('AI settings: API key is locked (write-once mode)');
       }
     }
   } catch (error) {
-    console.log('ℹ️  No saved AI config found, using defaults');
+    logger.info('AI settings: no saved config in database, using defaults');
   }
 }, 2000); // Wait 2 seconds for database to initialize
 
@@ -262,8 +263,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     if (apiKey && apiKey.trim()) {
       aiConfig.apiKey = apiKey.trim();
       apiKeyLocked = true; // Lock after first save
-      console.log(`🔐 API key updated for ${aiConfig.provider}: ${maskApiKey(apiKey)}`);
-      console.log(`🔒 API key is now LOCKED (write-once mode)`);
+      logger.info('AI settings: API key updated', { provider: aiConfig.provider, maskedKey: maskApiKey(apiKey) });
+      logger.info('AI settings: API key is now locked (write-once mode)');
     }
 
     // Update model config
@@ -295,7 +296,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       ]
     );
 
-    console.log(`✅ AI config updated: ${aiConfig.provider} / ${aiConfig.model}`);
+    logger.info('AI settings: configuration updated', { provider: aiConfig.provider, model: aiConfig.model });
 
     res.json({
       success: true,
@@ -326,7 +327,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
  */
 router.delete('/key', deleteOperationRateLimiter, async (_req: Request, res: Response): Promise<void> => {
   try {
-    console.log('🗑️  Deleting API key...');
+    logger.info('AI settings: deleting API key');
     
     // Clear API key and unlock
     aiConfig.apiKey = '';
@@ -352,7 +353,7 @@ router.delete('/key', deleteOperationRateLimiter, async (_req: Request, res: Res
       ]
     );
     
-    console.log('✅ API key deleted and unlocked');
+    logger.info('AI settings: API key deleted and unlocked');
     
     res.json({
       success: true,

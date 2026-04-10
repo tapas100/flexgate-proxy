@@ -11,6 +11,7 @@ import { AIEvent } from '../ai/types/events';
 import { getAIConfig } from './settings-ai';
 import { callAIProvider } from '../services/aiProviders';
 import { generateMockAnalysis } from '../services/mockClaudeService';
+import { logger } from '../logger';
 // import { requireAuth } from '../auth/middleware'; // Temporarily disabled for testing
 
 const router = express.Router();
@@ -693,7 +694,7 @@ router.post('/:id/analyze', async (req: Request, res: Response): Promise<void> =
     // Check if demo mode is enabled
     if (config.demoMode) {
       // Use mock service for demo mode
-      console.log(`🎭 Demo mode: Using mock AI service`);
+      logger.info('AI incidents: demo mode — using mock AI service');
       const mockResponse = generateMockAnalysis({
         event_type: incident.event_type,
         severity: incident.severity,
@@ -720,7 +721,7 @@ router.post('/:id/analyze', async (req: Request, res: Response): Promise<void> =
       }
 
       // Use real AI provider
-      console.log(`🚀 Production mode: Calling ${config.provider.toUpperCase()} API`);
+      logger.info('AI incidents: production mode — calling AI provider', { provider: config.provider });
       const aiResponse = await callAIProvider(prompt, config);
       
       analysis = aiResponse.analysis;
@@ -786,7 +787,7 @@ router.post('/:id/analyze', async (req: Request, res: Response): Promise<void> =
       }
     }
 
-    console.log(`✅ Created ${createdRecommendations} recommendations from analysis`);
+    logger.info('AI incidents: recommendations created', { count: createdRecommendations });
 
     res.json({
       success: true,
@@ -964,10 +965,10 @@ ${baseFormat}`;
  * Extracts actionable recommendations and creates structured data
  */
 function parseRecommendationsFromAnalysis(analysis: string, eventType: string): any[] {
-  console.log('\n=== 🔍 PARSING RECOMMENDATIONS ===');
-  console.log('Event Type:', eventType);
-  console.log('Analysis length:', analysis.length);
-  console.log('Analysis preview (first 300 chars):\n', analysis.substring(0, 300));
+  logger.debug('AI incidents: parseRecommendations — start');
+  logger.debug('AI incidents: parseRecommendations', { eventType });
+  logger.debug('AI incidents: parseRecommendations', { analysisLength: analysis.length });
+  logger.debug('AI incidents: analysis preview', { preview: analysis.substring(0, 300) });
   
   const recommendations: any[] = [];
   
@@ -977,39 +978,39 @@ function parseRecommendationsFromAnalysis(analysis: string, eventType: string): 
     /(?:##?\s*)?(?:Steps?|Recommendations?)[:\s]+([\s\S]*?)(?=##|\n\n##|$)/i,
   ];
   
-  console.log('🔎 Testing patterns...');
+  logger.debug('AI incidents: testing recommendation patterns');
   let actionsText = '';
   for (const pattern of actionPatterns) {
     const match = analysis.match(pattern);
-    console.log('Pattern:', pattern.toString().substring(0, 80) + '...');
-    console.log('Match found:', !!match);
+    logger.debug('AI incidents: testing pattern', { pattern: pattern.toString().substring(0, 80) });
+    logger.debug('AI incidents: pattern match result', { matched: !!match });
     if (match && match[1]) {
-      console.log('✅ Matched! Extracted text (first 200 chars):\n', match[1].substring(0, 200));
+      logger.debug('AI incidents: pattern matched', { preview: match[1].substring(0, 200) });
       actionsText = match[1];
       break;
     }
   }
   
   if (!actionsText) {
-    console.log('⚠️ No action section found, trying fallback...');
+    logger.debug('AI incidents: no action section found, trying fallback');
     // Fallback: look for any numbered list
     const numberedItems = analysis.match(/^\d+\.\s+(.+?)$/gm);
-    console.log('Fallback numbered items found:', numberedItems?.length || 0);
+    logger.debug('AI incidents: fallback items', { count: numberedItems?.length || 0 });
     if (numberedItems && numberedItems.length > 0) {
       actionsText = numberedItems.slice(0, 5).join('\n');
     }
   }
   
-  console.log('📝 Actions text length:', actionsText.length);
-  console.log('Actions text preview (first 300 chars):\n', actionsText.substring(0, 300));
+  logger.debug('AI incidents: actions text', { length: actionsText.length });
+  logger.debug('AI incidents: actions text preview', { preview: actionsText.substring(0, 300) });
   
   // Parse individual action items
   const actionLines = actionsText.split(/\n/).filter(line => {
     return /^\s*[\d*-]\s*\.?\s+/.test(line) && line.trim().length > 10;
   });
   
-  console.log('📋 Action lines found:', actionLines.length);
-  actionLines.forEach((line, i) => console.log(`  ${i+1}. ${line.substring(0, 60)}...`));
+  logger.debug('AI incidents: action lines found', { count: actionLines.length });
+  actionLines.forEach((line, i) => logger.debug('AI incidents: action line', { index: i + 1, preview: line.substring(0, 60) }));
   
   actionLines.slice(0, 5).forEach((line, index) => {
     const cleanLine = line.replace(/^[\s\d*.-]+/, '').trim();
@@ -1072,11 +1073,11 @@ function parseRecommendationsFromAnalysis(analysis: string, eventType: string): 
     });
   });
   
-  console.log('✨ Total recommendations parsed:', recommendations.length);
+  logger.debug('AI incidents: recommendations parsed', { count: recommendations.length });
   
   // If no recommendations found, create generic ones based on event type
   if (recommendations.length === 0) {
-    console.log('⚠️ No recommendations parsed, creating fallback...');
+    logger.debug('AI incidents: no recommendations parsed, creating fallback');
     recommendations.push({
       action_type: 'investigate',
       action_details: {
@@ -1091,7 +1092,7 @@ function parseRecommendationsFromAnalysis(analysis: string, eventType: string): 
     });
   }
   
-  console.log('=== END PARSING ===\n');
+  logger.debug('AI incidents: parseRecommendations — end');
   return recommendations;
 }
 
