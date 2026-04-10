@@ -547,6 +547,17 @@ pipeline {
                     sh '''
                         echo "=== Installing labs dependencies ==="
                         npm install
+
+                        echo "=== Patching global-setup.ts: localhost → container-name DNS ==="
+                        # Several test files hardcode localhost:3001-3005 with no env-var override.
+                        # Patch in-place — git checkout -- . resets all these at the start of each build.
+                        find tests -name "*.ts" | xargs sed -i \
+                            -e "s|http://localhost:3001|http://flexgate-api-users:3001|g" \
+                            -e "s|http://localhost:3002|http://flexgate-api-orders:3002|g" \
+                            -e "s|http://localhost:3003|http://flexgate-flaky:3003|g" \
+                            -e "s|http://localhost:3004|http://flexgate-slow:3004|g" \
+                            -e "s|http://localhost:3005|http://flexgate-webhook:3005|g"
+
                         echo "=== Running Release Gate tests ==="
                         ./node_modules/.bin/jest --config jest.config.ts --runInBand --forceExit
                     '''
