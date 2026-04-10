@@ -3,15 +3,17 @@ pipeline {
 
     // ── NodeJS Plugin: installs Node and puts node/npm on PATH ───────────────
     // Prerequisite: Jenkins → Manage Jenkins → Tools → NodeJS installations
-    //   Name: "NodeJS 18"  |  Version: 18.20.8  |  Install automatically: ✅
-    //   Node 18 LTS is used because Node 20+ requires libatomic which may not
-    //   be present on minimal Jenkins agent images (no root access to install).
+    //   Name: "NodeJS 20"  |  Version: 20.19.0  |  Install automatically: ✅
+    //   Node 20 LTS is required because serialize-javascript >=7.0.5 (needed
+    //   for CVE GHSA-5c6j-r48x-rmvq) uses the global `crypto` API which is
+    //   only available as a global from Node 19+. Node 18 only exposes it via
+    //   require('crypto'), causing "ReferenceError: crypto is not defined".
     tools {
-        nodejs 'NodeJS 18'
+        nodejs 'NodeJS 20'
     }
 
     environment {
-        NODE_VERSION   = '18'
+        NODE_VERSION   = '20'
         NPM_TOKEN      = credentials('registry-token')          // npm auth token stored in Jenkins credentials
         DB_USERNAME    = credentials('flexgate-db-username')
         DB_PASSWORD    = credentials('flexgate-db-password')
