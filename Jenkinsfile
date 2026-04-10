@@ -21,7 +21,13 @@ pipeline {
         DEMO_EMAIL     = credentials('flexgate-demo-email')     // Admin UI demo login email
         LABS_REPO_URL  = credentials('flexgate-labs-repo-url')  // Secret text: full git clone URL for flexgate-labs
         CI             = 'true'
-        LABS_DIR       = '/var/lib/jenkins/workspace/flexgate-labs'
+        // Jenkins runs inside a rootless Podman container on the host.
+        // CONTAINER_HOST routes all podman / podman-compose calls through
+        // the host Podman socket that is bind-mounted into the container.
+        CONTAINER_HOST = 'unix:///run/user/1000/podman/podman.sock'
+        // Jenkins home inside the container is /var/jenkins_home
+        // (mounted from /opt/forgeops/jenkins_home on the host)
+        LABS_DIR       = '/var/jenkins_home/workspace/flexgate-labs'
     }
 
     // Trigger on push to main OR merge (PR close) into main
