@@ -457,40 +457,9 @@ pipeline {
                 dir("${LABS_DIR}") {
                     sh '''
                         echo "=== Patching podman-compose.services.yml to join flexgate-ci network ==="
-                        # Append the flexgate-ci external network declaration if not already present.
-                        # We do this with a Python one-liner so we don't need yq/jq on the agent.
-                        python3 - <<'PYEOF'
-import sys, re
-
-with open("podman-compose.services.yml", "r") as f:
-    content = f.read()
-
-# Already patched — nothing to do
-if "flexgate-ci" in content:
-    print("  flexgate-ci network already present, skipping patch")
-    sys.exit(0)
-
-# Append network declaration at end of file
-network_block = """
-networks:
-  flexgate-ci:
-    external: true
-"""
-content += network_block
-
-# Add "networks: [flexgate-ci]" to every service that doesn't have it
-# We insert it after each "container_name:" line
-content = re.sub(
-    r'(container_name:\s*\S+)',
-    r'\1\n    networks: [flexgate-ci]',
-    content
-)
-
-with open("podman-compose.services.yml", "w") as f:
-    f.write(content)
-
-print("  ✅ Patched podman-compose.services.yml")
-PYEOF
+                        # scripts/patch-labs-compose.py lives in the flexgate-proxy checkout.
+                        # WORKSPACE is set by Jenkins to the flexgate-proxy workspace root.
+                        python3 "${WORKSPACE}/scripts/patch-labs-compose.py" podman-compose.services.yml
 
                         echo "=== Starting labs mock services via podman-compose ==="
                         podman-compose -f podman-compose.services.yml up -d --build
@@ -500,26 +469,26 @@ PYEOF
                         # inside the Jenkins container.  Poll the container names directly.
                         wait_for() {
                             local name="$1" url="$2" retries=30
-                            echo "⏳ Waiting for $name at $url..."
+                            echo "Waiting for $name at $url..."
                             while [ "$retries" -gt 0 ]; do
                                 if curl -sf --max-time 3 "$url" >/dev/null 2>&1; then
-                                    echo "  ✅ $name ready"
+                                    echo "  $name ready"
                                     return 0
                                 fi
                                 retries=$((retries - 1))
                                 echo "  [$((30 - retries))/30] $name not ready, retrying in 3s..."
                                 sleep 3
                             done
-                            echo "  ❌ $name failed to become ready after 90s"
+                            echo "  $name failed to become ready after 90s"
                             return 1
                         }
 
-                        wait_for "api-users"       "http://flexgate-api-users:3001/health"
-                        wait_for "api-orders"      "http://flexgate-api-orders:3002/health"
-                        wait_for "flaky-service"   "http://flexgate-flaky:3003/health"
-                        wait_for "slow-service"    "http://flexgate-slow:3004/health"
+                        wait_for "api-users"        "http://flexgate-api-users:3001/health"
+                        wait_for "api-orders"       "http://flexgate-api-orders:3002/health"
+                        wait_for "flaky-service"    "http://flexgate-flaky:3003/health"
+                        wait_for "slow-service"     "http://flexgate-slow:3004/health"
                         wait_for "webhook-receiver" "http://flexgate-webhook:3005/health"
-                        echo "✅ Labs services ready"
+                        echo "Labs services ready"
                     '''
                 }
             }
