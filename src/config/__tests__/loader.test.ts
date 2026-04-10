@@ -11,6 +11,16 @@ import { Config } from '../loader';
 jest.mock('fs');
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
+// Mock logger to avoid the circular-dependency issue (loader → logger → config)
+// and to allow spying on warn/error calls.
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+};
+jest.mock('../../logger', () => ({ logger: mockLogger }));
+
 describe('Config Loader', () => {
   let config: Config;
   let consoleErrorSpy: jest.SpyInstance;
@@ -106,11 +116,10 @@ routes:
 `;
 
       (mockedFs.readFileSync as jest.Mock).mockReturnValue(yamlWithDuplicates);
-      const warnSpy = jest.spyOn(console, 'warn');
 
       config.load('test-config.yml');
 
-      expect(warnSpy).toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalled();
     });
   });
 

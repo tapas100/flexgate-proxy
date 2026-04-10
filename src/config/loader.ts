@@ -8,8 +8,16 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 import { validateConfig, getSchemaVersion, migrateConfig } from './schema';
 import { metrics } from '../metrics';
-import { logger } from '../logger';
 import type { ProxyConfig, ConfigWatcher, ConfigLoader as IConfigLoader } from '../types';
+
+// Lazy logger import — breaks the loader ↔ logger circular dependency.
+// logger.ts calls config.get() at module-load time; if loader.ts imported
+// logger at the top level Node.js would hand loader.ts an empty object,
+// making config undefined when logger.ts first runs.
+function getLogger(): import('winston').Logger {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('../logger').logger;
+}
 
 class Config implements IConfigLoader {
   public config: ProxyConfig | null;
@@ -41,10 +49,10 @@ class Config implements IConfigLoader {
       const { error, value, warnings } = validateConfig(migratedConfig);
       
       if (error) {
-        logger.error('❌ Config validation failed:', { message: error.message });
+        getLogger().error('❌ Config validation failed:', { message: error.message });
         if ((error as any).details) {
           (error as any).details.forEach((detail: any) => {
-            logger.error(`  - ${detail.path.join('.')}: ${detail.message}`);
+            getLogger().error(`  - ${detail.path.join('.')}: ${detail.message}`);
           });
         }
         throw error;
@@ -53,7 +61,7 @@ class Config implements IConfigLoader {
       // Show warnings
       if (warnings && warnings.length > 0) {
         warnings.forEach(warning => {
-          logger.warn(`⚠️  ${warning}`);
+          getLogger().warn(`⚠️  ${warning}`);
         });
       }
       
@@ -67,7 +75,7 @@ class Config implements IConfigLoader {
         1
       );
       
-      logger.info(`✅ Config loaded from ${fullPath} (schema v${this.schemaVersion})`);
+      getLogger().info(`✅ Config loaded from ${fullPath} (schema v${this.schemaVersion})`);
       return this.config;
     } catch (error) {
       const err = error as Error;
@@ -78,7 +86,7 @@ class Config implements IConfigLoader {
         error_type: err.name || 'unknown'
       });
       
-      logger.error('❌ Failed to load config:', { message: err.message });
+      getLogger().error('❌ Failed to load config:', { message: err.message });
       throw error;
     }
   }
@@ -98,15 +106,15 @@ class Config implements IConfigLoader {
         try {
           callback(this.config!, oldConfig!);
         } catch (error) {
-          logger.error('Error in config watcher:', { error });
+          getLogger().error('Error in config watcher:', { error });
         }
       });
       
-      logger.info('✅ Config reloaded successfully');
+      getLogger().info('✅ Config reloaded successfully');
       return true;
     } catch (error) {
       const err = error as Error;
-      logger.error('❌ Config reload failed, keeping old config:', { message: err.message });
+      getLogger().error('❌ Config reload failed, keeping old config:', { message: err.message });
       return false;
     }
   }
