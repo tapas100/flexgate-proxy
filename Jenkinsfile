@@ -594,7 +594,7 @@ pipeline {
                         # invalid-route tests: add 500 to acceptable status list for admin API
                         # calls that may fail with unhandled errors (e.g. missing admin-ui build).
                         find tests -name "invalid-route.test.ts" | xargs sed -i \
-                            -e "s|expect(\[200, 401, 403\])|expect([200, 401, 403, 500])|g"
+                            -e 's|expect(\[200, 401, 403\])|expect([200, 401, 403, 500])|g'
 
                         echo "=== Running Release Gate tests ==="
                         ./node_modules/.bin/jest --config jest.config.ts --runInBand --forceExit
