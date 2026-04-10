@@ -5,6 +5,13 @@
 -- Drop old indexes first
 DROP INDEX IF EXISTS idx_webhook_deliveries_success;
 
+-- Drop the original UUID-based FK from 001_initial_schema.sql BEFORE altering the column type.
+-- (001 created: webhook_id UUID REFERENCES webhooks(id))
+-- We must drop it here or ALTER COLUMN TYPE will fail with type mismatch.
+ALTER TABLE webhook_deliveries DROP CONSTRAINT IF EXISTS webhook_deliveries_webhook_id_fkey;
+ALTER TABLE webhook_deliveries DROP CONSTRAINT IF EXISTS fk_webhook;
+ALTER TABLE webhook_deliveries DROP CONSTRAINT IF EXISTS fk_webhook_deliveries_webhook_id;
+
 -- Add new columns
 ALTER TABLE webhook_deliveries 
   ADD COLUMN IF NOT EXISTS delivery_id VARCHAR(255),
