@@ -454,7 +454,7 @@ pipeline {
         // bypass it and poll the container-name URLs ourselves.
         stage('Start Labs Services') {
             steps {
-                dir("${LABS_DIR}") {
+                dir(env.LABS_DIR) {
                     sh '''
                         echo "=== Patching podman-compose.services.yml to join flexgate-ci network ==="
                         # scripts/patch-labs-compose.py lives in the flexgate-proxy checkout.
@@ -500,7 +500,7 @@ pipeline {
         // We rewrite them on-the-fly to use container-name DNS before seeding.
         stage('Seed Routes') {
             steps {
-                dir("${LABS_DIR}") {
+                dir(env.LABS_DIR) {
                     sh '''
                         echo "=== Seeding routes (with container-name upstreams) ==="
                         # Patch seed-routes.sh to use container-name DNS for upstream targets.
@@ -538,14 +538,19 @@ pipeline {
                 SLOW_URL        = 'http://flexgate-slow:3004'
             }
             steps {
-                dir("${LABS_DIR}") {
-                    sh 'npx jest --config jest.config.ts --runInBand --forceExit'
+                dir(env.LABS_DIR) {
+                    sh '''
+                        echo "=== Installing labs dependencies ==="
+                        npm install
+                        echo "=== Running Release Gate tests ==="
+                        ./node_modules/.bin/jest --config jest.config.ts --runInBand --forceExit
+                    '''
                 }
             }
             post {
                 always {
                     junit allowEmptyResults: true,
-                          testResults: "${LABS_DIR}/test-results/**/*.xml"
+                          testResults: env.LABS_DIR + '/test-results/**/*.xml'
                 }
             }
         }
@@ -650,7 +655,19 @@ pipeline {
                     // ── Stop infrastructure containers ────────────────────────
                     // --volumes removes the postgres-data volume so the next
                     // build starts with a clean database (no stale migrations).
-                    sh 'podman-compose -f podman-compose.dev.yml down --volumes || true'
+                    // Use the original workspace path explicitly — the post block
+                    // may run in a different workspace directory (workspace@2).
+                    sh '''
+                        COMPOSE_FILE="${WORKSPACE}/podman-compose.dev.yml"
+                        if [ -f "$COMPOSE_FILE" ]; then
+                            podman-compose -f "$COMPOSE_FILE" down --volumes || true
+                        else
+                            echo "podman-compose.dev.yml not found at $COMPOSE_FILE, stopping containers directly"
+                            podman stop flexgate-postgres flexgate-redis 2>/dev/null || true
+                            podman rm   flexgate-postgres flexgate-redis 2>/dev/null || true
+                            podman volume rm flexgate-proxy_main_postgres-data 2>/dev/null || true
+                        fi
+                    '''
                     // ── Clean workspace ───────────────────────────────────────
                     cleanWs()
                 }
