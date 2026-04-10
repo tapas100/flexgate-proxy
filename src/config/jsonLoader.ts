@@ -11,6 +11,7 @@
 import fs from 'fs';
 import path from 'path';
 import Ajv from 'ajv';
+import { logger } from '../logger';
 
 // Configuration interface
 export interface FlexGateConfig {
@@ -112,10 +113,10 @@ function loadJsonFile(filePath: string): Partial<FlexGateConfig> | null {
     const content = fs.readFileSync(filePath, 'utf-8');
     const config = JSON.parse(content);
     
-    console.log(`✅ Loaded configuration from: ${filePath}`);
+    logger.info(`✅ Loaded configuration from: ${filePath}`);
     return config;
   } catch (error) {
-    console.error(`❌ Failed to load configuration from ${filePath}:`, error);
+    logger.error(`❌ Failed to load configuration from ${filePath}:`, { error });
     return null;
   }
 }
@@ -128,14 +129,14 @@ function loadSchema(): any {
   
   try {
     if (!fs.existsSync(schemaPath)) {
-      console.warn(`⚠️  Schema file not found: ${schemaPath}`);
+      logger.warn(`⚠️  Schema file not found: ${schemaPath}`);
       return null;
     }
 
     const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
     return JSON.parse(schemaContent);
   } catch (error) {
-    console.error(`❌ Failed to load schema:`, error);
+    logger.error(`❌ Failed to load schema:`, { error });
     return null;
   }
 }
@@ -147,7 +148,7 @@ function validateConfig(config: any): { valid: boolean; errors?: any[] } {
   const schema = loadSchema();
   
   if (!schema) {
-    console.warn('⚠️  Skipping validation (schema not found)');
+    logger.warn('⚠️  Skipping validation (schema not found)');
     return { valid: true };
   }
 
@@ -174,7 +175,7 @@ function replaceEnvVars(obj: any): any {
       const envVar = match[1];
       const value = process.env[envVar];
       if (value === undefined) {
-        console.warn(`⚠️  Environment variable not found: ${envVar}`);
+        logger.warn(`⚠️  Environment variable not found: ${envVar}`);
         return obj;
       }
       return value;
@@ -338,7 +339,7 @@ function applyEnvOverrides(config: FlexGateConfig): FlexGateConfig {
  * 4. Environment variables
  */
 export function loadConfig(): FlexGateConfig {
-  console.log('\n🔧 Loading FlexGate configuration...\n');
+  logger.info('Loading FlexGate configuration');
 
   // Start with default config
   let config: FlexGateConfig = { ...defaultConfig };
@@ -349,7 +350,7 @@ export function loadConfig(): FlexGateConfig {
   if (baseConfig) {
     config = deepMerge(config, baseConfig);
   } else {
-    console.log('ℹ️  No base configuration file found, using defaults');
+    logger.info('ℹ️  No base configuration file found, using defaults');
   }
 
   // Load environment-specific config
@@ -367,16 +368,16 @@ export function loadConfig(): FlexGateConfig {
   config = applyEnvOverrides(config);
 
   // Validate configuration
-  console.log('\n🔍 Validating configuration...');
+  logger.info('Validating configuration');
   const validation = validateConfig(config);
   if (!validation.valid) {
-    console.error('\n❌ Configuration validation failed:');
+    logger.error('Configuration validation failed:');
     validation.errors?.forEach((error) => {
-      console.error(`  - ${error.instancePath}: ${error.message}`);
+      logger.error(`  - ${error.instancePath}: ${error.message}`);
     });
     throw new Error('Invalid configuration');
   }
-  console.log('✅ Configuration is valid\n');
+  logger.info('✅ Configuration is valid');
 
   // Print configuration summary
   printConfigSummary(config);
@@ -388,23 +389,23 @@ export function loadConfig(): FlexGateConfig {
  * Print configuration summary
  */
 function printConfigSummary(config: FlexGateConfig): void {
-  console.log('📋 Configuration Summary:');
-  console.log('─────────────────────────────────────────');
-  console.log(`Environment:      ${config.server.environment}`);
-  console.log(`Server:           ${config.server.host}:${config.server.port}`);
-  console.log(`Database:         ${config.database.host}:${config.database.port}/${config.database.name}`);
-  console.log(`Database SSL:     ${config.database.ssl ? 'enabled' : 'disabled'}`);
-  console.log(`Database Pool:    ${config.database.poolMin}-${config.database.poolMax} connections`);
-  console.log(`Redis:            ${config.redis.host}:${config.redis.port}/${config.redis.db}`);
-  console.log(`CORS:             ${config.security.corsEnabled ? 'enabled' : 'disabled'}`);
-  console.log(`Rate Limiting:    ${config.security.rateLimitEnabled ? 'enabled' : 'disabled'}`);
-  console.log(`Log Level:        ${config.logging.level}`);
-  console.log(`Log Format:       ${config.logging.format}`);
-  console.log(`Metrics:          ${config.monitoring.metricsEnabled ? 'enabled' : 'disabled'}`);
+  logger.info('📋 Configuration Summary:');
+  // config summary follows
+  logger.info(`Environment:      ${config.server.environment}`);
+  logger.info(`Server:           ${config.server.host}:${config.server.port}`);
+  logger.info(`Database:         ${config.database.host}:${config.database.port}/${config.database.name}`);
+  logger.info(`Database SSL:     ${config.database.ssl ? 'enabled' : 'disabled'}`);
+  logger.info(`Database Pool:    ${config.database.poolMin}-${config.database.poolMax} connections`);
+  logger.info(`Redis:            ${config.redis.host}:${config.redis.port}/${config.redis.db}`);
+  logger.info(`CORS:             ${config.security.corsEnabled ? 'enabled' : 'disabled'}`);
+  logger.info(`Rate Limiting:    ${config.security.rateLimitEnabled ? 'enabled' : 'disabled'}`);
+  logger.info(`Log Level:        ${config.logging.level}`);
+  logger.info(`Log Format:       ${config.logging.format}`);
+  logger.info(`Metrics:          ${config.monitoring.metricsEnabled ? 'enabled' : 'disabled'}`);
   if (config.monitoring.metricsEnabled) {
-    console.log(`Prometheus:       http://localhost:${config.monitoring.prometheusPort}/metrics`);
+    logger.info(`Prometheus:       http://localhost:${config.monitoring.prometheusPort}/metrics`);
   }
-  console.log('─────────────────────────────────────────\n');
+  logger.info('─────────────────────────────────────────');
 }
 
 /**

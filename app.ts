@@ -734,8 +734,9 @@ const gracefulShutdown = async (): Promise<void> => {
   process.exit(0);
 };
 
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+// Register shutdown signals exactly once
+process.once('SIGTERM', gracefulShutdown);
+process.once('SIGINT', gracefulShutdown);
 
 // Initialize JetStream and metrics publisher
 (async () => {
@@ -800,8 +801,5 @@ process.on('SIGINT', gracefulShutdown);
     logger.warn('⚠️  Continuing without webhooks');
   }
 })();
-
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
 
 export default app;

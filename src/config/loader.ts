@@ -8,6 +8,7 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 import { validateConfig, getSchemaVersion, migrateConfig } from './schema';
 import { metrics } from '../metrics';
+import { logger } from '../logger';
 import type { ProxyConfig, ConfigWatcher, ConfigLoader as IConfigLoader } from '../types';
 
 class Config implements IConfigLoader {
@@ -40,10 +41,10 @@ class Config implements IConfigLoader {
       const { error, value, warnings } = validateConfig(migratedConfig);
       
       if (error) {
-        console.error('❌ Config validation failed:', error.message);
+        logger.error('❌ Config validation failed:', { message: error.message });
         if ((error as any).details) {
           (error as any).details.forEach((detail: any) => {
-            console.error(`  - ${detail.path.join('.')}: ${detail.message}`);
+            logger.error(`  - ${detail.path.join('.')}: ${detail.message}`);
           });
         }
         throw error;
@@ -52,7 +53,7 @@ class Config implements IConfigLoader {
       // Show warnings
       if (warnings && warnings.length > 0) {
         warnings.forEach(warning => {
-          console.warn(`⚠️  ${warning}`);
+          logger.warn(`⚠️  ${warning}`);
         });
       }
       
@@ -66,7 +67,7 @@ class Config implements IConfigLoader {
         1
       );
       
-      console.log(`✅ Config loaded from ${fullPath} (schema v${this.schemaVersion})`);
+      logger.info(`✅ Config loaded from ${fullPath} (schema v${this.schemaVersion})`);
       return this.config;
     } catch (error) {
       const err = error as Error;
@@ -77,7 +78,7 @@ class Config implements IConfigLoader {
         error_type: err.name || 'unknown'
       });
       
-      console.error('❌ Failed to load config:', err.message);
+      logger.error('❌ Failed to load config:', { message: err.message });
       throw error;
     }
   }
@@ -97,15 +98,15 @@ class Config implements IConfigLoader {
         try {
           callback(this.config!, oldConfig!);
         } catch (error) {
-          console.error('Error in config watcher:', error);
+          logger.error('Error in config watcher:', { error });
         }
       });
       
-      console.log('✅ Config reloaded successfully');
+      logger.info('✅ Config reloaded successfully');
       return true;
     } catch (error) {
       const err = error as Error;
-      console.error('❌ Config reload failed, keeping old config:', err.message);
+      logger.error('❌ Config reload failed, keeping old config:', { message: err.message });
       return false;
     }
   }
