@@ -564,9 +564,11 @@ pipeline {
                 API_ORDERS_URL  = 'http://flexgate-api-orders:3002'
                 FLAKY_URL       = 'http://flexgate-flaky:3003'
                 SLOW_URL        = 'http://flexgate-slow:3004'
-                // No Prometheus server in CI — point to a non-routable address so
-                // the test's validateStatus:()=>true catches the error gracefully.
-                PROMETHEUS_URL  = 'http://127.0.0.1:9090'
+                // No Prometheus server in CI — point to the gateway itself.
+                // Connection succeeds (proxy is listening), returns 404/200,
+                // and validateStatus:()=>true in the test handles all HTTP statuses.
+                // Using 127.0.0.1:9090 causes ECONNREFUSED which bypasses validateStatus.
+                PROMETHEUS_URL  = 'http://localhost:3000'
             }
             steps {
                 dir(env.LABS_DIR) {
@@ -589,7 +591,30 @@ pipeline {
                         # Using a separate .sh file avoids all Groovy string-escaping issues with
                         # backslashes and single-quotes inside heredocs / triple-quoted strings.
                         sh "${WORKSPACE}/scripts/patch-labs-tests.sh"
-
+                    '''
+                }
+                // Restart proxy immediately before tests to reset all in-memory rate limiters.
+                // The burst test (80 req) + admin-rate-limit test exhaust per-route limiters;
+                // subsequent POST tests then hang because the proxy's rate-limit middleware
+                // never sends a response after consuming the request body.
+                sh '''
+                    echo "=== Restarting proxy to reset rate-limit state before Release Gate ==="
+                    pm2 restart flexgate-proxy
+                    RETRIES=30
+                    until [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/health)" = "200" ]; do
+                        RETRIES=$((RETRIES - 1))
+                        if [ "$RETRIES" -le 0 ]; then
+                            echo "❌ Proxy did not recover before Release Gate"
+                            pm2 logs flexgate-proxy --lines 50 --nostream || true
+                            exit 1
+                        fi
+                        echo "  waiting for proxy... ($RETRIES retries left)"
+                        sleep 2
+                    done
+                    echo "✅ Proxy ready — rate limiters reset"
+                '''
+                dir(env.LABS_DIR) {
+                    sh '''
                         echo "=== Running Release Gate tests ==="
                         ./node_modules/.bin/jest --config jest.config.ts --runInBand --forceExit
                     '''
