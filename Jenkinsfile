@@ -553,20 +553,22 @@ pipeline {
             echo '❌ Pipeline failed. Check the logs above.'
         }
         always {
-            // Wrap in node so sh / cleanWs always have a workspace context,
-            // even when the pipeline failed before entering any stage.
-            node {
-                // ── Stop labs mock services ───────────────────────────────────
-                sh '''
-                    echo "=== Tearing down labs mock services ==="
-                    cd "${LABS_DIR}" && podman-compose -f podman-compose.services.yml down || true
-                '''
-                // ── Stop proxy ────────────────────────────────────────────────
-                sh 'pm2 delete flexgate-proxy || true'
-                // ── Stop infrastructure containers ────────────────────────────
-                sh 'podman-compose -f podman-compose.dev.yml down || true'
-                // ── Clean workspace ───────────────────────────────────────────
-                cleanWs()
+            // node('') provides a workspace context so sh/cleanWs work even
+            // when the pipeline failed before entering any stage.
+            script {
+                node('') {
+                    // ── Stop labs mock services ───────────────────────────────
+                    sh '''
+                        echo "=== Tearing down labs mock services ==="
+                        cd "${LABS_DIR}" && podman-compose -f podman-compose.services.yml down || true
+                    '''
+                    // ── Stop proxy ────────────────────────────────────────────
+                    sh 'pm2 delete flexgate-proxy || true'
+                    // ── Stop infrastructure containers ────────────────────────
+                    sh 'podman-compose -f podman-compose.dev.yml down || true'
+                    // ── Clean workspace ───────────────────────────────────────
+                    cleanWs()
+                }
             }
         }
     }
