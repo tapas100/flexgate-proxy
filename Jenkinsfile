@@ -424,6 +424,11 @@ pipeline {
             steps {
                 sh '''
                     echo "=== Starting proxy via pm2 ==="
+                    # Ensure log directory exists (pm2 won't create it)
+                    mkdir -p logs
+                    # Kill any leftover pm2 process from a previous run
+                    pm2 delete flexgate-proxy 2>/dev/null || true
+                    # Start — ecosystem.config.js reads all env vars via process.env
                     pm2 start ecosystem.config.js
                     echo "--- Waiting for GET http://localhost:3000/health to return 200 ---"
                     RETRIES=30
