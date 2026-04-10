@@ -231,15 +231,14 @@ pipeline {
         }
 
         // ── 7. Start Infrastructure (Postgres + Redis) ───────────────────────
-        // Brings up the postgres and redis containers defined in podman-compose.dev.yml
-        // using DB credentials from Jenkins, then blocks until both healthchecks pass.
+        // Brings up postgres and redis on the flexgate-ci bridge network.
+        // Both containers and Jenkins are on this bridge, so they communicate
+        // directly by container name — no port publishing needed.
         stage('Start Infrastructure') {
             steps {
                 sh '''
                     echo "=== Starting Postgres and Redis containers ==="
 
-                    # Pass DB credentials into podman-compose so Postgres is
-                    # initialised with the correct user/password from Jenkins credentials.
                     POSTGRES_USER="${DB_USERNAME}" \
                     POSTGRES_PASSWORD="${DB_PASSWORD}" \
                     POSTGRES_DB="flexgate" \
@@ -275,11 +274,10 @@ pipeline {
                 '''
             }
         }
-
         // ── 8. Database Migrations ───────────────────────────────────────────
         stage('Database Migrations') {
             environment {
-                DB_HOST     = '127.0.0.1'
+                DB_HOST     = 'flexgate-postgres'
                 DB_PORT     = '5432'
                 DB_NAME     = 'flexgate'
                 DB_USER     = "${DB_USERNAME}"
@@ -299,7 +297,7 @@ pipeline {
         // Skipped safely if rows already exist (ON CONFLICT DO NOTHING in seed.ts).
         stage('Seed Database') {
             environment {
-                DB_HOST     = '127.0.0.1'
+                DB_HOST     = 'flexgate-postgres'
                 DB_PORT     = '5432'
                 DB_NAME     = 'flexgate'
                 DB_USER     = "${DB_USERNAME}"
@@ -318,7 +316,7 @@ pipeline {
         stage('Test') {
             environment {
                 NODE_ENV    = 'test'
-                DB_HOST     = '127.0.0.1'
+                DB_HOST     = 'flexgate-postgres'
                 DB_PORT     = '5432'
                 DB_NAME     = 'flexgate'
                 DB_USER     = "${DB_USERNAME}"
@@ -397,7 +395,7 @@ pipeline {
                 PORT           = '3000'
                 HOST           = '0.0.0.0'
                 // ── Database ──────────────────────────────────────────────────
-                DB_HOST        = '127.0.0.1'
+                DB_HOST        = 'flexgate-postgres'
                 DB_PORT        = '5432'
                 DB_NAME        = 'flexgate'
                 DB_USER        = "${DB_USERNAME}"
@@ -406,7 +404,7 @@ pipeline {
                 DB_POOL_MAX    = '20'
                 DB_SSL         = 'false'
                 // ── Redis ─────────────────────────────────────────────────────
-                REDIS_URL      = 'redis://127.0.0.1:6379'
+                REDIS_URL      = 'redis://flexgate-redis:6379'
                 // ── Security ─────────────────────────────────────────────────
                 ENCRYPTION_KEY = "${ENCRYPTION_KEY}"
                 ADMIN_API_KEY  = "${ADMIN_API_KEY}"

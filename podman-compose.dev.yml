@@ -1,20 +1,25 @@
 # FlexGate — Dev Infrastructure Only
-# Runs postgres + redis with exposed ports for local development.
-# The proxy itself is started separately via pm2.
+# Runs postgres + redis on the flexgate-ci bridge network so both
+# the Jenkins container and these services can communicate directly
+# by container name without port publishing.
 #
 # Usage:  podman-compose -f podman-compose.dev.yml up -d
 version: '3.8'
+
+networks:
+  flexgate-ci:
+    external: true
 
 services:
   postgres:
     image: docker.io/library/postgres:15-alpine
     container_name: flexgate-postgres
+    networks:
+      - flexgate-ci
     environment:
       POSTGRES_DB:       ${POSTGRES_DB:-flexgate}
       POSTGRES_USER:     ${POSTGRES_USER:-flexgate}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flexgate}
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -27,9 +32,9 @@ services:
   redis:
     image: docker.io/library/redis:7-alpine
     container_name: flexgate-redis
+    networks:
+      - flexgate-ci
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-    ports:
-      - "127.0.0.1:6379:6379"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
