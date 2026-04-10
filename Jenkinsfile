@@ -45,7 +45,45 @@ pipeline {
             }
         }
 
-        // ── 2. Verify Node ───────────────────────────────────────────────────
+        // ── 2. Verify Credentials ────────────────────────────────────────────
+        // Fail fast with a clear message if any required Jenkins credential
+        // is missing or was saved with an empty value.
+        stage('Verify Credentials') {
+            steps {
+                sh '''
+                    echo "=== Verifying all required Jenkins credentials are set ==="
+                    MISSING=0
+
+                    check() {
+                        if [ -z "$2" ]; then
+                            echo "❌ Credential '$1' is empty or not set in Jenkins"
+                            MISSING=$((MISSING + 1))
+                        else
+                            echo "✅ $1 is set"
+                        fi
+                    }
+
+                    check "registry-token"          "${NPM_TOKEN}"
+                    check "flexgate-db-username"    "${DB_USERNAME}"
+                    check "flexgate-db-password"    "${DB_PASSWORD}"
+                    check "flexgate-encryption-key" "${ENCRYPTION_KEY}"
+                    check "flexgate-admin-api-key"  "${ADMIN_API_KEY}"
+                    check "flexgate-demo-email"     "${DEMO_EMAIL}"
+                    check "flexgate-demo-password"  "${DEMO_PASSWORD}"
+                    check "flexgate-labs-repo-url"  "${LABS_REPO_URL}"
+
+                    if [ "$MISSING" -gt 0 ]; then
+                        echo ""
+                        echo "❌ $MISSING credential(s) missing. Add them in:"
+                        echo "   Jenkins → Manage Jenkins → Credentials → (global) → Add Credentials"
+                        exit 1
+                    fi
+                    echo "✅ All credentials verified"
+                '''
+            }
+        }
+
+        // ── 3. Verify Node ───────────────────────────────────────────────────
         stage('Setup Node.js') {
             steps {
                 sh '''
@@ -515,17 +553,21 @@ pipeline {
             echo '❌ Pipeline failed. Check the logs above.'
         }
         always {
-            // ── Stop labs mock services ───────────────────────────────────────
-            sh '''
-                echo "=== Tearing down labs mock services ==="
-                cd "${LABS_DIR}" && podman-compose -f podman-compose.services.yml down || true
-            '''
-            // ── Stop proxy ────────────────────────────────────────────────────
-            sh 'pm2 delete flexgate-proxy || true'
-            // ── Stop infrastructure containers ────────────────────────────────
-            sh 'podman-compose -f podman-compose.dev.yml down || true'
-            // ── Clean workspace ───────────────────────────────────────────────
-            cleanWs()
+            // Wrap in node so sh / cleanWs always have a workspace context,
+            // even when the pipeline failed before entering any stage.
+            node {
+                // ── Stop labs mock services ───────────────────────────────────
+                sh '''
+                    echo "=== Tearing down labs mock services ==="
+                    cd "${LABS_DIR}" && podman-compose -f podman-compose.services.yml down || true
+                '''
+                // ── Stop proxy ────────────────────────────────────────────────
+                sh 'pm2 delete flexgate-proxy || true'
+                // ── Stop infrastructure containers ────────────────────────────
+                sh 'podman-compose -f podman-compose.dev.yml down || true'
+                // ── Clean workspace ───────────────────────────────────────────
+                cleanWs()
+            }
         }
     }
 }
