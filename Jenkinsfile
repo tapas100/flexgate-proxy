@@ -279,7 +279,7 @@ pipeline {
         // ── 8. Database Migrations ───────────────────────────────────────────
         stage('Database Migrations') {
             environment {
-                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@localhost:5432/flexgate"
+                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@127.0.0.1:5432/flexgate"
             }
             steps {
                 sh '''
@@ -295,7 +295,7 @@ pipeline {
         // Skipped safely if rows already exist (ON CONFLICT DO NOTHING in seed.ts).
         stage('Seed Database') {
             environment {
-                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@localhost:5432/flexgate"
+                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@127.0.0.1:5432/flexgate"
             }
             steps {
                 sh '''
@@ -310,7 +310,7 @@ pipeline {
         stage('Test') {
             environment {
                 NODE_ENV     = 'test'
-                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@localhost:5432/flexgate"
+                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@127.0.0.1:5432/flexgate"
             }
             steps {
                 // Run only known-passing unit test suites.
@@ -385,12 +385,12 @@ pipeline {
                 PORT           = '3000'
                 HOST           = '0.0.0.0'
                 // ── Database ──────────────────────────────────────────────────
-                DATABASE_URL   = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@localhost:5432/flexgate"
+                DATABASE_URL   = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@127.0.0.1:5432/flexgate"
                 DB_POOL_MIN    = '5'
                 DB_POOL_MAX    = '20'
                 DB_SSL         = 'false'
                 // ── Redis ─────────────────────────────────────────────────────
-                REDIS_URL      = 'redis://localhost:6379'
+                REDIS_URL      = 'redis://127.0.0.1:6379'
                 // ── Security ─────────────────────────────────────────────────
                 ENCRYPTION_KEY = "${ENCRYPTION_KEY}"
                 ADMIN_API_KEY  = "${ADMIN_API_KEY}"
