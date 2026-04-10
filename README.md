@@ -7,7 +7,6 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/tapas100/flexgate-proxy/pulls)
 [![npm version](https://img.shields.io/npm/v/flexgate-proxy.svg)](https://www.npmjs.com/package/flexgate-proxy)
 [![npm downloads](https://img.shields.io/npm/dm/flexgate-proxy.svg)](https://www.npmjs.com/package/flexgate-proxy)
-[![npm downloads](https://img.shields.io/npm/dt/flexgate-proxy.svg?label=total%20downloads)](https://www.npmjs.com/package/flexgate-proxy)
 
 ---
 
