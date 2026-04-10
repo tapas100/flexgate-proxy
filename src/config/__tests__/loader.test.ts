@@ -13,10 +13,17 @@ const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('Config Loader', () => {
   let config: Config;
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     config = new Config();
     jest.clearAllMocks();
+    // Suppress console.error noise from deliberate error-path tests
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   describe('Loading Configuration', () => {
