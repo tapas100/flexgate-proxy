@@ -12,9 +12,12 @@ pipeline {
 
     environment {
         NODE_VERSION   = '18'
-        NPM_TOKEN      = credentials('registry-token')      // npm auth token stored in Jenkins credentials
-        DEMO_PASSWORD  = credentials('flexgate-demo-password')
+        NPM_TOKEN      = credentials('registry-token')          // npm auth token stored in Jenkins credentials
+        DB_USERNAME    = credentials('flexgate-db-username')
         DB_PASSWORD    = credentials('flexgate-db-password')
+        ENCRYPTION_KEY = credentials('flexgate-encryption-key') // 32-byte hex: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+        ADMIN_API_KEY  = credentials('flexgate-admin-api-key')  // fg_live_<64-char hex>
+        LABS_REPO_URL  = credentials('flexgate-labs-repo-url')  // Secret text: full git clone URL for flexgate-labs
         CI             = 'true'
         LABS_DIR       = '/var/lib/jenkins/workspace/flexgate-labs'
     }
@@ -50,14 +53,66 @@ pipeline {
             }
         }
 
-        // ── 3. Install dependencies ──────────────────────────────────────────
+        // ── 3. Bootstrap: Clone / Update Labs Repo ──────────────────────────
+        // If the labs workspace does not exist, clone it fresh.
+        // If it already exists, just pull the latest changes.
+        stage('Bootstrap: Labs Repo') {
+            steps {
+                sh '''
+                    if [ -d "${LABS_DIR}/.git" ]; then
+                        echo "=== Labs repo already exists — pulling latest ==="
+                        git -C "${LABS_DIR}" pull --rebase origin main
+                    else
+                        echo "=== Labs repo not found — cloning ==="
+                        mkdir -p "$(dirname ${LABS_DIR})"
+                        git clone "${LABS_REPO_URL}" "${LABS_DIR}"
+                    fi
+                    echo "✅ Labs repo ready at ${LABS_DIR}"
+                '''
+            }
+        }
+
+        // ── 4. Bootstrap: Install system-level tools (idempotent) ───────────
+        // Ensures pm2 is available on the Jenkins agent.
+        // podman / podman-compose must already be installed on the host;
+        // we only verify they exist here so the pipeline fails fast & clearly.
+        stage('Bootstrap: Verify Tools') {
+            steps {
+                sh '''
+                    echo "=== Verifying required tools ==="
+
+                    # pm2 — install globally if missing
+                    if ! command -v pm2 >/dev/null 2>&1; then
+                        echo "pm2 not found — installing globally..."
+                        npm install -g pm2
+                    fi
+                    echo "✅ pm2:             $(pm2 --version)"
+
+                    # podman
+                    if ! command -v podman >/dev/null 2>&1; then
+                        echo "❌ podman is not installed on this agent. Install it before running this pipeline."
+                        exit 1
+                    fi
+                    echo "✅ podman:          $(podman --version)"
+
+                    # podman-compose
+                    if ! command -v podman-compose >/dev/null 2>&1; then
+                        echo "❌ podman-compose is not installed on this agent. Run: pip3 install podman-compose"
+                        exit 1
+                    fi
+                    echo "✅ podman-compose:  $(podman-compose --version)"
+                '''
+            }
+        }
+
+        // ── 5. Install dependencies ──────────────────────────────────────────
         stage('Install Dependencies') {
             steps {
                 sh 'npm ci'
             }
         }
 
-        // ── 4. Security Audit ────────────────────────────────────────────────
+        // ── 6. Security Audit ────────────────────────────────────────────────
         // Checks both root and admin-ui for known vulnerabilities.
         // High/critical findings FAIL the build; moderate/low are warnings only.
         // Results are archived as JSON for review in the build artefacts.
@@ -131,17 +186,22 @@ pipeline {
 
         // ── 7. Start Infrastructure (Postgres + Redis) ───────────────────────
         // Brings up the postgres and redis containers defined in podman-compose.dev.yml
-        // and blocks until both healthchecks pass (up to 60 s each).
+        // using DB credentials from Jenkins, then blocks until both healthchecks pass.
         stage('Start Infrastructure') {
             steps {
                 sh '''
                     echo "=== Starting Postgres and Redis containers ==="
+
+                    # Pass DB credentials into podman-compose so Postgres is
+                    # initialised with the correct user/password from Jenkins credentials.
+                    POSTGRES_USER="${DB_USERNAME}" \
+                    POSTGRES_PASSWORD="${DB_PASSWORD}" \
+                    POSTGRES_DB="flexgate" \
                     podman-compose -f podman-compose.dev.yml up -d postgres redis
 
                     echo "--- Waiting for flexgate-postgres to be healthy ---"
                     RETRIES=24
-                    until podman healthcheck run flexgate-postgres 2>/dev/null | grep -q "healthy" || \
-                          [ "$(podman inspect --format "{{.State.Health.Status}}" flexgate-postgres 2>/dev/null)" = "healthy" ]; do
+                    until [ "$(podman inspect --format "{{.State.Health.Status}}" flexgate-postgres 2>/dev/null)" = "healthy" ]; do
                         RETRIES=$((RETRIES - 1))
                         if [ "$RETRIES" -le 0 ]; then
                             echo "❌ Postgres did not become healthy in time"
@@ -155,8 +215,7 @@ pipeline {
 
                     echo "--- Waiting for flexgate-redis to be healthy ---"
                     RETRIES=24
-                    until podman healthcheck run flexgate-redis 2>/dev/null | grep -q "healthy" || \
-                          [ "$(podman inspect --format "{{.State.Health.Status}}" flexgate-redis 2>/dev/null)" = "healthy" ]; do
+                    until [ "$(podman inspect --format "{{.State.Health.Status}}" flexgate-redis 2>/dev/null)" = "healthy" ]; do
                         RETRIES=$((RETRIES - 1))
                         if [ "$RETRIES" -le 0 ]; then
                             echo "❌ Redis did not become healthy in time"
@@ -174,7 +233,7 @@ pipeline {
         // ── 8. Database Migrations ───────────────────────────────────────────
         stage('Database Migrations') {
             environment {
-                DATABASE_URL = "postgresql://flexgate:${DB_PASSWORD}@localhost:5432/flexgate"
+                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@localhost:5432/flexgate"
             }
             steps {
                 sh '''
@@ -185,11 +244,27 @@ pipeline {
             }
         }
 
-        // ── 9. Unit Tests ────────────────────────────────────────────────────
+        // ── 9. Seed Database ─────────────────────────────────────────────────
+        // Seeds the database with initial data (admin user, sample routes, webhooks).
+        // Skipped safely if rows already exist (ON CONFLICT DO NOTHING in seed.ts).
+        stage('Seed Database') {
+            environment {
+                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@localhost:5432/flexgate"
+            }
+            steps {
+                sh '''
+                    echo "=== Seeding database ==="
+                    npm run db:seed
+                    echo "✅ Database seeded"
+                '''
+            }
+        }
+
+        // ── 10. Unit Tests ───────────────────────────────────────────────────
         stage('Test') {
             environment {
                 NODE_ENV     = 'test'
-                DATABASE_URL = "postgresql://flexgate:${DB_PASSWORD}@localhost:5432/flexgate"
+                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@localhost:5432/flexgate"
             }
             steps {
                 // Run only known-passing unit test suites.
@@ -233,7 +308,7 @@ pipeline {
             }
         }
 
-        // ── 10. Build TypeScript ─────────────────────────────────────────────
+        // ── 11. Build TypeScript ─────────────────────────────────────────────
         stage('Build') {
             steps {
                 sh 'npm run build'
@@ -255,11 +330,34 @@ pipeline {
 
         // ── 12. Start Proxy via PM2 ──────────────────────────────────────────
         // Starts the proxy using pm2 and polls GET /health until it returns 200.
+        // All env vars the proxy reads at startup are injected here so pm2
+        // overrides the hardcoded values in ecosystem.config.js.
         stage('Start Proxy') {
             environment {
-                DATABASE_URL  = "postgresql://flexgate:${DB_PASSWORD}@localhost:5432/flexgate"
-                REDIS_URL     = 'redis://localhost:6379'
-                DEMO_PASSWORD = "${DEMO_PASSWORD}"
+                // ── Core ──────────────────────────────────────────────────────
+                NODE_ENV       = 'development'
+                PORT           = '3000'
+                HOST           = '0.0.0.0'
+                // ── Database ──────────────────────────────────────────────────
+                DATABASE_URL   = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@localhost:5432/flexgate"
+                DB_POOL_MIN    = '5'
+                DB_POOL_MAX    = '20'
+                DB_SSL         = 'false'
+                // ── Redis ─────────────────────────────────────────────────────
+                REDIS_URL      = 'redis://localhost:6379'
+                // ── Security ─────────────────────────────────────────────────
+                ENCRYPTION_KEY = "${ENCRYPTION_KEY}"
+                ADMIN_API_KEY  = "${ADMIN_API_KEY}"
+                // ── Demo mode (CI login for integration tests) ────────────────
+                DEMO_MODE      = 'true'
+                DEMO_EMAIL     = 'admin@flexgate.dev'
+                DEMO_PASSWORD  = 'FlexGate2026!SecureDemo'
+                // ── CORS ──────────────────────────────────────────────────────
+                ALLOWED_ORIGINS = 'http://localhost:3000,http://localhost:8080'
+                CORS_ENABLED    = 'true'
+                // ── Metrics / logging ─────────────────────────────────────────
+                METRICS_ENABLED = 'true'
+                LOG_LEVEL       = 'info'
             }
             steps {
                 sh '''
