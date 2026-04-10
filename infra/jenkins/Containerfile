@@ -1,0 +1,41 @@
+# Custom Jenkins image for flexgate-proxy CI/CD pipeline
+#
+# Extends the official Jenkins LTS image with:
+#   - podman       : starts/stops postgres and redis containers via socket
+#   - podman-compose: brings up podman-compose.dev.yml services
+#   - python3      : runtime dependency of podman-compose
+#   - curl         : used by health-check polls in the pipeline
+#   - netcat       : used for connectivity checks
+#
+# Build (run as forgeops user on the CI server):
+#   podman build -t localhost/jenkins-flexgate:latest \
+#     -f infra/jenkins/Containerfile .
+#
+# The resulting image is used by the Jenkins systemd service at:
+#   /home/forgeops/.config/systemd/user/jenkins.service
+#
+# Important runtime flags required when starting this container:
+#   --network=pasta
+#     Pasta networking lets the container reach host loopback ports
+#     (127.0.0.1:5432, 127.0.0.1:6379) started by podman-compose.
+#   -v /run/user/1000/podman/podman.sock:/run/user/1000/podman/podman.sock:z
+#     Mounts the forgeops user's Podman socket so pipeline podman/podman-compose
+#     calls are forwarded to the host daemon via CONTAINER_HOST env var.
+
+FROM docker.io/jenkins/jenkins:lts-jdk17
+
+USER root
+
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+      podman \
+      python3 \
+      python3-pip \
+      python3-yaml \
+      curl \
+      netcat-openbsd && \
+    pip3 install podman-compose --break-system-packages && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+USER jenkins
