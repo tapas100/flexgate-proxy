@@ -279,7 +279,11 @@ pipeline {
         // ── 8. Database Migrations ───────────────────────────────────────────
         stage('Database Migrations') {
             environment {
-                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@127.0.0.1:5432/flexgate"
+                DB_HOST     = '127.0.0.1'
+                DB_PORT     = '5432'
+                DB_NAME     = 'flexgate'
+                DB_USER     = "${DB_USERNAME}"
+                DB_PASSWORD = "${DB_PASSWORD}"
             }
             steps {
                 sh '''
@@ -295,7 +299,11 @@ pipeline {
         // Skipped safely if rows already exist (ON CONFLICT DO NOTHING in seed.ts).
         stage('Seed Database') {
             environment {
-                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@127.0.0.1:5432/flexgate"
+                DB_HOST     = '127.0.0.1'
+                DB_PORT     = '5432'
+                DB_NAME     = 'flexgate'
+                DB_USER     = "${DB_USERNAME}"
+                DB_PASSWORD = "${DB_PASSWORD}"
             }
             steps {
                 sh '''
@@ -309,8 +317,12 @@ pipeline {
         // ── 10. Unit Tests ───────────────────────────────────────────────────
         stage('Test') {
             environment {
-                NODE_ENV     = 'test'
-                DATABASE_URL = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@127.0.0.1:5432/flexgate"
+                NODE_ENV    = 'test'
+                DB_HOST     = '127.0.0.1'
+                DB_PORT     = '5432'
+                DB_NAME     = 'flexgate'
+                DB_USER     = "${DB_USERNAME}"
+                DB_PASSWORD = "${DB_PASSWORD}"
             }
             steps {
                 // Run only known-passing unit test suites.
@@ -385,7 +397,11 @@ pipeline {
                 PORT           = '3000'
                 HOST           = '0.0.0.0'
                 // ── Database ──────────────────────────────────────────────────
-                DATABASE_URL   = "postgresql://${DB_USERNAME}:${DB_PASSWORD}@127.0.0.1:5432/flexgate"
+                DB_HOST        = '127.0.0.1'
+                DB_PORT        = '5432'
+                DB_NAME        = 'flexgate'
+                DB_USER        = "${DB_USERNAME}"
+                DB_PASSWORD    = "${DB_PASSWORD}"
                 DB_POOL_MIN    = '5'
                 DB_POOL_MAX    = '20'
                 DB_SSL         = 'false'
