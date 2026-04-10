@@ -17,6 +17,7 @@ pipeline {
         DB_PASSWORD    = credentials('flexgate-db-password')
         ENCRYPTION_KEY = credentials('flexgate-encryption-key') // 32-byte hex: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
         ADMIN_API_KEY  = credentials('flexgate-admin-api-key')  // fg_live_<64-char hex>
+        DEMO_PASSWORD  = credentials('flexgate-demo-password')  // Admin UI demo login password
         LABS_REPO_URL  = credentials('flexgate-labs-repo-url')  // Secret text: full git clone URL for flexgate-labs
         CI             = 'true'
         LABS_DIR       = '/var/lib/jenkins/workspace/flexgate-labs'
@@ -351,7 +352,7 @@ pipeline {
                 // ── Demo mode (CI login for integration tests) ────────────────
                 DEMO_MODE      = 'true'
                 DEMO_EMAIL     = 'admin@flexgate.dev'
-                DEMO_PASSWORD  = 'FlexGate2026!SecureDemo'
+                DEMO_PASSWORD  = "${DEMO_PASSWORD}"
                 // ── CORS ──────────────────────────────────────────────────────
                 ALLOWED_ORIGINS = 'http://localhost:3000,http://localhost:8080'
                 CORS_ENABLED    = 'true'
