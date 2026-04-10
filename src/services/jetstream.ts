@@ -187,9 +187,9 @@ class JetStreamService {
     try {
       await this.jsm.consumers.add(streamName, {
         durable_name: consumerName,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line -- nats ConsumerConfig types require cast
         ack_policy: 'explicit' as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line -- nats ConsumerConfig types require cast
         deliver_policy: 'all' as any,
         filter_subject: 'metrics.>',
         max_deliver: 3,

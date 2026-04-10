@@ -188,7 +188,7 @@ router.get('/stats/summary', async (_req: Request, res: Response) => {
         stats.total++;
         
         const level = parsed.level?.toUpperCase() || 'INFO';
-        if (stats.byLevel.hasOwnProperty(level)) {
+        if (Object.prototype.hasOwnProperty.call(stats.byLevel, level)) {
           (stats.byLevel as any)[level]++;
         }
         

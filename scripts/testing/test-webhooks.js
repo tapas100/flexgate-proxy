@@ -246,10 +246,10 @@ async function monitorWebhookDeliveries(webhooks, duration = 10000) {
         console.log(`   Avg Delivery Time: ${stats.avgDeliveryTime || 0}ms`);
         
         if (stats.recentDeliveries && stats.recentDeliveries.length > 0) {
-          console.log(`   Recent Deliveries:`);
+          console.log('   Recent Deliveries:');
           stats.recentDeliveries.slice(0, 3).forEach(delivery => {
             const status = delivery.status === 'success' ? '✅' : 
-                          delivery.status === 'failed' ? '❌' : '⏳';
+              delivery.status === 'failed' ? '❌' : '⏳';
             console.log(`     ${status} ${delivery.event} - ${delivery.attempts} attempt(s)`);
           });
         }

@@ -44,7 +44,7 @@ async function testProxyRequestEvents() {
   try {
     const response = await axios.get(`${BASE_URL}/httpbin/get`);
     log(`✓ Success: ${response.status}`, colors.green);
-    log(`  → This triggers: proxy.request_started, proxy.request_completed`, colors.yellow);
+    log('  → This triggers: proxy.request_started, proxy.request_completed', colors.yellow);
   } catch (error) {
     log(`✗ Failed: ${error.message}`, colors.red);
   }
@@ -56,7 +56,7 @@ async function testProxyRequestEvents() {
     await axios.get(`${BASE_URL}/test-api/invalid`, { timeout: 3000 });
   } catch (error) {
     log(`✓ Expected failure: ${error.message}`, colors.green);
-    log(`  → This triggers: proxy.request_failed`, colors.yellow);
+    log('  → This triggers: proxy.request_failed', colors.yellow);
   }
   await sleep(1000);
 }
@@ -72,7 +72,7 @@ async function testCircuitBreakerEvents() {
     try {
       await axios.get(`${BASE_URL}/test-api/fail`, { timeout: 500 });
     } catch (error) {
-      process.stdout.write(`.`);
+      process.stdout.write('.');
     }
     await sleep(100);
   }
@@ -157,7 +157,7 @@ async function testConfigEvents() {
     
     const response = await axios.post(`${ADMIN_API}/routes`, newRoute);
     log(`✓ Route created: ${response.data.data.route_id}`, colors.green);
-    log(`  → This triggers: config.updated`, colors.yellow);
+    log('  → This triggers: config.updated', colors.yellow);
     
     await sleep(2000);
     
@@ -166,14 +166,14 @@ async function testConfigEvents() {
       enabled: false,
     });
     log(`✓ Route updated: ${newRoute.route_id}`, colors.green);
-    log(`  → This triggers: config.updated`, colors.yellow);
+    log('  → This triggers: config.updated', colors.yellow);
     
     await sleep(2000);
     
     // Delete the route
     await axios.delete(`${ADMIN_API}/routes/${newRoute.route_id}`);
     log(`✓ Route deleted: ${newRoute.route_id}`, colors.green);
-    log(`  → This triggers: config.updated`, colors.yellow);
+    log('  → This triggers: config.updated', colors.yellow);
     
   } catch (error) {
     log(`✗ Failed: ${error.message}`, colors.red);
@@ -195,7 +195,7 @@ async function testConfigEvents() {
   } catch (error) {
     if (error.response && error.response.status === 400) {
       log(`✓ Validation failed as expected: ${error.response.status}`, colors.green);
-      log(`  → This triggers: config.validation_failed`, colors.yellow);
+      log('  → This triggers: config.validation_failed', colors.yellow);
     } else {
       log(`✗ Unexpected error: ${error.message}`, colors.red);
     }

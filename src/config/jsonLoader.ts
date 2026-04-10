@@ -136,7 +136,7 @@ function loadSchema(): any {
     const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
     return JSON.parse(schemaContent);
   } catch (error) {
-    logger.error(`❌ Failed to load schema:`, { error });
+    logger.error('❌ Failed to load schema:', { error });
     return null;
   }
 }

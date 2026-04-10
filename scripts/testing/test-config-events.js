@@ -30,7 +30,7 @@ async function runTests() {
   } catch (error) {
     if (error.response?.status === 400) {
       console.log(chalk.green('  ✓ Validation failed as expected (400)'));
-      console.log(chalk.gray(`    → config.validation_failed event should be emitted`));
+      console.log(chalk.gray('    → config.validation_failed event should be emitted'));
     }
   }
   
@@ -45,7 +45,7 @@ async function runTests() {
   } catch (error) {
     if (error.response?.status === 400) {
       console.log(chalk.green('  ✓ Validation failed as expected (400)'));
-      console.log(chalk.gray(`    → config.validation_failed event should be emitted`));
+      console.log(chalk.gray('    → config.validation_failed event should be emitted'));
     } else if (error.response?.status === 404) {
       console.log(chalk.yellow('  ⚠ Route not found (404) - expected for nonexistent route'));
     }
@@ -72,7 +72,7 @@ async function runTests() {
     if (response.status === 201 || response.status === 200) {
       testRouteId = response.data.data.id;
       console.log(chalk.green(`  ✓ Route created: ${testRouteId}`));
-      console.log(chalk.gray(`    → config.created event should be emitted`));
+      console.log(chalk.gray('    → config.created event should be emitted'));
     }
   } catch (error) {
     if (error.response?.status === 409) {
@@ -96,7 +96,7 @@ async function runTests() {
         description: 'Updated description to trigger config.updated event'
       });
       console.log(chalk.green('  ✓ Route updated via PATCH'));
-      console.log(chalk.gray(`    → config.updated event should be emitted`));
+      console.log(chalk.gray('    → config.updated event should be emitted'));
     } catch (error) {
       console.log(chalk.red(`  ✗ PATCH failed: ${error.message}`));
     }
@@ -110,7 +110,7 @@ async function runTests() {
         description: 'Updated upstream to trigger another config.updated event'
       });
       console.log(chalk.green('  ✓ Route updated via PUT'));
-      console.log(chalk.gray(`    → config.updated event should be emitted`));
+      console.log(chalk.gray('    → config.updated event should be emitted'));
     } catch (error) {
       console.log(chalk.red(`  ✗ PUT failed: ${error.message}`));
     }
@@ -126,7 +126,7 @@ async function runTests() {
     try {
       await axios.delete(`${PROXY_URL}/api/routes/${testRouteId}`);
       console.log(chalk.green('  ✓ Route deleted'));
-      console.log(chalk.gray(`    → config.deleted event should be emitted`));
+      console.log(chalk.gray('    → config.deleted event should be emitted'));
     } catch (error) {
       console.log(chalk.red(`  ✗ Delete failed: ${error.message}`));
     }

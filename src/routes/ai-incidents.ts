@@ -255,10 +255,10 @@ router.patch('/:id',  async (req: Request, res: Response): Promise<void> => {
       values.push(status);
       
       if (status === 'resolved') {
-        updates.push(`resolved_at = NOW()`);
+        updates.push('resolved_at = NOW()');
       }
       if (status === 'acknowledged') {
-        updates.push(`acknowledged_at = NOW()`);
+        updates.push('acknowledged_at = NOW()');
       }
     }
     
@@ -277,7 +277,7 @@ router.patch('/:id',  async (req: Request, res: Response): Promise<void> => {
       values.push(resolved_by);
     }
     
-    updates.push(`updated_at = NOW()`);
+    updates.push('updated_at = NOW()');
     
     const query = `
       UPDATE ai_incidents 
@@ -836,20 +836,20 @@ DETECTED AT: ${incident.detected_at}
 
   // Add metrics if available
   if (Object.keys(metrics).length > 0) {
-    prompt += `METRICS:\n`;
+    prompt += 'METRICS:\n';
     for (const [key, value] of Object.entries(metrics)) {
       prompt += `- ${key}: ${JSON.stringify(value)}\n`;
     }
-    prompt += `\n`;
+    prompt += '\n';
   }
 
   // Add context if available
   if (Object.keys(context).length > 0) {
-    prompt += `CONTEXT:\n`;
+    prompt += 'CONTEXT:\n';
     for (const [key, value] of Object.entries(context)) {
       prompt += `- ${key}: ${JSON.stringify(value)}\n`;
     }
-    prompt += `\n`;
+    prompt += '\n';
   }
 
   // Add AI hints if available

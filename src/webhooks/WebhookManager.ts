@@ -521,16 +521,8 @@ export class WebhookManager {
       return [];
     }
 
-    try {
-      // This would require a new repository method to get all deliveries
-      // For now, return empty array
-      return [];
-    } catch (error) {
-      logger.error('Failed to fetch all deliveries', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return [];
-    }
+    // No repository method for all deliveries yet
+    return [];
   }
 
   /**

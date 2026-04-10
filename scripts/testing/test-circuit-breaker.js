@@ -58,9 +58,9 @@ async function runTests() {
     console.log(chalk.gray(`  Request ${i}/${CIRCUIT_BREAKER_THRESHOLD + 2}:`));
     try {
       await axios.get(`${PROXY_URL}/httpbin/delay/10`, { timeout: 2000 });
-      console.log(chalk.yellow(`  ? Request succeeded unexpectedly`));
+      console.log(chalk.yellow('  ? Request succeeded unexpectedly'));
     } catch (error) {
-      console.log(chalk.red(`  ✓ Request timed out as expected`));
+      console.log(chalk.red('  ✓ Request timed out as expected'));
     }
     await sleep(DELAY_MS);
   }
@@ -122,7 +122,7 @@ async function runTests() {
   console.log('Fetching circuit breaker event deliveries from database...\n');
   
   const { exec } = require('child_process');
-  exec(`psql -d flexgate -c "SELECT webhook_id, event_type, status, response_code, created_at FROM webhook_deliveries WHERE event_type LIKE 'circuit_breaker.%' ORDER BY created_at DESC LIMIT 10;"`, 
+  exec('psql -d flexgate -c "SELECT webhook_id, event_type, status, response_code, created_at FROM webhook_deliveries WHERE event_type LIKE \'circuit_breaker.%\' ORDER BY created_at DESC LIMIT 10;"', 
     (error, stdout, stderr) => {
       if (error) {
         console.log(chalk.red(`Error querying database: ${error.message}`));

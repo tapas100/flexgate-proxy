@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
 import database from '../src/database/index';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line -- MetricsPublisher has no TypeScript types
 const { MetricsPublisher } = require('../src/services/metricsPublisher');
 
 const router = express.Router();

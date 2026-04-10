@@ -196,7 +196,7 @@ router.get('/logs', async (req, res) => {
     'Access-Control-Allow-Origin': '*',
   });
 
-  res.write(`event: connected\n`);
+  res.write('event: connected\n');
   res.write(`data: ${JSON.stringify({ type: 'logs', connected: true, ts: Date.now() })}\n\n`);
 
   const intervalMs = Math.max(250, Math.min(5000, parseInt(req.query.interval, 10) || 1000));
@@ -276,11 +276,11 @@ router.get('/logs', async (req, res) => {
       // only push when something changes to reduce noise
       if (total !== lastTotal) {
         lastTotal = total;
-        res.write(`event: logs\n`);
+        res.write('event: logs\n');
         res.write(`data: ${JSON.stringify({ logs: page, total, limit, ts: Date.now() })}\n\n`);
       }
     } catch (err) {
-      res.write(`event: error\n`);
+      res.write('event: error\n');
       res.write(`data: ${JSON.stringify({ error: 'Failed to stream logs', message: err?.message, ts: Date.now() })}\n\n`);
     }
   };

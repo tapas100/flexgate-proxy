@@ -90,6 +90,7 @@ async function startSse() {
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -140,6 +141,7 @@ async function main() {
   let lastTotal;
   let trafficTicker = 0;
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     if (GENERATE_TRAFFIC) {
       trafficTicker += INTERVAL_MS;
