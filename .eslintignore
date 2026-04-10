@@ -1,0 +1,13 @@
+# Build output
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Admin UI has its own ESLint config (react-app) — ignore entirely from root linter
+admin-ui/
+
+# Test coverage / generated files
+coverage/
+test-results/

@@ -7,7 +7,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: docker.io/library/postgres:15-alpine
     container_name: flexgate-postgres
     environment:
       POSTGRES_DB:       ${POSTGRES_DB:-flexgate}
@@ -19,13 +19,13 @@ services:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U flexgate -d flexgate"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flexgate} -d ${POSTGRES_DB:-flexgate}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: docker.io/library/redis:7-alpine
     container_name: flexgate-redis
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
