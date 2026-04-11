@@ -1,0 +1,170 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# FlexGate Proxy — Production Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Usage:
+#   flexgate-proxy --config /etc/flexgate/flexgate.yaml
+#
+# Every value here can be overridden at runtime with an environment variable:
+#   FLEXGATE_<SECTION>_<KEY>=value
+# e.g.  FLEXGATE_STORE_POSTGRES_URL=postgres://...
+#       FLEXGATE_ADMIN_PASSWORD=supersecret
+#
+# Secrets (passwords, DSNs, licence keys) must NEVER be stored in this file
+# on production. Use environment variables or a secrets manager.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Proxy HTTP server ─────────────────────────────────────────────────────────
+proxy:
+  # HAProxy routes traffic to this port; keep it off the public internet.
+  port: 8080
+  # Admin API — bind to loopback or an internal-only network.
+  admin_port: 9090
+
+  # Timeouts — tune to match your slowest upstream SLA.
+  # Rule of thumb: read_timeout = 2×p99 upstream latency,
+  #                write_timeout = read_timeout + max_response_body_transfer_time
+  read_timeout_sec: 30
+  write_timeout_sec: 60
+  idle_timeout_sec: 120
+
+  # Hard cap on request header size. 64 KiB is generous for most APIs.
+  max_header_bytes: 65536
+
+# ── HAProxy integration ───────────────────────────────────────────────────────
+haproxy:
+  # UNIX socket for the HAProxy stats / runtime API.
+  # Must match the `stats socket` directive in haproxy.cfg.
+  socket: /var/run/haproxy/admin.sock
+  # HTTP stats page (for the troubleshooting endpoint).
+  stats_url: http://127.0.0.1:8404/stats
+  # Backend/server name used during graceful drain.
+  # Format: "<backend-name>/<server-name>" from haproxy.cfg.
+  backend: flexgate/worker-1
+
+# ── External stores ───────────────────────────────────────────────────────────
+store:
+  # Postgres: used for route persistence and admin data.
+  # OVERRIDE VIA ENV:  FLEXGATE_STORE_POSTGRES_URL
+  postgres_url: ""   # postgres://flexgate:CHANGE_ME@pg:5432/flexgate?sslmode=require
+
+  # Redis: used for distributed route cache invalidation.
+  # OVERRIDE VIA ENV:  FLEXGATE_STORE_REDIS_URL
+  redis_url: ""      # redis://:CHANGE_ME@redis:6379/0
+
+  # NATS: used for event streaming (request telemetry, route change events).
+  # OVERRIDE VIA ENV:  FLEXGATE_STORE_NATS_URL
+  nats_url: ""       # nats://nats:4222
+
+  # Connection pool tuning — shared by Postgres and Redis.
+  pool:
+    # Maximum connections per pool. Start here:
+    #   Postgres: min(max_conns_in_pg_hba, (2 × CPU cores) + 1)
+    #   Redis:    50–200 depending on command latency
+    max_conns: 20
+    # Minimum idle connections — keep these warm to avoid cold-start latency.
+    min_conns: 4
+    # Recycle connections after 30 minutes to survive DB failovers.
+    max_conn_lifetime_sec: 1800
+    # Close idle connections after 5 minutes.
+    max_conn_idle_time_sec: 300
+
+# ── Intelligence service ──────────────────────────────────────────────────────
+intelligence:
+  # gRPC endpoint — preferred over HTTP when set.
+  # OVERRIDE VIA ENV:  FLEXGATE_INTELLIGENCE_GRPC_ADDR
+  grpc_addr: ""      # intelligence.internal:9000
+  # HTTP fallback endpoint.
+  # OVERRIDE VIA ENV:  FLEXGATE_INTELLIGENCE_URL
+  url: ""            # https://intelligence.flexgate.io
+  # OVERRIDE VIA ENV:  FLEXGATE_INTELLIGENCE_LICENCE_KEY
+  licence_key: ""    # fg_live_xxx
+
+  # Hard timeout for every synchronous intelligence call (rate-limit, auth).
+  # Intelligence must NEVER slow the proxy hot path beyond this value.
+  # If the intelligence service cannot respond within 5 ms, fail_open=true
+  # means the request is allowed through anyway.
+  timeout_ms: 5
+  fail_open: true
+
+  # gRPC connection pool — increase pool_size on high-concurrency workers.
+  grpc_pool_size: 4
+  grpc_batch_size: 100
+  grpc_flush_interval_ms: 100
+
+# ── Admin API ─────────────────────────────────────────────────────────────────
+admin:
+  # HTTP Basic Auth credentials for the admin API.
+  # REQUIRED in production. Set via env vars — never hardcode here.
+  # OVERRIDE VIA ENV:  FLEXGATE_ADMIN_USERNAME / FLEXGATE_ADMIN_PASSWORD
+  username: ""       # admin
+  password: ""       # CHANGE_ME — use a strong random value
+
+# ── Security hardening ────────────────────────────────────────────────────────
+security:
+  enabled: true
+
+  # HSTS — set max-age=31536000 (1 year) once you are confident HTTPS is stable.
+  # Set to 0 to omit the header (e.g. during initial TLS rollout).
+  hsts_max_age_sec: 31536000
+  hsts_include_subdomains: true
+
+  # Maximum request body size. Protects against memory exhaustion attacks.
+  # 10 MiB is a safe default for most JSON APIs. Increase for file upload routes.
+  max_request_body_bytes: 10485760  # 10 MiB
+
+  # Restrict allowed HTTP methods to the minimum your API requires.
+  # Empty list = all methods allowed (less secure but more flexible).
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - HEAD
+    - OPTIONS
+
+  # Block requests whose User-Agent contains any of these substrings.
+  # Useful for blocking known scanners and vulnerability probes.
+  # Matching is case-insensitive.
+  block_user_agents:
+    - "masscan"
+    - "zgrab"
+    - "nmap"
+    - "sqlmap"
+    - "nikto"
+    - "nuclei"
+    - "dirbuster"
+    - "gobuster"
+
+# ── Graceful shutdown ─────────────────────────────────────────────────────────
+shutdown:
+  # Time to wait after HAProxy drain before stopping the HTTP servers.
+  # Must be >= HAProxy's `timeout connect` + one health-check interval.
+  # Typical HAProxy health-check interval: 2s. Recommended: 5s minimum.
+  drain_grace_period_sec: 5
+  # Maximum time to wait for in-flight requests to complete.
+  # Set to your 99.9th-percentile request latency + buffer.
+  timeout_sec: 30
+
+# ── Go runtime tuning ─────────────────────────────────────────────────────────
+tuning:
+  # GOMEMLIMIT: set to ~90% of the container memory limit (in MiB).
+  # Example: container limit = 512 MiB → set 460
+  # Set to 0 to use the Go default (no limit — not recommended for containers).
+  # Paired with a higher GOGC this dramatically reduces GC CPU overhead.
+  gomemlimit_mib: 460
+
+  # GOGC: garbage collection target percentage.
+  # 100 = Go default (GC runs when live heap doubles).
+  # 200 = GC runs when live heap triples — halves GC CPU, but increases
+  #       peak heap. Safe when GOMEMLIMIT keeps a ceiling on total RSS.
+  # Recommended for high-throughput proxies: 200 + gomemlimit_mib set.
+  gogc_percent: 200
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+logging:
+  # json → structured log lines → pipe to fluentd/datadog/splunk
+  # pretty → human-readable coloured output (dev only)
+  level: info
+  format: json

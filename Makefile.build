@@ -1,0 +1,318 @@
+# Makefile — FlexGate Proxy Go build targets
+# These targets coexist with the existing Node.js / Podman targets above.
+
+GO      := go
+BINARY  := flexgate-proxy
+VERSION ?= dev
+LDFLAGS := -s -w -X main.version=$(VERSION)
+BUILD_DIR := dist/go
+
+# Protobuf / gRPC tooling
+PROTOC        := protoc
+PROTO_SRC     := proto
+PROTO_OUT     := internal/intelligence/grpc/pb
+PROTOC_GEN_GO := $(shell go env GOPATH)/bin/protoc-gen-go
+PROTOC_GEN_GRPC := $(shell go env GOPATH)/bin/protoc-gen-go-grpc
+
+.PHONY: go-deps go-build go-run go-test go-lint go-clean go-fmt go-vet go-mod-tidy \
+        proto-gen proto-clean go-bench-intelligence go-bench-intelligence-mem \
+        go-metrics go-metrics-admin go-metrics-summary go-metrics-dump \
+        prom-start prom-stop grafana-import \
+        go-loadtest go-loadtest-ramp go-loadtest-mix go-loadtest-soak
+
+## go-deps: Download and verify all Go module dependencies
+go-deps:
+	$(GO) mod tidy
+	$(GO) mod download
+	$(GO) mod verify
+
+## go-mod-tidy: Tidy go.mod / go.sum
+go-mod-tidy:
+	$(GO) mod tidy
+
+## go-fmt: Format all Go source files
+go-fmt:
+	$(GO) fmt ./...
+
+## go-vet: Run go vet on all packages
+go-vet:
+	$(GO) vet ./...
+
+## go-build: Compile the Go binary for the current platform
+go-build: go-fmt go-vet
+	@mkdir -p $(BUILD_DIR)
+	CGO_ENABLED=0 $(GO) build \
+		-trimpath \
+		-ldflags="$(LDFLAGS)" \
+		-o $(BUILD_DIR)/$(BINARY) \
+		./cmd/flexgate
+	@echo "✅ Built: $(BUILD_DIR)/$(BINARY)"
+
+## go-build-all: Cross-compile for all release platforms
+go-build-all:
+	@mkdir -p $(BUILD_DIR)
+	GOOS=linux   GOARCH=amd64  CGO_ENABLED=0 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-linux-amd64   ./cmd/flexgate
+	GOOS=linux   GOARCH=arm64  CGO_ENABLED=0 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-linux-arm64   ./cmd/flexgate
+	GOOS=darwin  GOARCH=amd64  CGO_ENABLED=0 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-darwin-amd64  ./cmd/flexgate
+	GOOS=darwin  GOARCH=arm64  CGO_ENABLED=0 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-darwin-arm64  ./cmd/flexgate
+	GOOS=windows GOARCH=amd64  CGO_ENABLED=0 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-windows-amd64.exe ./cmd/flexgate
+	@echo "✅ Cross-compiled all platforms → $(BUILD_DIR)/"
+	@ls -lh $(BUILD_DIR)/
+
+## go-run: Run the Go server in development mode (pretty logs, port 8080)
+go-run:
+	FLEXGATE_LOGGING_FORMAT=pretty $(GO) run ./cmd/flexgate --config flexgate.yaml
+
+## go-test: Run all Go tests
+go-test:
+	$(GO) test -race -count=1 -timeout 60s ./...
+
+## go-test-cover: Run tests with coverage report
+go-test-cover:
+	$(GO) test -race -count=1 -timeout 60s -coverprofile=coverage/go-coverage.out ./...
+	$(GO) tool cover -html=coverage/go-coverage.out -o coverage/go-coverage.html
+	@echo "✅ Coverage report → coverage/go-coverage.html"
+
+## go-clean: Remove Go build artefacts
+go-clean:
+	rm -rf $(BUILD_DIR)
+	$(GO) clean -testcache
+
+## go-health: Quick health check against the running server
+go-health:
+	@curl -sf http://localhost:8080/health && echo " ✅ /health OK" || echo " ❌ /health FAILED"
+
+## go-bench: 30s wrk load test against the running server (requires wrk)
+go-bench:
+	@command -v wrk >/dev/null 2>&1 || { echo "wrk not found: brew install wrk"; exit 1; }
+	wrk -t4 -c100 -d30s --latency http://localhost:8080/health
+
+## proto-gen: Regenerate Go code from all .proto files
+## Requires: protoc, protoc-gen-go, protoc-gen-go-grpc
+## Install deps: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+##               go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+proto-gen:
+	@command -v $(PROTOC) >/dev/null 2>&1 || { echo "protoc not found: brew install protobuf"; exit 1; }
+	@command -v $(PROTOC_GEN_GO) >/dev/null 2>&1 || { echo "protoc-gen-go not found: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest"; exit 1; }
+	@command -v $(PROTOC_GEN_GRPC) >/dev/null 2>&1 || { echo "protoc-gen-go-grpc not found: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest"; exit 1; }
+	@mkdir -p $(PROTO_OUT)
+	$(PROTOC) \
+		--proto_path=$(PROTO_SRC) \
+		--go_out=$(PROTO_OUT) \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=$(PROTO_OUT) \
+		--go-grpc_opt=paths=source_relative \
+		$(PROTO_SRC)/intelligence/v1/intelligence.proto
+	@echo "✅ Proto generated → $(PROTO_OUT)/intelligence/v1/"
+
+## proto-clean: Remove generated protobuf Go files
+proto-clean:
+	rm -rf $(PROTO_OUT)/intelligence
+
+## go-bench-intelligence: Run HTTP vs gRPC intelligence benchmarks (5s each)
+go-bench-intelligence:
+	$(GO) test -bench=. -benchmem -benchtime=5s -count=1 ./benchmarks/intelligence/
+
+## go-bench-intelligence-mem: Run benchmarks with memory profiling
+go-bench-intelligence-mem:
+	$(GO) test -bench=. -benchmem -memprofile=benchmarks/intelligence/mem.prof -benchtime=5s ./benchmarks/intelligence/
+	$(GO) tool pprof -text benchmarks/intelligence/mem.prof
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 5: Observability targets
+# ─────────────────────────────────────────────────────────────────────────────
+.PHONY: go-metrics go-metrics-dump prom-start prom-stop grafana-import
+
+## go-metrics: Scrape the local /metrics endpoint and display raw output
+go-metrics:
+	@echo "Scraping http://localhost:8080/metrics …"
+	@curl -sf http://localhost:8080/metrics | head -80 || echo "❌ /metrics unreachable (is the proxy running?)"
+
+## go-metrics-admin: Scrape the admin plane /metrics endpoint
+go-metrics-admin:
+	@echo "Scraping http://localhost:9090/metrics …"
+	@curl -sf http://localhost:9090/metrics | head -80 || echo "❌ /metrics unreachable (is the admin server running?)"
+
+## go-metrics-summary: Fetch the authenticated JSON summary (requires ADMIN_PASS env var)
+go-metrics-summary:
+	@echo "Fetching http://localhost:9090/api/metrics/summary …"
+	@curl -sf -u admin:$${ADMIN_PASS:-changeme} http://localhost:9090/api/metrics/summary | python3 -m json.tool
+
+## go-metrics-dump: Dump all FlexGate metric families (sorted, no # lines)
+go-metrics-dump:
+	@curl -sf http://localhost:8080/metrics | grep -v '^#' | sort
+
+## prom-start: Start a local Prometheus container scraping FlexGate
+## Requires: podman (or set CONTAINER_RUNTIME=docker)
+prom-start:
+	$(eval RUNTIME := $(or $(CONTAINER_RUNTIME),podman))
+	@$(RUNTIME) run -d \
+		--name flexgate-prometheus \
+		--network=host \
+		-v $(CURDIR)/deployments/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
+		docker.io/prom/prometheus:v2.51.2 \
+		--config.file=/etc/prometheus/prometheus.yml \
+		--storage.tsdb.retention.time=24h \
+		--web.enable-lifecycle
+	@echo "✅ Prometheus started → http://localhost:9090"
+
+## prom-stop: Stop and remove the local Prometheus container
+prom-stop:
+	$(eval RUNTIME := $(or $(CONTAINER_RUNTIME),podman))
+	@$(RUNTIME) rm -f flexgate-prometheus 2>/dev/null || true
+	@echo "✅ Prometheus stopped"
+
+## grafana-import: Open Grafana import URL (assumes Grafana on :3000)
+grafana-import:
+	@open "http://localhost:3000/dashboard/import" || xdg-open "http://localhost:3000/dashboard/import"
+	@echo "📂 Dashboard JSON: deployments/grafana/flexgate-dashboard.json"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 6: Load testing targets
+# ─────────────────────────────────────────────────────────────────────────────
+
+## go-loadtest: Run the full load test suite (30s per test, ~5 min total)
+go-loadtest:
+	@command -v wrk >/dev/null 2>&1 || { echo "wrk not found: brew install wrk"; exit 1; }
+	@chmod +x deployments/loadtest/loadtest.sh
+	@deployments/loadtest/loadtest.sh $(or $(HOST),localhost) $(or $(PORT),8080)
+
+## go-loadtest-mix: Run mixed-method traffic simulation (60s, c=200)
+go-loadtest-mix:
+	@command -v wrk >/dev/null 2>&1 || { echo "wrk not found: brew install wrk"; exit 1; }
+	wrk -t4 -c200 -d60s --latency \
+		-s deployments/loadtest/traffic-mix.lua \
+		http://$(or $(HOST),localhost):$(or $(PORT),8080)
+
+## go-loadtest-ramp: Run concurrency ramp test (120s, c=500)
+go-loadtest-ramp:
+	@command -v wrk >/dev/null 2>&1 || { echo "wrk not found: brew install wrk"; exit 1; }
+	wrk -t4 -c500 -d120s --latency \
+		-s deployments/loadtest/ramp.lua \
+		http://$(or $(HOST),localhost):$(or $(PORT),8080)
+
+## go-loadtest-soak: Run 10-minute soak test (c=100)
+go-loadtest-soak:
+	@command -v wrk >/dev/null 2>&1 || { echo "wrk not found: brew install wrk"; exit 1; }
+	@echo "Running 10-minute soak test …"
+	RUN_SOAK=1 deployments/loadtest/loadtest.sh $(or $(HOST),localhost) $(or $(PORT),8080)
+
+## go-loadtest-baseline: Quick 15s baseline (health endpoint, c=100)
+go-loadtest-baseline:
+	@command -v wrk >/dev/null 2>&1 || { echo "wrk not found: brew install wrk"; exit 1; }
+	wrk -t4 -c100 -d15s --latency \
+		http://$(or $(HOST),localhost):$(or $(PORT),8080)/health
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Stage 7: npm distribution targets
+# ──────────────────────────────────────────────────────────────────────────────
+# Usage:
+#   make go-npm-sync-versions VERSION=1.2.3   # stamp all package.json files
+#   make go-npm-build-all VERSION=1.2.3       # cross-compile all 5 platforms
+#   make go-npm-stage VERSION=1.2.3           # build + stage binaries into npm/packages/
+#   make go-npm-pack VERSION=1.2.3            # stage + pack all packages → dist/npm-packs/
+#   make go-npm-publish-dry VERSION=1.2.3     # full dry-run (no publish)
+#   make go-npm-publish VERSION=1.2.3         # publish for real (requires NPM_TOKEN)
+
+NPM_DIR     := npm
+PACK_DIR    := dist/npm-packs
+PLATFORMS   := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+
+## go-npm-sync-versions: Stamp all six npm package.json files with VERSION
+go-npm-sync-versions:
+	@test -n "$(VERSION)" || { echo "❌ VERSION is required: make $@ VERSION=1.2.3"; exit 1; }
+	node $(NPM_DIR)/scripts/sync-versions.js $(VERSION)
+	@echo "✅ All npm package.json files stamped to $(VERSION)"
+
+## go-npm-build-all: Cross-compile Go binary for all 5 target platforms
+go-npm-build-all:
+	@test -n "$(VERSION)" || { echo "❌ VERSION is required: make $@ VERSION=1.2.3"; exit 1; }
+	@echo "Building linux/amd64 …"
+	@mkdir -p $(BUILD_DIR)-npm/flexgate-proxy-linux-amd64
+	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -trimpath \
+		-ldflags="$(LDFLAGS)" \
+		-o "$(BUILD_DIR)-npm/flexgate-proxy-linux-amd64/$(BINARY)" \
+		./cmd/flexgate
+	@echo "Building linux/arm64 …"
+	@mkdir -p $(BUILD_DIR)-npm/flexgate-proxy-linux-arm64
+	CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -trimpath \
+		-ldflags="$(LDFLAGS)" \
+		-o "$(BUILD_DIR)-npm/flexgate-proxy-linux-arm64/$(BINARY)" \
+		./cmd/flexgate
+	@echo "Building darwin/amd64 …"
+	@mkdir -p $(BUILD_DIR)-npm/flexgate-proxy-darwin-amd64
+	CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -trimpath \
+		-ldflags="$(LDFLAGS)" \
+		-o "$(BUILD_DIR)-npm/flexgate-proxy-darwin-amd64/$(BINARY)" \
+		./cmd/flexgate
+	@echo "Building darwin/arm64 …"
+	@mkdir -p $(BUILD_DIR)-npm/flexgate-proxy-darwin-arm64
+	CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -trimpath \
+		-ldflags="$(LDFLAGS)" \
+		-o "$(BUILD_DIR)-npm/flexgate-proxy-darwin-arm64/$(BINARY)" \
+		./cmd/flexgate
+	@echo "Building windows/amd64 …"
+	@mkdir -p $(BUILD_DIR)-npm/flexgate-proxy-windows-amd64
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath \
+		-ldflags="$(LDFLAGS)" \
+		-o "$(BUILD_DIR)-npm/flexgate-proxy-windows-amd64/$(BINARY).exe" \
+		./cmd/flexgate
+	@echo "✅ All 5 binaries built in $(BUILD_DIR)-npm/"
+
+## go-npm-stage: Build all binaries and copy them into npm/packages/<os>-<arch>/bin/
+go-npm-stage: go-npm-build-all go-npm-sync-versions
+	@echo "Staging binaries into npm packages …"
+	cp "$(BUILD_DIR)-npm/flexgate-proxy-linux-amd64/$(BINARY)"       "$(NPM_DIR)/packages/flexgate-proxy-linux-x64/bin/$(BINARY)"
+	cp "$(BUILD_DIR)-npm/flexgate-proxy-linux-arm64/$(BINARY)"       "$(NPM_DIR)/packages/flexgate-proxy-linux-arm64/bin/$(BINARY)"
+	cp "$(BUILD_DIR)-npm/flexgate-proxy-darwin-amd64/$(BINARY)"      "$(NPM_DIR)/packages/flexgate-proxy-darwin-x64/bin/$(BINARY)"
+	cp "$(BUILD_DIR)-npm/flexgate-proxy-darwin-arm64/$(BINARY)"      "$(NPM_DIR)/packages/flexgate-proxy-darwin-arm64/bin/$(BINARY)"
+	cp "$(BUILD_DIR)-npm/flexgate-proxy-windows-amd64/$(BINARY).exe" "$(NPM_DIR)/packages/flexgate-proxy-win32-x64/bin/$(BINARY).exe"
+	chmod +x \
+		"$(NPM_DIR)/packages/flexgate-proxy-linux-x64/bin/$(BINARY)" \
+		"$(NPM_DIR)/packages/flexgate-proxy-linux-arm64/bin/$(BINARY)" \
+		"$(NPM_DIR)/packages/flexgate-proxy-darwin-x64/bin/$(BINARY)" \
+		"$(NPM_DIR)/packages/flexgate-proxy-darwin-arm64/bin/$(BINARY)"
+	@echo "✅ Binaries staged into npm packages"
+
+## go-npm-pack: Stage binaries and pack all 6 npm packages → dist/npm-packs/
+go-npm-pack: go-npm-stage
+	@mkdir -p $(PACK_DIR)
+	@for pkg_dir in \
+		$(NPM_DIR)/packages/flexgate-proxy-linux-x64 \
+		$(NPM_DIR)/packages/flexgate-proxy-linux-arm64 \
+		$(NPM_DIR)/packages/flexgate-proxy-darwin-x64 \
+		$(NPM_DIR)/packages/flexgate-proxy-darwin-arm64 \
+		$(NPM_DIR)/packages/flexgate-proxy-win32-x64 \
+		$(NPM_DIR)/flexgate-proxy; do \
+		echo "Packing $${pkg_dir} …"; \
+		npm pack "$${pkg_dir}" --pack-destination $(PACK_DIR); \
+	done
+	@echo ""
+	@echo "✅ Packs written to $(PACK_DIR)/"
+	@ls -lh $(PACK_DIR)/
+
+## go-npm-publish-dry: Full dry-run — build, stage, pack. Nothing published.
+go-npm-publish-dry: go-npm-pack
+	@echo ""
+	@echo "✅ Dry-run complete. Inspect tarballs in $(PACK_DIR)/"
+	@echo "   To publish for real: make go-npm-publish VERSION=$(VERSION)"
+
+## go-npm-publish: Publish all npm packages to registry (requires NPM_TOKEN env var)
+go-npm-publish: go-npm-pack
+	@test -n "$(NPM_TOKEN)" || { echo "❌ NPM_TOKEN is required: export NPM_TOKEN=<token>"; exit 1; }
+	@echo "//registry.npmjs.org/:_authToken=$(NPM_TOKEN)" > .npmrc.tmp
+	@$(eval DIST_TAG := $(if $(findstring -,$(VERSION)),next,latest))
+	@echo "Publishing platform packages (dist-tag: $(DIST_TAG)) …"
+	@for pkg_dir in \
+		$(NPM_DIR)/packages/flexgate-proxy-linux-x64 \
+		$(NPM_DIR)/packages/flexgate-proxy-linux-arm64 \
+		$(NPM_DIR)/packages/flexgate-proxy-darwin-x64 \
+		$(NPM_DIR)/packages/flexgate-proxy-darwin-arm64 \
+		$(NPM_DIR)/packages/flexgate-proxy-win32-x64; do \
+		npm publish "$${pkg_dir}" --tag $(DIST_TAG) --access public --userconfig .npmrc.tmp; \
+	done
+	@echo "Publishing coordinator package …"
+	npm publish $(NPM_DIR)/flexgate-proxy --tag $(DIST_TAG) --access public --userconfig .npmrc.tmp
+	@rm -f .npmrc.tmp
+	@echo ""
+	@echo "✅ @flexgate/proxy@$(VERSION) published (dist-tag: $(DIST_TAG))"

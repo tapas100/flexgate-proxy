@@ -1,0 +1,18 @@
+{
+  "name": "@flexgate/proxy-linux-arm64",
+  "version": "0.0.0",
+  "description": "FlexGate proxy binary for Linux ARM64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tapas100/flexgate-proxy.git",
+    "directory": "npm/packages/flexgate-proxy-linux-arm64"
+  },
+  "os":  ["linux"],
+  "cpu": ["arm64"],
+  "files": ["bin/"],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "@flexgate/proxy",
+  "version": "0.0.0",
+  "description": "FlexGate — production-grade API gateway and reverse proxy (Go binary distribution)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tapas100/flexgate-proxy.git",
+    "directory": "npm/flexgate-proxy"
+  },
+  "homepage": "https://github.com/tapas100/flexgate-proxy#readme",
+  "bugs": { "url": "https://github.com/tapas100/flexgate-proxy/issues" },
+  "author": {
+    "name": "tapas100",
+    "email": "mahanta.tapas9@gmail.com",
+    "url": "https://github.com/tapas100"
+  },
+  "keywords": [
+    "api-gateway",
+    "proxy",
+    "reverse-proxy",
+    "rate-limiting",
+    "observability",
+    "flexgate"
+  ],
+  "main": "bin/run.js",
+  "bin": {
+    "flexgate-proxy": "bin/run.js"
+  },
+  "files": [
+    "bin/",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node bin/install-binary.js"
+  },
+  "optionalDependencies": {
+    "@flexgate/proxy-linux-x64":   "0.0.0",
+    "@flexgate/proxy-linux-arm64": "0.0.0",
+    "@flexgate/proxy-darwin-x64":  "0.0.0",
+    "@flexgate/proxy-darwin-arm64":"0.0.0",
+    "@flexgate/proxy-win32-x64":   "0.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

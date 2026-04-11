@@ -1,0 +1,484 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Jenkinsfile.release  —  FlexGate Go binary build + npm publish pipeline
+//
+// Purpose:
+//   Cross-compile the Go proxy binary for 5 platforms, publish each to npm
+//   as an @flexgate/proxy-<os>-<arch> optional-dependency package, then
+//   publish the @flexgate/proxy coordinator package.
+//
+// Pipeline stages:
+//
+//   1.  Validate Parameters     — check tag format + credentials
+//   2.  Build Binaries          — parallel cross-compile for every target
+//   3.  Smoke-test (Linux/amd64) — run the native binary with --version
+//   4.  Sync Versions           — stamp all package.json files with tag version
+//   5.  Publish Platform Pkgs   — npm publish each @flexgate/proxy-<os>-<arch>
+//   6.  Publish Coordinator     — npm publish @flexgate/proxy
+//   7.  GitHub Release          — create release + upload binaries as assets
+//       (optional; skipped if GH_TOKEN credential is absent)
+//
+// Trigger (Jenkins "Git parameter" or tag-push webhook):
+//   Create / push a semver tag in the remote:
+//     git tag v1.2.3 && git push origin v1.2.3
+//
+// Required Jenkins credentials  (Manage Jenkins → Credentials → global):
+//   registry-token     Secret text    npm automation token
+//   gh-token           Secret text    GitHub personal-access-token with
+//                                     repo + write:packages scope  (optional)
+//
+// Required Jenkins plugins:
+//   • NodeJS Plugin     — tool name "NodeJS 20" (same as main Jenkinsfile)
+//   • Parallel stages   — built into Pipeline since 2.4
+//
+// Required Go installation on agent:
+//   go 1.22+  must be on PATH  (or configure via Global Tool Configuration)
+//
+// Jenkins job configuration:
+//   • New Item → Pipeline
+//   • Definition: Pipeline script from SCM
+//   • Script Path: Jenkinsfile.release
+//   • Check "This project is parameterised"
+//   • Add String Parameter:  RELEASE_TAG  (e.g. "v1.2.3")
+//   • Add Boolean Parameter: DRY_RUN      (default: false)
+// ─────────────────────────────────────────────────────────────────────────────
+
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'NodeJS 20'
+    }
+
+    // ── Parameters ────────────────────────────────────────────────────────────
+    parameters {
+        string(
+            name:         'RELEASE_TAG',
+            defaultValue: '',
+            description:  'Semver Git tag to release (e.g. v1.2.3 or v1.2.3-beta.1). ' +
+                          'The tag must already exist in the remote repository.'
+        )
+        booleanParam(
+            name:         'DRY_RUN',
+            defaultValue: false,
+            description:  'When true: builds binaries and packs npm packages but does NOT ' +
+                          'publish to npm or create a GitHub release.'
+        )
+    }
+
+    // ── Shared environment ────────────────────────────────────────────────────
+    environment {
+        NPM_TOKEN  = credentials('registry-token')
+        // GH_TOKEN is optional — if the credential does not exist Jenkins
+        // injects an empty string and the "GitHub Release" stage self-skips.
+        GH_TOKEN   = credentials('gh-token')
+
+        BINARY_NAME    = 'flexgate-proxy'
+        GO_LDFLAGS_TPL = '-s -w -X main.version=%s'
+        BUILD_DIR      = 'dist/go-release'
+        NPM_DIR        = 'npm'
+    }
+
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        ansiColor('xterm')
+    }
+
+    stages {
+
+        // ── Stage 1: Validate ─────────────────────────────────────────────────
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    // Tag must be provided.
+                    if (!params.RELEASE_TAG?.trim()) {
+                        error('RELEASE_TAG parameter is required. ' +
+                              'Re-run the job and supply a semver tag, e.g. v1.2.3')
+                    }
+
+                    // Must match vMAJOR.MINOR.PATCH with optional pre-release suffix.
+                    if (!(params.RELEASE_TAG ==~ /^v\d+\.\d+\.\d+(-[\w.]+)?$/)) {
+                        error("RELEASE_TAG '${params.RELEASE_TAG}' is not a valid semver tag. " +
+                              "Expected format: v<MAJOR>.<MINOR>.<PATCH> or v<MAJOR>.<MINOR>.<PATCH>-<pre>")
+                    }
+
+                    // Strip leading 'v' for use in package.json / ldflags.
+                    env.VERSION      = params.RELEASE_TAG.replaceFirst(/^v/, '')
+                    env.RELEASE_TAG  = params.RELEASE_TAG
+                    env.LDFLAGS      = String.format(env.GO_LDFLAGS_TPL, env.VERSION)
+
+                    // Determine npm dist-tag.
+                    env.NPM_DIST_TAG = env.VERSION.contains('-') ? 'next' : 'latest'
+
+                    echo "──────────────────────────────────────────"
+                    echo " Tag:          ${env.RELEASE_TAG}"
+                    echo " Version:      ${env.VERSION}"
+                    echo " npm dist-tag: ${env.NPM_DIST_TAG}"
+                    echo " Dry run:      ${params.DRY_RUN}"
+                    echo "──────────────────────────────────────────"
+                }
+            }
+        }
+
+        // ── Stage 2: Checkout ─────────────────────────────────────────────────
+        stage('Checkout') {
+            steps {
+                // Checkout the exact tag so the build is reproducible.
+                checkout([
+                    $class:           'GitSCM',
+                    branches:         [[name: "refs/tags/${params.RELEASE_TAG}"]],
+                    userRemoteConfigs: scm.userRemoteConfigs,
+                    extensions:       [[$class: 'CleanBeforeCheckout']]
+                ])
+                sh 'echo "Checked out: $(git log -1 --oneline)"'
+            }
+        }
+
+        // ── Stage 3: Verify Toolchain ─────────────────────────────────────────
+        stage('Verify Toolchain') {
+            steps {
+                sh '''
+                    echo "=== Go ==="
+                    go version
+                    echo "=== Node / npm ==="
+                    node --version
+                    npm  --version
+                '''
+            }
+        }
+
+        // ── Stage 4: Build Binaries (parallel) ───────────────────────────────
+        // Cross-compile the Go binary for every target.
+        // Each target writes its binary to:
+        //   dist/go-release/<artifact-name>/<binary-filename>
+        // so subsequent stages can reliably find them by artifact name.
+        stage('Build Binaries') {
+            parallel {
+
+                stage('linux / amd64') {
+                    steps {
+                        sh """
+                            mkdir -p ${BUILD_DIR}/flexgate-proxy-linux-amd64
+                            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \\
+                            go build \\
+                                -trimpath \\
+                                -ldflags="${LDFLAGS}" \\
+                                -o "${BUILD_DIR}/flexgate-proxy-linux-amd64/${BINARY_NAME}" \\
+                                ./cmd/flexgate
+                        """
+                    }
+                }
+
+                stage('linux / arm64') {
+                    steps {
+                        sh """
+                            mkdir -p ${BUILD_DIR}/flexgate-proxy-linux-arm64
+                            CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \\
+                            go build \\
+                                -trimpath \\
+                                -ldflags="${LDFLAGS}" \\
+                                -o "${BUILD_DIR}/flexgate-proxy-linux-arm64/${BINARY_NAME}" \\
+                                ./cmd/flexgate
+                        """
+                    }
+                }
+
+                stage('darwin / amd64') {
+                    steps {
+                        sh """
+                            mkdir -p ${BUILD_DIR}/flexgate-proxy-darwin-amd64
+                            CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \\
+                            go build \\
+                                -trimpath \\
+                                -ldflags="${LDFLAGS}" \\
+                                -o "${BUILD_DIR}/flexgate-proxy-darwin-amd64/${BINARY_NAME}" \\
+                                ./cmd/flexgate
+                        """
+                    }
+                }
+
+                stage('darwin / arm64') {
+                    steps {
+                        sh """
+                            mkdir -p ${BUILD_DIR}/flexgate-proxy-darwin-arm64
+                            CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \\
+                            go build \\
+                                -trimpath \\
+                                -ldflags="${LDFLAGS}" \\
+                                -o "${BUILD_DIR}/flexgate-proxy-darwin-arm64/${BINARY_NAME}" \\
+                                ./cmd/flexgate
+                        """
+                    }
+                }
+
+                stage('windows / amd64') {
+                    steps {
+                        sh """
+                            mkdir -p ${BUILD_DIR}/flexgate-proxy-windows-amd64
+                            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \\
+                            go build \\
+                                -trimpath \\
+                                -ldflags="${LDFLAGS}" \\
+                                -o "${BUILD_DIR}/flexgate-proxy-windows-amd64/${BINARY_NAME}.exe" \\
+                                ./cmd/flexgate
+                        """
+                    }
+                }
+            }
+        }
+
+        // ── Stage 5: Smoke-test (native binary) ───────────────────────────────
+        // The agent is assumed to be linux/amd64. Run the native binary only.
+        stage('Smoke Test') {
+            steps {
+                sh """
+                    chmod +x "${BUILD_DIR}/flexgate-proxy-linux-amd64/${BINARY_NAME}"
+                    "${BUILD_DIR}/flexgate-proxy-linux-amd64/${BINARY_NAME}" --version
+                """
+            }
+        }
+
+        // ── Stage 6: Stage binaries into npm packages ─────────────────────────
+        // Copy each binary into its npm package's bin/ directory so
+        // `npm publish` includes the real binary (not the .gitkeep placeholder).
+        stage('Stage npm Binaries') {
+            steps {
+                sh """
+                    set -eu
+                    stage() {
+                        local artifact="\$1" pkg="\$2" binary="\$3"
+                        echo "Staging: ${BUILD_DIR}/\${artifact}/\${binary} → ${NPM_DIR}/packages/\${pkg}/bin/\${binary}"
+                        mkdir -p "${NPM_DIR}/packages/\${pkg}/bin"
+                        cp "${BUILD_DIR}/\${artifact}/\${binary}" "${NPM_DIR}/packages/\${pkg}/bin/\${binary}"
+                        chmod +x "${NPM_DIR}/packages/\${pkg}/bin/\${binary}" 2>/dev/null || true
+                    }
+
+                    stage "flexgate-proxy-linux-amd64"   "flexgate-proxy-linux-x64"    "${BINARY_NAME}"
+                    stage "flexgate-proxy-linux-arm64"   "flexgate-proxy-linux-arm64"  "${BINARY_NAME}"
+                    stage "flexgate-proxy-darwin-amd64"  "flexgate-proxy-darwin-x64"   "${BINARY_NAME}"
+                    stage "flexgate-proxy-darwin-arm64"  "flexgate-proxy-darwin-arm64" "${BINARY_NAME}"
+                    stage "flexgate-proxy-windows-amd64" "flexgate-proxy-win32-x64"    "${BINARY_NAME}.exe"
+                """
+            }
+        }
+
+        // ── Stage 7: Sync npm Versions ────────────────────────────────────────
+        // Stamps every package.json with the release version so all six
+        // packages are consistent before publish.
+        stage('Sync npm Versions') {
+            steps {
+                sh "node ${NPM_DIR}/scripts/sync-versions.js ${VERSION}"
+
+                // Confirm the versions were written correctly.
+                sh """
+                    echo "=== Verifying version stamps ==="
+                    for f in \\
+                        ${NPM_DIR}/flexgate-proxy/package.json \\
+                        ${NPM_DIR}/packages/flexgate-proxy-linux-x64/package.json \\
+                        ${NPM_DIR}/packages/flexgate-proxy-linux-arm64/package.json \\
+                        ${NPM_DIR}/packages/flexgate-proxy-darwin-x64/package.json \\
+                        ${NPM_DIR}/packages/flexgate-proxy-darwin-arm64/package.json \\
+                        ${NPM_DIR}/packages/flexgate-proxy-win32-x64/package.json
+                    do
+                        V=\$(node -p "require('./\$f').version")
+                        echo "  \$f → \$V"
+                        if [ "\$V" != "${VERSION}" ]; then
+                            echo "❌ Version mismatch in \$f"
+                            exit 1
+                        fi
+                    done
+                    echo "✅ All versions stamped to ${VERSION}"
+                """
+            }
+        }
+
+        // ── Stage 8: Pack (dry-run inspection) ───────────────────────────────
+        // Always packs — useful even on a real release to see what will be
+        // published. Archives the tarballs as Jenkins build artefacts.
+        stage('npm Pack') {
+            steps {
+                sh """
+                    mkdir -p dist/npm-packs
+                    for pkg_dir in \\
+                        ${NPM_DIR}/packages/flexgate-proxy-linux-x64 \\
+                        ${NPM_DIR}/packages/flexgate-proxy-linux-arm64 \\
+                        ${NPM_DIR}/packages/flexgate-proxy-darwin-x64 \\
+                        ${NPM_DIR}/packages/flexgate-proxy-darwin-arm64 \\
+                        ${NPM_DIR}/packages/flexgate-proxy-win32-x64 \\
+                        ${NPM_DIR}/flexgate-proxy
+                    do
+                        echo "Packing \${pkg_dir} …"
+                        npm pack "\${pkg_dir}" --pack-destination dist/npm-packs
+                    done
+                    echo "── Pack contents ──────────────────────────"
+                    ls -lh dist/npm-packs/
+                """
+                archiveArtifacts artifacts: 'dist/npm-packs/*.tgz', fingerprint: true
+            }
+        }
+
+        // ── Stage 9: Publish Platform Packages ───────────────────────────────
+        // Platform packages must be on the registry BEFORE the coordinator is
+        // published so npm can resolve optionalDependencies correctly.
+        stage('Publish Platform Packages') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                script {
+                    // Write .npmrc into the workspace (not ~/) so it is always
+                    // cleaned up by cleanWs() at the end of the build.
+                    writeFile file: '.npmrc',
+                              text: "//registry.npmjs.org/:_authToken=${NPM_TOKEN}\n"
+
+                    sh """
+                        set -eu
+                        TAG="${NPM_DIST_TAG}"
+                        for pkg_dir in \\
+                            ${NPM_DIR}/packages/flexgate-proxy-linux-x64 \\
+                            ${NPM_DIR}/packages/flexgate-proxy-linux-arm64 \\
+                            ${NPM_DIR}/packages/flexgate-proxy-darwin-x64 \\
+                            ${NPM_DIR}/packages/flexgate-proxy-darwin-arm64 \\
+                            ${NPM_DIR}/packages/flexgate-proxy-win32-x64
+                        do
+                            echo "Publishing \${pkg_dir} …"
+                            npm publish "\${pkg_dir}" \\
+                                --tag "\${TAG}" \\
+                                --access public \\
+                                --userconfig .npmrc
+                        done
+                        echo "✅ All platform packages published with dist-tag '\${TAG}'"
+                    """
+                }
+            }
+        }
+
+        // ── Stage 10: Publish Coordinator Package ─────────────────────────────
+        stage('Publish Coordinator (@flexgate/proxy)') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                sh """
+                    set -eu
+                    echo "Publishing ${NPM_DIR}/flexgate-proxy …"
+                    npm publish "${NPM_DIR}/flexgate-proxy" \\
+                        --tag "${NPM_DIST_TAG}" \\
+                        --access public \\
+                        --userconfig .npmrc
+
+                    echo ""
+                    echo "✅ @flexgate/proxy@${VERSION} published (dist-tag: ${NPM_DIST_TAG})"
+                    echo ""
+                    echo "   Install with:"
+                    echo "     npm install -g @flexgate/proxy"
+                    echo "     npx @flexgate/proxy --version"
+                """
+            }
+        }
+
+        // ── Stage 11: GitHub Release ──────────────────────────────────────────
+        // Creates a GitHub release and uploads the compiled binaries as assets.
+        // Skipped when:
+        //   • DRY_RUN is true, OR
+        //   • GH_TOKEN credential is empty (gh-token not configured in Jenkins)
+        stage('GitHub Release') {
+            when {
+                allOf {
+                    expression { !params.DRY_RUN }
+                    expression { env.GH_TOKEN?.trim() }
+                }
+            }
+            steps {
+                script {
+                    // ── Verify gh CLI is available ───────────────────────────
+                    def ghAvailable = sh(
+                        script: 'command -v gh >/dev/null 2>&1 && echo yes || echo no',
+                        returnStdout: true
+                    ).trim()
+
+                    if (ghAvailable != 'yes') {
+                        echo "⚠️  'gh' CLI not found on agent PATH — skipping GitHub release creation."
+                        echo "    Install the GitHub CLI to enable automatic release creation:"
+                        echo "    https://cli.github.com/"
+                        return
+                    }
+
+                    // ── Build release assets ─────────────────────────────────
+                    sh """
+                        set -eu
+                        mkdir -p dist/release-assets
+                        V="${VERSION}"
+
+                        cp "${BUILD_DIR}/flexgate-proxy-linux-amd64/${BINARY_NAME}"       "dist/release-assets/${BINARY_NAME}_\${V}_linux_amd64"
+                        cp "${BUILD_DIR}/flexgate-proxy-linux-arm64/${BINARY_NAME}"       "dist/release-assets/${BINARY_NAME}_\${V}_linux_arm64"
+                        cp "${BUILD_DIR}/flexgate-proxy-darwin-amd64/${BINARY_NAME}"      "dist/release-assets/${BINARY_NAME}_\${V}_darwin_amd64"
+                        cp "${BUILD_DIR}/flexgate-proxy-darwin-arm64/${BINARY_NAME}"      "dist/release-assets/${BINARY_NAME}_\${V}_darwin_arm64"
+                        cp "${BUILD_DIR}/flexgate-proxy-windows-amd64/${BINARY_NAME}.exe" "dist/release-assets/${BINARY_NAME}_\${V}_windows_amd64.exe"
+
+                        chmod +x dist/release-assets/${BINARY_NAME}_\${V}_linux_*  \\
+                                 dist/release-assets/${BINARY_NAME}_\${V}_darwin_*
+
+                        # SHA256 checksums
+                        cd dist/release-assets
+                        sha256sum * > "${BINARY_NAME}_\${V}_checksums.txt"
+                        cat "${BINARY_NAME}_\${V}_checksums.txt"
+                    """
+
+                    // ── Extract changelog entry ──────────────────────────────
+                    def releaseNotes = sh(
+                        script: """
+                            awk '/^## \\[/{if(found) exit; found=1; next} found{print}' CHANGELOG.md | head -60
+                        """,
+                        returnStdout: true
+                    ).trim()
+
+                    // Write release notes to a temp file to avoid shell-quoting issues.
+                    writeFile file: 'dist/release-notes.md',
+                              text: releaseNotes ?: "Release ${RELEASE_TAG}"
+
+                    // ── Determine if pre-release ─────────────────────────────
+                    def prerelease = env.VERSION.contains('-') ? '--prerelease' : ''
+
+                    // ── Create release + upload assets ───────────────────────
+                    withEnv(["GH_TOKEN=${env.GH_TOKEN}"]) {
+                        sh """
+                            set -eu
+                            gh release create "${RELEASE_TAG}" \\
+                                --title "FlexGate Proxy ${RELEASE_TAG}" \\
+                                --notes-file dist/release-notes.md \\
+                                ${prerelease} \\
+                                dist/release-assets/*
+                            echo "✅ GitHub release ${RELEASE_TAG} created"
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Post-build ────────────────────────────────────────────────────────────
+    post {
+        success {
+            script {
+                def msg = params.DRY_RUN
+                    ? "✅ [DRY RUN] FlexGate ${RELEASE_TAG} — build + pack succeeded. Nothing published."
+                    : "✅ FlexGate ${RELEASE_TAG} published to npm (dist-tag: ${env.NPM_DIST_TAG})"
+                echo msg
+            }
+        }
+        failure {
+            echo "❌ Release pipeline failed for ${params.RELEASE_TAG}. Check the stage logs above."
+        }
+        always {
+            // Remove .npmrc so the token is never left on disk between builds.
+            sh 'rm -f .npmrc'
+            // Archive the built binaries for diagnosis.
+            archiveArtifacts allowEmptyArchive: true,
+                             artifacts: "${BUILD_DIR}/**/*",
+                             fingerprint: false
+            cleanWs()
+        }
+    }
+}

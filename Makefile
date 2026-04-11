@@ -5,15 +5,32 @@
 help:
 	@echo "FlexGate Podman Commands:"
 	@echo ""
-	@echo "  make install    - Install Podman and dependencies"
-	@echo "  make build      - Build FlexGate container image"
-	@echo "  make start      - Start all services"
-	@echo "  make stop       - Stop all services"
-	@echo "  make restart    - Restart all services"
-	@echo "  make logs       - View logs"
-	@echo "  make stats      - View HAProxy stats page"
-	@echo "  make test       - Run load test"
-	@echo "  make clean      - Remove all containers and volumes"
+	@echo "  make install         - Install Podman and dependencies"
+	@echo "  make build           - Build FlexGate container image"
+	@echo "  make start           - Start all services"
+	@echo "  make stop            - Stop all services"
+	@echo "  make restart         - Restart all services"
+	@echo "  make logs            - View logs"
+	@echo "  make stats           - View HAProxy stats page"
+	@echo "  make test            - Run load test"
+	@echo "  make clean           - Remove all containers and volumes"
+	@echo ""
+	@echo "Observability (Stage 5):"
+	@echo "  make go-metrics          - Scrape proxy /metrics (raw)"
+	@echo "  make go-metrics-admin    - Scrape admin /metrics (raw)"
+	@echo "  make go-metrics-summary  - Fetch /api/metrics/summary JSON"
+	@echo "  make go-metrics-dump     - Dump all metric values (sorted)"
+	@echo "  make prom-start          - Start local Prometheus container"
+	@echo "  make prom-stop           - Stop local Prometheus container"
+	@echo "  make grafana-import      - Open Grafana import page"
+	@echo ""
+	@echo "Load Testing (Stage 6):"
+	@echo "  make go-loadtest          - Full load test suite (~5 min)"
+	@echo "  make go-loadtest-baseline - Quick 15s baseline"
+	@echo "  make go-loadtest-mix      - Mixed-method simulation (60s)"
+	@echo "  make go-loadtest-ramp     - Concurrency ramp (120s)"
+	@echo "  make go-loadtest-soak     - 10-minute soak test"
+	@echo "  HOST=x PORT=y make go-loadtest  - Target a remote host"
 	@echo ""
 
 # Install Podman (macOS)
@@ -168,3 +185,7 @@ deploy:
 metrics:
 	@open http://localhost:9090 || xdg-open http://localhost:9090
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Go build targets (Stage 0+)
+# ─────────────────────────────────────────────────────────────────────────────
+include Makefile.build

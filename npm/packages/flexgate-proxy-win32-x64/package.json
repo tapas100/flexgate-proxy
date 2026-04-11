@@ -1,0 +1,18 @@
+{
+  "name": "@flexgate/proxy-win32-x64",
+  "version": "0.0.0",
+  "description": "FlexGate proxy binary for Windows x64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tapas100/flexgate-proxy.git",
+    "directory": "npm/packages/flexgate-proxy-win32-x64"
+  },
+  "os":  ["win32"],
+  "cpu": ["x64"],
+  "files": ["bin/"],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

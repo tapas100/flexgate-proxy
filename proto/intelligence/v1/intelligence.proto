@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package intelligence.v1;
+
+option go_package = "github.com/flexgate/proxy/internal/intelligence/grpc/pb";
+
+import "google/protobuf/timestamp.proto";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IntelligenceService — the full surface area of the intelligence plane.
+//
+// Design notes:
+//   • RateLimit and Auth are unary: 5 ms hard deadline enforced by caller.
+//   • RecordEvents is a client-streaming RPC: the proxy batches RequestEvent
+//     messages and flushes them in a background goroutine. The server returns
+//     a single RecordAck when the stream closes.
+//   • GetLogs is a server-streaming RPC: the server pages results as it scans.
+//   • Check is a unary health probe (used by the admin /health endpoint).
+// ─────────────────────────────────────────────────────────────────────────────
+service IntelligenceService {
+  // Synchronous rate-limit check — must complete within 5 ms.
+  rpc RateLimit(RateLimitRequest) returns (RateLimitResponse);
+
+  // Synchronous auth check — must complete within 5 ms.
+  rpc Auth(AuthRequest) returns (AuthResponse);
+
+  // Client-streaming: proxy streams batches of request events.
+  // The server acknowledges when the stream closes.
+  rpc RecordEvents(stream RequestEvent) returns (RecordAck);
+
+  // Server-streaming: server pages log entries back to caller.
+  rpc GetLogs(LogsRequest) returns (stream LogEntry);
+
+  // Unary health check — used by admin API.
+  rpc Check(HealthRequest) returns (HealthResponse);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RateLimit
+// ─────────────────────────────────────────────────────────────────────────────
+
+message RateLimitRequest {
+  string client_ip = 1;
+  string route_id  = 2;
+  string method    = 3;
+  string path      = 4;
+}
+
+message RateLimitResponse {
+  bool   allowed        = 1;
+  int32  remaining      = 2;
+  int32  retry_after_ms = 3;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth
+// ─────────────────────────────────────────────────────────────────────────────
+
+message AuthRequest {
+  string token     = 1;
+  string route_id  = 2;
+  string client_ip = 3;
+}
+
+message AuthResponse {
+  bool   valid   = 1;
+  string subject = 2;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RecordEvents (client-streaming)
+// ─────────────────────────────────────────────────────────────────────────────
+
+message RequestEvent {
+  string                    request_id        = 1;
+  string                    method            = 2;
+  string                    path              = 3;
+  int32                     status            = 4;
+  int64                     latency_ms        = 5;
+  string                    client_ip         = 6;
+  string                    upstream          = 7;
+  string                    route_id          = 8;
+  string                    haproxy_frontend  = 9;
+  string                    haproxy_backend   = 10;
+  google.protobuf.Timestamp timestamp         = 11;
+  int64                     bytes_out         = 12;
+}
+
+message RecordAck {
+  // count is the number of events the server accepted in this batch.
+  int64 count = 1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GetLogs (server-streaming)
+// ─────────────────────────────────────────────────────────────────────────────
+
+message LogsRequest {
+  string                    route_id  = 1;
+  string                    client_ip = 2;
+  google.protobuf.Timestamp since     = 3;
+  int32                     limit     = 4; // 0 → server default
+}
+
+message LogEntry {
+  google.protobuf.Timestamp timestamp  = 1;
+  string                    request_id = 2;
+  string                    level      = 3;
+  string                    message    = 4;
+  map<string, string>       fields     = 5;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Health
+// ─────────────────────────────────────────────────────────────────────────────
+
+message HealthRequest {}
+
+message HealthResponse {
+  enum Status {
+    UNKNOWN  = 0;
+    SERVING  = 1;
+    NOT_SERVING = 2;
+  }
+  Status status    = 1;
+  string version   = 2;
+  int64  uptime_ms = 3;
+}

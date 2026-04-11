@@ -1,0 +1,89 @@
+# Prometheus scrape configuration for FlexGate Proxy
+#
+# Drop this file into your Prometheus config directory (or merge the
+# scrape_configs block into your existing prometheus.yml).
+#
+# Endpoints:
+#   Proxy plane  – http://<host>:<proxy_port>/metrics   (default :8080)
+#   Admin plane  – http://<host>:<admin_port>/metrics   (default :9090)
+#
+# Both endpoints expose the same shared FlexGate registry so you can point
+# Prometheus at either one. The admin endpoint is convenient when the proxy
+# plane port is not reachable from your monitoring infrastructure.
+#
+# Authentication:
+#   The /metrics endpoint on the proxy plane is unauthenticated.
+#   The /metrics endpoint on the admin plane is also unauthenticated so that
+#   Prometheus does not need credentials (the summary endpoint at
+#   /api/metrics/summary IS authenticated).
+#
+# HAProxy metrics are exposed via the haproxy_* metric family when either
+# HAProxy.Socket or HAProxy.StatsURL is configured in flexgate.yaml.
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  # Attach these labels to all time series produced by this Prometheus instance.
+  external_labels:
+    cluster: "local"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # - alertmanager:9093
+
+rule_files: []
+  # - "alerts/*.yml"
+
+scrape_configs:
+  # ── FlexGate Proxy plane ────────────────────────────────────────────────────
+  - job_name: "flexgate-proxy"
+    # Scrape the proxy plane /metrics endpoint.
+    # Change the target host:port to match your deployment.
+    static_configs:
+      - targets: ["localhost:8080"]
+        labels:
+          plane: "proxy"
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # ── FlexGate Admin plane ────────────────────────────────────────────────────
+  - job_name: "flexgate-admin"
+    # Scrape the admin plane /metrics endpoint (same registry, different port).
+    # Useful when the proxy port is not accessible from the monitoring network.
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          plane: "admin"
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+# ── Example: Kubernetes service discovery ────────────────────────────────────
+# Uncomment and adapt when running FlexGate in Kubernetes.
+#
+#  - job_name: "flexgate-k8s"
+#    kubernetes_sd_configs:
+#      - role: pod
+#        namespaces:
+#          names: ["flexgate"]
+#    relabel_configs:
+#      - source_labels: [__meta_kubernetes_pod_label_app]
+#        regex: flexgate-proxy
+#        action: keep
+#      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+#        regex: "true"
+#        action: keep
+#      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+#        action: replace
+#        target_label: __metrics_path__
+#        regex: (.+)
+#      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+#        action: replace
+#        regex: ([^:]+)(?::\d+)?;(\d+)
+#        replacement: $1:$2
+#        target_label: __address__

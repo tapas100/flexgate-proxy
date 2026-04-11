@@ -1,62 +1,57 @@
-# Containerfile for FlexGate Proxy
+# Containerfile for FlexGate Proxy (Go)
 # Build with: podman build -t localhost/flexgate-proxy:latest .
-# Or use: make build
+# Or use:     make build
+#
+# Multi-stage:
+#   Stage 1 — golang:1.24-alpine  → compile static binary
+#   Stage 2 — gcr.io/distroless/static  → minimal runtime image (~8 MB)
+#
+# Build args:
+#   VERSION   semver string baked into the binary via ldflags (default: dev)
 
-# Stage 1: Build
-FROM docker.io/node:18-alpine AS builder
+ARG VERSION=dev
 
-WORKDIR /app
+# ── Stage 1: Compile ──────────────────────────────────────────────────────────
+FROM docker.io/golang:1.24-alpine AS builder
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig*.json ./
+# git is needed for `go mod download` when fetching private modules.
+RUN apk add --no-cache git ca-certificates
 
-# Install ALL dependencies (including dev dependencies for build)
-RUN npm ci && \
-    npm cache clean --force
+WORKDIR /build
 
-# Copy source code
+# Download dependencies first (cached layer — only re-runs when go.mod/go.sum change).
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source and compile.
 COPY . .
 
-# Build TypeScript
-RUN npm run build
+ARG VERSION
+RUN CGO_ENABLED=0 GOOS=linux go build \
+        -trimpath \
+        -ldflags="-s -w -X main.version=${VERSION}" \
+        -o /out/flexgate-proxy \
+        ./cmd/flexgate
 
-# Stage 2: Production
-FROM docker.io/node:18-alpine
+# ── Stage 2: Minimal runtime ──────────────────────────────────────────────────
+FROM gcr.io/distroless/static:nonroot
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init curl
+# Copy the CA bundle from the builder so TLS upstream connections work.
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Create non-root user
-RUN addgroup -g 1001 flexgate && \
-    adduser -D -u 1001 -G flexgate flexgate
+# Copy the compiled binary.
+COPY --from=builder /out/flexgate-proxy /flexgate-proxy
 
-WORKDIR /app
+# Copy the default config (flexgate.yaml).  Can be overridden by mounting a
+# ConfigMap / host volume at /etc/flexgate/flexgate.yaml at runtime.
+COPY --from=builder /build/flexgate.yaml /etc/flexgate/flexgate.yaml
 
-# Copy package files and install ONLY production dependencies
-COPY --from=builder --chown=flexgate:flexgate /app/package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+# distroless/nonroot runs as UID 65532 by default — no USER statement needed.
 
-# Copy built application from builder
-COPY --from=builder --chown=flexgate:flexgate /app/dist ./dist
-COPY --from=builder --chown=flexgate:flexgate /app/config ./config
-COPY --from=builder --chown=flexgate:flexgate /app/migrations ./migrations
+# Proxy data-plane port (HAProxy backend) + admin API port.
+EXPOSE 8080 9090
 
-# Create logs directory
-RUN mkdir -p /app/logs && chown -R flexgate:flexgate /app/logs
+HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["/flexgate-proxy", "healthcheck"]
 
-# Switch to non-root user
-USER flexgate
-
-# Expose port
-EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
-
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
-
-# Start the application
-CMD ["node", "dist/bin/www"]
+ENTRYPOINT ["/flexgate-proxy"]

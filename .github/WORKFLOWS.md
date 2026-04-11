@@ -15,8 +15,17 @@ This directory contains GitHub-specific configuration (Dependabot dependency upd
 
 ## 🔄 CI/CD — Jenkins (not GitHub Actions)
 
-All build, test, and npm publish pipelines run in **Jenkins** via the `Jenkinsfile`
-at the repository root.
+All build, test, and publish pipelines run in **Jenkins**. There are two
+separate Jenkinsfiles:
+
+| File | Purpose |
+|---|---|
+| `Jenkinsfile` | TypeScript/Node.js proxy — CI tests + npm publish on `main` |
+| `Jenkinsfile.release` | **Go binary release** — cross-compile + npm publish on demand |
+
+---
+
+### `Jenkinsfile` — TypeScript CI pipeline
 
 | Stage | What it does |
 |---|---|
@@ -30,15 +39,49 @@ at the repository root.
 | Build Admin UI | `cd admin-ui && npm ci && npm run build` |
 | **Publish to npm** | `npm publish` + `npm dist-tag add ... latest` **(main branch only)** |
 
-### Trigger
-- **Push to `main`** — full pipeline including npm publish
-- **Merge PR into `main`** — same as above via GitHub webhook
+**Trigger:** Push to `main` or merge PR into `main` via GitHub webhook.
 
-### Jenkins Setup (one-time)
-1. Add an **npm token** as a Jenkins credential with ID `NPM_TOKEN`
-2. Install the [NodeJS Plugin](https://plugins.jenkins.io/nodejs/) on Jenkins
-3. Install the [GitHub Plugin](https://plugins.jenkins.io/github/) for webhook trigger
-4. Create a Pipeline job pointing to this repo — Jenkins auto-discovers the `Jenkinsfile`
+---
+
+### `Jenkinsfile.release` — Go binary release pipeline
+
+| Stage | What it does |
+|---|---|
+| Validate Parameters | Check tag format, verify credentials |
+| Checkout | Checkout the exact semver tag |
+| Verify Toolchain | Confirm `go` + `node` + `npm` versions |
+| Build Binaries | Parallel cross-compile: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64 |
+| Smoke Test | Run native linux/amd64 binary with `--version` |
+| Stage npm Binaries | Copy each binary into its `npm/packages/<os>-<arch>/bin/` directory |
+| Sync npm Versions | Stamp all six `package.json` files with the release version |
+| npm Pack | Pack all packages for inspection; archives tarballs as build artefacts |
+| Publish Platform Pkgs | `npm publish` each `@flexgate/proxy-<os>-<arch>` package |
+| Publish Coordinator | `npm publish @flexgate/proxy` |
+| GitHub Release | `gh release create` + upload binaries as assets (requires `gh-token`) |
+
+**Trigger:** Manual — run the Jenkins job with parameters:
+- `RELEASE_TAG` — semver Git tag, e.g. `v1.2.3` (must already exist in remote)
+- `DRY_RUN` — when `true`, builds + packs but does **not** publish
+
+**Jenkins job setup (one-time):**
+1. New Item → **Pipeline**
+2. Definition: **Pipeline script from SCM**
+3. Script Path: `Jenkinsfile.release`
+4. Tick **"This project is parameterised"**, add:
+   - String parameter: `RELEASE_TAG`
+   - Boolean parameter: `DRY_RUN` (default `false`)
+
+**Required Jenkins credentials** (Manage Jenkins → Credentials → global):
+
+| ID | Type | Value |
+|---|---|---|
+| `registry-token` | Secret text | npm automation token from npmjs.com |
+| `gh-token` | Secret text | GitHub PAT with `repo` + `write:packages` scope *(optional — skips GitHub Release stage if absent)* |
+
+**Required tools on Jenkins agent:**
+- `go 1.22+` on `$PATH`
+- `node 20` via NodeJS Plugin (tool name `NodeJS 20`)
+- `gh` CLI for GitHub release creation (optional)
 
 ## �️ Dependabot (still active)
 

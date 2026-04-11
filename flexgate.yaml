@@ -1,0 +1,56 @@
+# flexgate.yaml — FlexGate Proxy configuration
+#
+# All values can be overridden by environment variables.
+# Env var format: FLEXGATE_<SECTION>_<KEY>  (dots → underscores, uppercase)
+# Examples:
+#   FLEXGATE_PROXY_PORT=8081
+#   FLEXGATE_LOGGING_LEVEL=debug
+#   FLEXGATE_INTELLIGENCE_URL=https://intelligence.flexgate.io
+#   FLEXGATE_INTELLIGENCE_LICENCE_KEY=fg_live_xxxxxxxxxxxxx
+
+proxy:
+  port: 8080                  # HAProxy backend port this worker listens on
+  admin_port: 9090            # Separate admin API port (never exposed to HAProxy)
+  read_timeout_sec: 30
+  write_timeout_sec: 30
+  idle_timeout_sec: 120
+
+haproxy:
+  socket: /var/run/haproxy/admin.sock   # Runtime API (used by troubleshooting API)
+  stats_url: http://localhost:8404/stats
+
+store:
+  redis_url: ""                         # redis://localhost:6379
+  postgres_url: ""                      # postgres://user:pass@localhost:5432/flexgate
+  nats_url: ""                          # nats://localhost:4222
+
+# Intelligence is OPTIONAL.
+# Leave url empty → proxy runs fully standalone (today's behaviour).
+# Add url + licence_key → proxy calls paid intelligence microservice.
+# Zero proxy code changes when switching between the two modes.
+intelligence:
+  url: ""                               # HTTP fallback: e.g. https://intelligence.flexgate.io
+  licence_key: ""                       # e.g. fg_live_xxxxxxxxxxxxx
+  timeout_ms: 5                         # hard timeout — intelligence never slows proxy
+  fail_open: true                       # if intelligence is down → allow request
+
+  # ── gRPC transport (Stage 4) ─────────────────────────────────────────────
+  # When grpc_addr is set the gRPC client is preferred over HTTP.
+  # Falls back to HTTP (url) if the gRPC pool cannot be dialled.
+  # Override via env: FLEXGATE_INTELLIGENCE_GRPC_ADDR=intelligence.svc:9000
+  grpc_addr: ""                         # e.g. intelligence.svc.cluster.local:9000
+  grpc_pool_size: 4                     # persistent connections in the pool
+  grpc_batch_size: 100                  # max events per RecordEvents stream
+  grpc_flush_interval_ms: 100          # max ms an event waits before flush
+
+logging:
+  level: info                           # debug | info | warn | error
+  format: json                          # json | pretty (pretty = human-readable dev mode)
+  path: ""                              # empty = stdout only; or e.g. logs/proxy.log
+
+# Admin API authentication (HTTP Basic Auth).
+# Both empty → auth disabled (safe for local dev, NEVER in production).
+# Override via env: FLEXGATE_ADMIN_USERNAME=admin FLEXGATE_ADMIN_PASSWORD=secret
+admin:
+  username: ""
+  password: ""
