@@ -150,6 +150,14 @@ type SecurityConfig struct {
 	// BlockUserAgents is a list of User-Agent substrings that are immediately
 	// rejected with 403. Useful for blocking known scanners / bots.
 	BlockUserAgents []string `mapstructure:"block_user_agents"`
+
+	// ── Rust SSRF sidecar ─────────────────────────────────────────────────────
+
+	// SidecarURL is the base URL of the flexgate-rust-security SSRF validation
+	// sidecar (e.g. "http://localhost:9100"). When empty, SSRF validation is
+	// skipped (fail-open). The sidecar is called with a 2 ms hard timeout on
+	// the proxy hot path.
+	SidecarURL string `mapstructure:"sidecar_url"`
 }
 
 // ShutdownConfig controls the graceful shutdown orchestrator.

@@ -2,8 +2,15 @@ package metrics
 
 import (
 	"net/http"
+	"sync"
 	"time"
 )
+
+// instrumentedWriterPool recycles instrumentedWriter instances so that the
+// metrics middleware never heap-allocates on the hot request path.
+var instrumentedWriterPool = sync.Pool{
+	New: func() any { return &instrumentedWriter{} },
+}
 
 // ProxyInstrumentation returns an http.Handler middleware that records
 // Prometheus metrics for every request passing through the proxy.
@@ -26,8 +33,12 @@ func ProxyInstrumentation(next http.Handler) http.Handler {
 		start := time.Now()
 		ActiveRequests.Inc()
 
-		// Wrap the ResponseWriter to capture status + upstream info.
-		rw := &instrumentedWriter{ResponseWriter: w, status: http.StatusOK}
+		// Borrow a writer from the pool — zero heap allocation on hot path.
+		rw := instrumentedWriterPool.Get().(*instrumentedWriter)
+		rw.ResponseWriter = w
+		rw.status = http.StatusOK
+		rw.wroteHeader = false
+
 		next.ServeHTTP(rw, r)
 
 		ActiveRequests.Dec()
@@ -46,6 +57,10 @@ func ProxyInstrumentation(next http.Handler) http.Handler {
 		RequestsTotal.WithLabelValues(r.Method, routeID, sc, upHost).Inc()
 		RequestDuration.WithLabelValues(r.Method, routeID, sc).Observe(dur)
 		UpstreamResponseStatus.WithLabelValues(upHost, sc).Inc()
+
+		// Return to pool — clear reference to prevent writer from being held.
+		rw.ResponseWriter = nil
+		instrumentedWriterPool.Put(rw)
 	})
 }
 

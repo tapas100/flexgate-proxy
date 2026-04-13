@@ -2,8 +2,6 @@ package proxy
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -16,11 +14,24 @@ import (
 	"github.com/flexgate/proxy/internal/intelligence"
 	"github.com/flexgate/proxy/internal/metrics"
 	"github.com/flexgate/proxy/internal/proxy/middleware"
+	"github.com/flexgate/proxy/internal/security"
 )
 
 // defaultUpstreamTimeout is used when a route has no per-route timeout set
 // and the request context carries no deadline.
 const defaultUpstreamTimeout = 30 * time.Second
+
+// Pre-built JSON error bodies — allocated once at startup, never modified.
+// Avoids encoding/json + buffer allocation on every error response.
+var (
+	errBodyNoRoute    = []byte(`{"error":"no upstream found for this route"}`)
+	errBodyRateLimit  = []byte(`{"error":"rate limit exceeded"}`)
+	errBodyForbidden  = []byte(`{"error":"forbidden"}`)
+	errBodySSRF       = []byte(`{"error":"upstream blocked by SSRF policy"}`)
+	errBodyBadGateway = []byte(`{"error":"upstream error"}`)
+	errBodyTimeout    = []byte(`{"error":"upstream timeout"}`)
+	errBodyInvalidURL = []byte(`{"error":"invalid upstream URL"}`)
+)
 
 // Handler is the core reverse proxy handler.
 //
@@ -34,19 +45,25 @@ type Handler struct {
 	cache            *RouteCache
 	fallbackUpstream string // optional, from config
 	transport        http.RoundTripper
+	bufPool          *ProxyBufferPool // reused copy buffers for ReverseProxy
 	intel            intelligence.Client
+	sec              security.Client // SSRF validation sidecar; never nil (NoopClient when disabled)
 	log              zerolog.Logger
 }
 
 // NewHandler creates a Handler. fallbackUpstream may be empty.
 // intel must not be nil; use intelligence.New() which returns a NoopClient
 // when no intelligence URL is configured.
-func NewHandler(cache *RouteCache, fallbackUpstream string, intel intelligence.Client, log zerolog.Logger) *Handler {
+// sec must not be nil; use security.NewClient("") for a NoopClient when the
+// Rust sidecar is not configured.
+func NewHandler(cache *RouteCache, fallbackUpstream string, intel intelligence.Client, sec security.Client, log zerolog.Logger) *Handler {
 	return &Handler{
 		cache:            cache,
 		fallbackUpstream: fallbackUpstream,
 		transport:        buildTransport(),
+		bufPool:          NewProxyBufferPool(),
 		intel:            intel,
+		sec:              sec,
 		log:              log,
 	}
 }
@@ -97,12 +114,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Str("path", r.URL.Path).
 			Msg("proxy: no route matched")
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadGateway)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"error":      "no upstream found for this route",
-			"request_id": requestID,
-		})
+		writeJSON(w, http.StatusBadGateway, errBodyNoRoute)
 		return
 	}
 
@@ -127,13 +139,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		if rlResult.RetryAfterMs > 0 {
-			w.Header().Set("Retry-After", fmt.Sprintf("%.3f", float64(rlResult.RetryAfterMs)/1000))
+			// Format inline — avoids fmt.Sprintf allocation.
+			ms := rlResult.RetryAfterMs
+			buf := AcquireBuffer()
+			writeDecimal(buf, ms)
+			w.Header().Set("Retry-After", buf.String())
+			ReleaseBuffer(buf)
 		}
-		w.WriteHeader(http.StatusTooManyRequests)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"error":      "rate limit exceeded",
-			"request_id": requestID,
-		})
+		writeJSON(w, http.StatusTooManyRequests, errBodyRateLimit)
 		return
 	}
 
@@ -154,12 +167,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			metrics.IntelligenceAuthDenied.Inc()
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"error":      "forbidden",
-				"request_id": requestID,
-			})
+			writeJSON(w, http.StatusForbidden, errBodyForbidden)
 			return
 		}
 		if authResult.Subject != "" {
@@ -171,8 +179,48 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	targetURL, err := url.Parse(upstream)
 	if err != nil {
 		h.log.Error().Err(err).Str("upstream", upstream).Msg("proxy: invalid upstream URL")
-		http.Error(w, "invalid upstream URL", http.StatusInternalServerError)
+		writeJSON(w, http.StatusInternalServerError, errBodyInvalidURL)
 		return
+	}
+
+	// ── SSRF validation ───────────────────────────────────────────────────────
+	// Call the Rust security sidecar with a 2 ms hard budget.  The client is
+	// fail-open: a timeout or unreachable sidecar returns allowed=true so the
+	// proxy never stalls.  A blocked result stops the request here with 403.
+	{
+		valCtx, valCancel := context.WithTimeout(ctx, 2*time.Millisecond)
+		result, valErr := h.sec.Validate(valCtx, upstream, clientIP)
+		valCancel()
+
+		if valErr != nil {
+			// Fail-open — log at debug so operators can detect sidecar outages
+			// without impacting proxy SLA.
+			h.log.Debug().
+				Err(valErr).
+				Str("request_id", requestID).
+				Str("upstream", upstream).
+				Msg("proxy: ssrf sidecar unreachable — fail-open")
+		} else {
+			h.log.Debug().
+				Str("request_id", requestID).
+				Str("upstream", upstream).
+				Bool("allowed", result.Allowed).
+				Str("reason", result.Reason).
+				Strs("resolved_ips", result.ResolvedIPs).
+				Msg("proxy: ssrf validation")
+
+			if !result.Allowed {
+				h.log.Warn().
+					Str("request_id", requestID).
+					Str("upstream", upstream).
+					Str("client_ip", clientIP).
+					Str("reason", result.Reason).
+					Msg("proxy: upstream blocked by SSRF policy")
+
+				writeJSON(w, http.StatusForbidden, errBodySSRF)
+				return
+			}
+		}
 	}
 
 	// ── per-route timeout ─────────────────────────────────────────────────────
@@ -192,11 +240,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rp := &httputil.ReverseProxy{
 		Director:       h.buildDirector(targetURL, stripPrefix, addHeaders, requestID),
 		Transport:      h.transport,
+		BufferPool:     h.bufPool, // reuse 32 KiB copy buffers — eliminates per-request heap alloc
 		ErrorHandler:   h.buildErrorHandler(requestID, upstream),
 		ModifyResponse: h.buildModifyResponse(),
 	}
 
-	rw := NewResponseWriter(w)
+	// Borrow a ResponseWriter from the pool to avoid a heap allocation.
+	rw := AcquireResponseWriter(w)
 	rp.ServeHTTP(rw, r)
 
 	// ── intelligence: record request (fire-and-forget) ────────────────────────
@@ -212,6 +262,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Timestamp: start,
 		BytesOut:  rw.Written,
 	})
+
+	ReleaseResponseWriter(rw)
 }
 
 // buildDirector returns a Director function that rewrites the outbound request.
@@ -277,16 +329,16 @@ func (h *Handler) buildDirector(
 }
 
 // buildErrorHandler returns an ErrorHandler that logs upstream errors and
-// returns a structured JSON 502.
+// returns a structured JSON 502/504.
 func (h *Handler) buildErrorHandler(requestID, upstream string) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		status := http.StatusBadGateway
-		errMsg := "upstream error"
+		body := errBodyBadGateway
 
 		// Distinguish timeout from connection refused.
 		if isTimeout(err) {
 			status = http.StatusGatewayTimeout
-			errMsg = "upstream timeout"
+			body = errBodyTimeout
 		}
 
 		h.log.Error().
@@ -298,12 +350,7 @@ func (h *Handler) buildErrorHandler(requestID, upstream string) func(http.Respon
 			Int("status", status).
 			Msg("proxy: upstream error")
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"error":      errMsg,
-			"request_id": requestID,
-		})
+		writeJSON(w, status, body)
 	}
 }
 
@@ -326,8 +373,22 @@ func (h *Handler) buildModifyResponse() func(*http.Response) error {
 	}
 }
 
-// buildTransport returns a tuned http.Transport suitable for a high-throughput
+// buildTransport returns a tuned http.Transport for a high-throughput
 // reverse proxy.
+//
+// Tuning rationale:
+//   - MaxIdleConns 2000 / MaxIdleConnsPerHost 256 — large enough to saturate
+//     ~10 upstream hosts at 40 K RPS without waiting for new TCP handshakes.
+//     The previous 100/host caused head-of-line blocking at high concurrency.
+//   - MaxConnsPerHost 512 — caps per-host concurrency to prevent upstream
+//     overload while still allowing burst absorption.
+//   - IdleConnTimeout 90s — keep idle connections warm; upstream load
+//     balancers typically close after 120 s so this stays safe.
+//   - TLSHandshakeTimeout 5s / DialTimeout 5s — unchanged; aggressive but
+//     acceptable for a same-DC deployment.
+//   - DisableCompression true — proxy should not decompress; pass-through as-is.
+//   - ForceAttemptHTTP2 true — negotiate H/2 with upstreams that support it;
+//     reduces TCP connection count at the cost of a small per-stream overhead.
 func buildTransport() http.RoundTripper {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -338,11 +399,59 @@ func buildTransport() http.RoundTripper {
 		TLSHandshakeTimeout:   5 * time.Second,
 		ResponseHeaderTimeout: 30 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		MaxIdleConns:          500,
-		MaxIdleConnsPerHost:   100,
-		MaxConnsPerHost:       200,
+		MaxIdleConns:          2000,
+		MaxIdleConnsPerHost:   256,
+		MaxConnsPerHost:       512,
 		IdleConnTimeout:       90 * time.Second,
-		DisableCompression:    true, // proxy should not decompress; pass through as-is
+		DisableCompression:    true,
+		ForceAttemptHTTP2:     true,
+	}
+}
+
+// writeJSON writes a pre-built JSON body with the given status code.
+// It sets Content-Type and avoids any encoder allocation.
+func writeJSON(w http.ResponseWriter, status int, body []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_, _ = w.Write(body)
+}
+
+// writeDecimal appends the decimal representation of n (milliseconds)
+// as a "seconds.millis" string to buf — avoids fmt.Sprintf.
+func writeDecimal(buf interface{ WriteByte(byte) error; WriteString(string) (int, error) }, ms int) {
+	sec := ms / 1000
+	frac := ms % 1000
+	// Write integer seconds.
+	if sec == 0 {
+		_ = buf.WriteByte('0')
+	} else {
+		writeInt(buf, sec)
+	}
+	_ = buf.WriteByte('.')
+	// Always three decimal places.
+	if frac < 100 {
+		_ = buf.WriteByte('0')
+	}
+	if frac < 10 {
+		_ = buf.WriteByte('0')
+	}
+	writeInt(buf, frac)
+}
+
+func writeInt(buf interface{ WriteByte(byte) error }, n int) {
+	if n == 0 {
+		_ = buf.WriteByte('0')
+		return
+	}
+	var tmp [10]byte
+	i := len(tmp)
+	for n > 0 {
+		i--
+		tmp[i] = byte('0' + n%10)
+		n /= 10
+	}
+	for ; i < len(tmp); i++ {
+		_ = buf.WriteByte(tmp[i])
 	}
 }
 

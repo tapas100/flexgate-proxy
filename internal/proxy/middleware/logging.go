@@ -2,26 +2,33 @@ package middleware
 
 import (
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
 )
 
+// loggingWriterPool recycles loggingWriter instances to eliminate per-request
+// heap allocations in the logging middleware.
+var loggingWriterPool = sync.Pool{
+	New: func() any { return &loggingWriter{} },
+}
+
 // Logging returns a zerolog structured request/response logging middleware.
 //
 // Every completed request produces a single JSON log line containing:
 //
-//	request_id    – from X-Request-ID / context
-//	method        – HTTP method
-//	path          – URL path (query string excluded for log hygiene)
-//	status        – HTTP status code
-//	latency_ms    – wall-clock duration in milliseconds (float64, 3 dp)
-//	bytes_out     – response body bytes written
-//	client_ip     – real client IP (from X-Client-IP or RemoteAddr)
-//	haproxy_fe    – HAProxy frontend name
-//	haproxy_be    – HAProxy backend name
-//	upstream      – upstream URL the request was forwarded to (if set)
-//	route_id      – matched route ID (if set)
+//request_id    – from X-Request-ID / context
+//method        – HTTP method
+//path          – URL path (query string excluded for log hygiene)
+//status        – HTTP status code
+//latency_ms    – wall-clock duration in milliseconds (float64, 3 dp)
+//bytes_out     – response body bytes written
+//client_ip     – real client IP (from X-Client-IP or RemoteAddr)
+//haproxy_fe    – HAProxy frontend name
+//haproxy_be    – HAProxy backend name
+//upstream      – upstream URL the request was forwarded to (if set)
+//route_id      – matched route ID (if set)
 //
 // The logger instance is injected so callers can share the same zerolog.Logger
 // they configured at startup (level, format, output file, etc.).
@@ -30,14 +37,16 @@ func Logging(log zerolog.Logger) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			// Wrap the ResponseWriter to capture status + bytes written after
-			// the handler writes them. Default to 200 if WriteHeader is never called.
-			rw := &loggingWriter{ResponseWriter: w, status: http.StatusOK}
+			// Borrow a writer from the pool — zero heap allocation on hot path.
+			rw := loggingWriterPool.Get().(*loggingWriter)
+			rw.ResponseWriter = w
+			rw.status = http.StatusOK
+			rw.bytesOut = 0
+			rw.wroteHeader = false
 
 			next.ServeHTTP(rw, r)
 
 			latencyMs := float64(time.Since(start).Microseconds()) / 1000.0
-
 			ctx := r.Context()
 
 			// Pick up upstream / route_id injected by proxy.Handler via headers.
@@ -62,6 +71,11 @@ func Logging(log zerolog.Logger) func(http.Handler) http.Handler {
 				evt = evt.Str("route_id", routeID)
 			}
 			evt.Msg("request")
+
+			// Return to pool — clear writer reference so the underlying
+			// ResponseWriter can be GC'd before the pool entry is reused.
+			rw.ResponseWriter = nil
+			loggingWriterPool.Put(rw)
 		})
 	}
 }

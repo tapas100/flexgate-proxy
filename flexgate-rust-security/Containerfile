@@ -1,0 +1,33 @@
+# ── Stage 1: build ───────────────────────────────────────────────────────────
+FROM rust:1.93-slim AS builder
+
+WORKDIR /build
+
+# Cache dependency compilation in a separate layer.
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo 'fn main(){}' > src/main.rs \
+    && cargo build --release \
+    && rm -rf src
+
+# Compile the real binary (only our crates recompile).
+COPY src ./src
+RUN touch src/main.rs \
+    && cargo build --release
+
+# ── Stage 2: minimal runtime image ───────────────────────────────────────────
+FROM gcr.io/distroless/cc-debian12:nonroot
+
+COPY --from=builder /build/target/release/flexgate-rust-security /usr/local/bin/flexgate-rust-security
+
+# HTTP validation port
+EXPOSE 9100
+# Prometheus metrics port
+EXPOSE 9101
+
+ENV SECURITY_PORT=9100 \
+    SECURITY_DNS_TIMEOUT_MS=300 \
+    SECURITY_REBIND_CHECK=true \
+    SECURITY_LOG_FORMAT=json \
+    SECURITY_METRICS_ADDR=0.0.0.0:9101
+
+ENTRYPOINT ["/usr/local/bin/flexgate-rust-security"]

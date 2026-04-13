@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,6 +22,8 @@ import (
 	"github.com/flexgate/proxy/internal/intelligence"
 	"github.com/flexgate/proxy/internal/metrics"
 	"github.com/flexgate/proxy/internal/proxy"
+	proxyMiddleware "github.com/flexgate/proxy/internal/proxy/middleware"
+	"github.com/flexgate/proxy/internal/security"
 	"github.com/flexgate/proxy/internal/shutdown"
 	"github.com/flexgate/proxy/internal/store"
 )
@@ -54,7 +57,8 @@ func main() {
 	}
 
 	// ── configure zerolog ─────────────────────────────────────────────────────
-	logger := buildLogger(cfg.Logging)
+	logger, logCloser := buildLogger(cfg.Logging)
+	defer func() { _ = logCloser.Close() }()
 	log.Logger = logger
 
 	// ── runtime tuning ────────────────────────────────────────────────────────
@@ -110,7 +114,15 @@ func main() {
 
 	// ── proxy handler + router ────────────────────────────────────────────────
 	intel := intelligence.New(cfg.Intelligence, logger)
-	proxyHandler := proxy.NewHandler(routeCache, "", intel, logger)
+	sec := security.NewClient(cfg.Security.SidecarURL)
+	if cfg.Security.SidecarURL != "" {
+		logger.Info().
+			Str("sidecar_url", cfg.Security.SidecarURL).
+			Msg("ssrf: Rust security sidecar enabled")
+	} else {
+		logger.Info().Msg("ssrf: no sidecar_url configured — SSRF validation disabled (fail-open)")
+	}
+	proxyHandler := proxy.NewHandler(routeCache, "", intel, sec, logger)
 	proxyRouter := proxy.NewRouter(proxyHandler, cfg.Security, logger)
 
 	// ── admin router ──────────────────────────────────────────────────────────
@@ -190,7 +202,7 @@ func main() {
 	shutOrch.Run()
 }
 
-func buildLogger(cfg config.LoggingConfig) zerolog.Logger {
+func buildLogger(cfg config.LoggingConfig) (zerolog.Logger, io.Closer) {
 	switch cfg.Level {
 	case "debug":
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -202,10 +214,15 @@ func buildLogger(cfg config.LoggingConfig) zerolog.Logger {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 	if cfg.Format == "pretty" {
-		return zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}).
+		// Pretty mode is only used in development — no async writer needed.
+		l := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}).
 			With().Timestamp().Logger()
+		return l, io.NopCloser(nil)
 	}
-	return zerolog.New(os.Stdout).With().Timestamp().Logger()
+	// Production JSON mode: wrap stdout in an async writer so that log writes
+	// are off the hot request path (see middleware/async_writer.go).
+	asyncOut := proxyMiddleware.NewAsyncWriter(os.Stdout)
+	return zerolog.New(asyncOut).With().Timestamp().Logger(), asyncOut
 }
 
 // applyRuntimeTuning sets GOGC and GOMEMLIMIT from config before any
@@ -240,15 +257,22 @@ func applyRuntimeTuning(cfg config.TuningConfig, log zerolog.Logger) {
 	}
 
 	// ── GOGC ──────────────────────────────────────────────────────────────────
-	if cfg.GOGCPercent != 0 {
-		prev := debug.SetGCPercent(cfg.GOGCPercent)
-		log.Info().
-			Int("gogc_percent", cfg.GOGCPercent).
-			Int("gogc_prev", prev).
-			Msg("tuning: GOGC applied")
-	} else {
-		log.Debug().Msg("tuning: GOGC not set — using Go default (100)")
+	// Default: 200 (lazy GC — run when heap is 3× live set).
+	// Rationale: paired with GOMEMLIMIT, GOGC=200 lets the heap grow freely
+	// until the memory limit forces a collection.  This halves GC CPU overhead
+	// at the cost of higher peak heap — ideal for a latency-sensitive proxy
+	// where GC pauses are the primary concern.
+	// Operators can override with a lower value (e.g. 100) if they are
+	// constrained by container memory limits.
+	gcPercent := cfg.GOGCPercent
+	if gcPercent == 0 {
+		gcPercent = 200 // production default
 	}
+	prev := debug.SetGCPercent(gcPercent)
+	log.Info().
+		Int("gogc_percent", gcPercent).
+		Int("gogc_prev", prev).
+		Msg("tuning: GOGC applied")
 
 	// Log effective Go runtime settings at INFO for operator visibility.
 	log.Info().

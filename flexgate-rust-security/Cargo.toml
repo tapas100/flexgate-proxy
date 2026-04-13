@@ -1,0 +1,47 @@
+[package]
+name = "flexgate-rust-security"
+version = "0.1.0"
+edition = "2021"
+description = "FlexGate SSRF / URL validation security sidecar"
+license = "MIT"
+
+# ── async runtime ─────────────────────────────────────────────────────────────
+[dependencies]
+tokio         = { version = "1",    features = ["full"] }
+axum          = { version = "0.7",  features = ["json"] }
+tower-http    = { version = "0.6",  features = ["trace", "timeout", "cors"] }
+
+# ── DNS (maintained trust-dns fork) ──────────────────────────────────────────
+hickory-resolver = { version = "0.24", features = ["tokio-runtime"] }
+
+# ── serialisation ─────────────────────────────────────────────────────────────
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ── URL parsing ───────────────────────────────────────────────────────────────
+url = "2"
+
+# ── async TTL + LRU cache ─────────────────────────────────────────────────────
+moka = { version = "0.12", features = ["future"] }
+
+# ── IP network matching ───────────────────────────────────────────────────────
+ipnet = "2"
+
+# ── observability ─────────────────────────────────────────────────────────────
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+metrics                      = "0.24"
+metrics-exporter-prometheus  = "0.16"
+
+# ── error handling ─────────────────────────────────────────────────────────────
+thiserror = "2"
+
+# ── configuration ─────────────────────────────────────────────────────────────
+clap = { version = "4", features = ["derive", "env"] }
+
+[profile.release]
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1
+panic         = "abort"
+strip         = "symbols"

@@ -55,6 +55,13 @@ func NewRouteCache(pool PgPool, log zerolog.Logger) *RouteCache {
 	return &RouteCache{pool: pool, log: log}
 }
 
+// InjectRoute stores a route directly into the cache without touching
+// Postgres. Intended for use in benchmarks and integration tests only.
+func (c *RouteCache) InjectRoute(r *Route) {
+	c.routes.Store(r.Path, r)
+	c.size.Add(1)
+}
+
 // Start loads routes once synchronously (blocking startup if Postgres is
 // unavailable) then launches:
 //   - a background goroutine that reloads every 30 s

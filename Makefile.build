@@ -316,3 +316,76 @@ go-npm-publish: go-npm-pack
 	@rm -f .npmrc.tmp
 	@echo ""
 	@echo "✅ @flexgate/proxy@$(VERSION) published (dist-tag: $(DIST_TAG))"
+
+# ── Rust security sidecar ─────────────────────────────────────────────────────
+RUST_DIR   := flexgate-rust-security
+RUST_BIN   := $(RUST_DIR)/target/release/flexgate-rust-security
+CARGO      := $(HOME)/.cargo/bin/cargo
+
+## rust-build: Compile Rust security sidecar (optimised release binary)
+rust-build:
+	@echo "→ Building Rust security sidecar (release)…"
+	cd $(RUST_DIR) && $(CARGO) build --release
+	@echo "✅ Binary: $(RUST_BIN)"
+
+## rust-build-debug: Compile Rust security sidecar (debug, faster)
+rust-build-debug:
+	@echo "→ Building Rust security sidecar (debug)…"
+	cd $(RUST_DIR) && $(CARGO) build
+	@echo "✅ Binary: $(RUST_DIR)/target/debug/flexgate-rust-security"
+
+## rust-test: Run Rust unit tests (no network required)
+rust-test:
+	@echo "→ Running Rust unit tests…"
+	cd $(RUST_DIR) && $(CARGO) test
+	@echo "✅ All Rust tests passed"
+
+## rust-lint: Run clippy with deny-warnings
+rust-lint:
+	@echo "→ Running clippy…"
+	cd $(RUST_DIR) && $(CARGO) clippy -- -D warnings
+	@echo "✅ Clippy clean"
+
+## rust-run: Run Rust security sidecar locally (pretty logs, port 9100)
+rust-run:
+	@echo "→ Starting flexgate-rust-security on :9100 (metrics :9101)…"
+	cd $(RUST_DIR) && RUST_LOG=info $(CARGO) run -- --log-format pretty
+
+## rust-run-release: Run optimised binary directly
+rust-run-release: rust-build
+	@echo "→ Starting flexgate-rust-security (release binary)…"
+	RUST_LOG=info SECURITY_LOG_FORMAT=pretty $(RUST_BIN)
+
+## rust-clean: Remove Rust build artefacts
+rust-clean:
+	@echo "→ Cleaning Rust build artefacts…"
+	cd $(RUST_DIR) && $(CARGO) clean
+	@echo "✅ Rust build artefacts removed"
+
+## rust-image: Build Podman container image for the security sidecar
+rust-image:
+	@echo "→ Building Podman image flexgate-rust-security:latest…"
+	podman build -f $(RUST_DIR)/Containerfile -t flexgate-rust-security:latest $(RUST_DIR)
+	@echo "✅ Image flexgate-rust-security:latest built"
+
+## rust-health: Quick health check against the running sidecar
+rust-health:
+	@curl -sf http://localhost:9100/health | jq . \
+		|| echo "❌ Health check failed — is the sidecar running?"
+
+## rust-smoke: Smoke-test SSRF blocking against the running sidecar
+rust-smoke:
+	@echo "Testing IMDS block (169.254.169.254)…"
+	@curl -sf -X POST http://localhost:9100/validate \
+		-H 'Content-Type: application/json' \
+		-d '{"url":"http://169.254.169.254/latest/meta-data","client_ip":"1.2.3.4"}' | jq .
+	@echo ""
+	@echo "Testing RFC 1918 block (10.0.0.1)…"
+	@curl -sf -X POST http://localhost:9100/validate \
+		-H 'Content-Type: application/json' \
+		-d '{"url":"http://10.0.0.1/internal","client_ip":"1.2.3.4"}' | jq .
+	@echo ""
+	@echo "Testing allowed public URL…"
+	@curl -sf -X POST http://localhost:9100/validate \
+		-H 'Content-Type: application/json' \
+		-d '{"url":"https://example.com/","client_ip":"1.2.3.4"}' | jq .
