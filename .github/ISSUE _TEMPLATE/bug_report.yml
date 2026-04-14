@@ -1,0 +1,113 @@
+name: 🐛 Bug Report
+description: Report a bug in Flexgate
+title: "[BUG] "
+labels: ["bug"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🚀 Thanks for reporting a bug in Flexgate!
+        Please fill out the details below so we can reproduce and fix it quickly.
+
+  - type: input
+    id: summary
+    attributes:
+      label: 🔍 Bug Summary
+      description: Short description of the issue
+      placeholder: e.g. Requests are timing out under high load
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproducible
+    attributes:
+      label: 🧪 Steps to Reproduce
+      description: Exact steps to reproduce the issue
+      placeholder: |
+        1. Start Flexgate with config X
+        2. Send 1000 RPS using k6
+        3. Observe latency spike
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ Expected Behavior
+      description: What should have happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: ❌ Actual Behavior
+      description: What actually happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 📄 Logs / Error Output
+      description: Paste relevant logs (remove sensitive data)
+      render: shell
+
+  - type: textarea
+    id: config
+    attributes:
+      label: ⚙️ Flexgate Configuration
+      description: Share relevant config (sanitized)
+      render: json
+
+  - type: input
+    id: version
+    attributes:
+      label: 📦 Flexgate Version
+      placeholder: e.g. v0.2.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: proxy
+    attributes:
+      label: 🌐 Underlying Proxy
+      options:
+        - HAProxy
+        - NGINX
+        - Envoy
+        - Custom
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 💻 Operating System
+      placeholder: e.g. Ubuntu 22.04 / MacOS / Windows
+
+  - type: input
+    id: node
+    attributes:
+      label: 🟢 Node.js Version
+      placeholder: e.g. 18.x
+
+  - type: textarea
+    id: performance
+    attributes:
+      label: 📊 Load / Performance Context
+      description: RPS, concurrency, infra details (if relevant)
+      placeholder: e.g. 5k RPS, 2 vCPU, 4GB RAM
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✅ Pre-checks
+      options:
+        - label: I have searched existing issues
+          required: true
+        - label: I have provided reproducible steps
+          required: true
+        - label: This is not a configuration issue
