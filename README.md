@@ -35,6 +35,9 @@ A **middle ground**: production-ready proxy in Node.js with:
 
 ---
 
+<img width="1536" height="1024" alt="dashboard" src="https://github.com/user-attachments/assets/c28039ae-898a-4283-8934-66403e8eeb8a" />
+
+
 ## When to Use This
 
 ### ✅ Good Fit
