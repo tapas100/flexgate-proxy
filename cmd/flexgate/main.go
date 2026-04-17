@@ -136,11 +136,12 @@ func main() {
 	}
 
 	adminRouter := admin.NewRouter(admin.RouterConfig{
-		Cfg:     cfg,
-		PgPool:  adminPgPool,
-		RDB:     adminRDB,
-		Version: version,
-		Log:     logger,
+		Cfg:        cfg,
+		PgPool:     adminPgPool,
+		RDB:        adminRDB,
+		RouteCache: routeCache,
+		Version:    version,
+		Log:        logger,
 	})
 
 	// ── HTTP servers ──────────────────────────────────────────────────────────

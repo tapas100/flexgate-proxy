@@ -64,8 +64,8 @@ const Dashboard: React.FC = () => {
           acceptanceRate: Number(summary.recommendations.acceptance_rate) || 0,
           loading: false,
         });
-      } catch (err) {
-        console.error('Failed to fetch AI stats:', err);
+      } catch {
+        // AI analytics endpoint may not exist in all deployments — fail silently.
         setAiStats(prev => ({ ...prev, loading: false }));
       }
     };
@@ -76,8 +76,8 @@ const Dashboard: React.FC = () => {
   }, []);
 
   // Memoize callbacks to prevent recreating them on every render
-  const handleError = useCallback((err: Error) => {
-    console.error('Stream error:', err);
+  const handleError = useCallback((_err: Error) => {
+    // Stream errors are expected when the metrics endpoint isn't available.
   }, []);
 
   const handleConnect = useCallback(() => {

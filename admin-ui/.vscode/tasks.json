@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Admin UI Dev Server",
+			"type": "shell",
+			"command": "PORT=3000 BROWSER=none ./node_modules/.bin/react-scripts start",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

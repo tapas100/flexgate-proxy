@@ -1,0 +1,48 @@
+{
+  "name": "flexgate",
+  "version": "0.1.0",
+  "description": "FlexGate CLI — start, manage, and onboard your API gateway in seconds",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tapas100/flexgate-proxy.git",
+    "directory": "npm/packages/flexgate"
+  },
+  "homepage": "https://github.com/tapas100/flexgate-proxy#readme",
+  "bugs": { "url": "https://github.com/tapas100/flexgate-proxy/issues" },
+  "author": {
+    "name": "tapas100",
+    "email": "mahanta.tapas9@gmail.com",
+    "url": "https://github.com/tapas100"
+  },
+  "keywords": [
+    "api-gateway",
+    "proxy",
+    "flexgate",
+    "cli",
+    "devtools"
+  ],
+  "bin": {
+    "flexgate": "bin/flexgate.js"
+  },
+  "main": "lib/index.js",
+  "files": [
+    "bin/",
+    "commands/",
+    "lib/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@flexgate/proxy": "*",
+    "@inquirer/prompts": "^8.0.0",
+    "commander": "^12.0.0",
+    "open": "^10.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

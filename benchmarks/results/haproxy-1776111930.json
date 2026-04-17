@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "scenario": "haproxy",
+  "profile": "ci",
+  "target": "http://127.0.0.1:9002",
+  "timestamp": "2026-04-13T20:25:30.160Z",
+  "git_sha": "dev",
+  "hardware": {
+    "note": "single-node loopback — see ARCHITECTURE.md §3",
+    "os": "unknown",
+    "cpu": "unknown"
+  },
+  "metrics": {
+    "rps": {
+      "mean": 7529.142909632004
+    },
+    "latency_ms": {
+      "min": 0.146,
+      "med": 6.036,
+      "p95": 6.744,
+      "max": 84.043
+    },
+    "error_rate_pct": 0
+  },
+  "overhead_vs_baseline": null,
+  "thresholds_passed": {}
+}

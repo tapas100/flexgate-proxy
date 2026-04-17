@@ -1,6 +1,16 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+// ── Setup (Stage 1) — isolated pre-layer, does not affect existing routes ──
+import SetupGuard from './setup/SetupGuard';
+import SetupPage from './setup/SetupPage';
+import { SetupStatusProvider } from './setup/SetupStatusContext';
+import { FeatureGuard } from './setup/FeatureGuard';
+import { ModeProvider } from './context/ModeContext';
+import { ModeRedirect } from './components/routing/ModeRedirect';
+import LiteDashboard from './pages/LiteDashboard';
+import LiteRoutesPage from './pages/LiteRoutesPage';
+// ─────────────────────────────────────────────────────────────────────────────
 import Login from './components/Auth/Login';
 import SSOCallback from './components/SSOCallback';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
@@ -19,6 +29,7 @@ import AITesting from './pages/AITesting';
 import AIIncidents from './pages/AIIncidents';
 import AIIncidentDetail from './pages/AIIncidentDetail';
 import AIAnalytics from './pages/AIAnalytics';
+import BenchmarkDashboard from './pages/BenchmarkDashboard';
 
 const theme = createTheme({
   palette: {
@@ -57,29 +68,52 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
+        <SetupStatusProvider>
+          <ModeProvider>
+          {/* SetupGuard: checks /api/setup/status once on mount.
+              If isSetupComplete===false it redirects every path to /setup.
+              On error or complete it renders children unchanged.
+              It never wraps, replaces, or alters any existing route. */}
+          <SetupGuard>
+            <Routes>
+            {/* ── Setup route (public, no ProtectedRoute) ── */}
+            <Route path="/setup" element={<SetupPage />} />
+            {/* /setup/mode, /setup/dependencies, /setup/benchmarks, /setup/execution are named aliases — SetupPage drives step state internally */}
+            <Route path="/setup/mode" element={<SetupPage />} />
+            <Route path="/setup/dependencies" element={<SetupPage />} />
+            <Route path="/setup/benchmarks" element={<SetupPage />} />
+            <Route path="/setup/execution" element={<SetupPage />} />
+            {/* /setup/full — upgrade entry point from Lite mode; SetupPage reads ?mode=full */}
+            <Route path="/setup/full" element={<SetupPage />} />
+
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<SSOCallback />} />
           
           {/* Protected routes */}
           <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/routes"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <RoutesPage />
-                </Layout>
+                {/* Full mode → full route management; Lite/benchmark → read-only view */}
+                <FeatureGuard requiredMode="full" redirect={false}>
+                  <Layout>
+                    <RoutesPage />
+                  </Layout>
+                </FeatureGuard>
+              </ProtectedRoute>
+            }
+          />
+          {/* Lite route management — read-only, upgrade-teaser page */}
+          <Route
+            path="/routes/lite"
+            element={
+              <ProtectedRoute>
+                <FeatureGuard requiredMode="benchmark">
+                  <Layout>
+                    <LiteRoutesPage />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -87,9 +121,11 @@ function App() {
             path="/metrics"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <Metrics />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <Metrics />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -97,9 +133,11 @@ function App() {
             path="/logs"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <Logs />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <Logs />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -107,9 +145,11 @@ function App() {
             path="/oauth"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <OAuthProviders />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <OAuthProviders />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -117,9 +157,11 @@ function App() {
             path="/webhooks"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <Webhooks />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <Webhooks />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -127,9 +169,11 @@ function App() {
             path="/webhooks/:id/details"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <WebhookDetails />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <WebhookDetails />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -137,9 +181,11 @@ function App() {
             path="/settings/*"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <Settings />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <Settings />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -147,9 +193,11 @@ function App() {
             path="/troubleshooting"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <Troubleshooting />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <Troubleshooting />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -157,9 +205,11 @@ function App() {
             path="/ai-testing"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <AITesting />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <AITesting />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -167,9 +217,11 @@ function App() {
             path="/ai-incidents"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <AIIncidents />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <AIIncidents />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -177,9 +229,11 @@ function App() {
             path="/ai-incidents/:id"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <AIIncidentDetail />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <AIIncidentDetail />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
@@ -187,17 +241,61 @@ function App() {
             path="/ai-analytics"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <AIAnalytics />
-                </Layout>
+                <FeatureGuard requiredMode="full" redirect>
+                  <Layout>
+                    <AIAnalytics />
+                  </Layout>
+                </FeatureGuard>
               </ProtectedRoute>
             }
           />
-          
-          {/* Default route */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+          <Route
+            path="/benchmarks"
+            element={
+              <ProtectedRoute>
+                <FeatureGuard requiredMode="any">
+                  <Layout>
+                    <BenchmarkDashboard />
+                  </Layout>
+                </FeatureGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ── Lite Mode home (/lite) ── */}
+          <Route
+            path="/lite"
+            element={
+              <ProtectedRoute>
+                <FeatureGuard requiredMode="benchmark">
+                  <Layout>
+                    <LiteDashboard />
+                  </Layout>
+                </FeatureGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ── Mode-aware default redirects ── */}
+          {/*   /            → homeRoute (/lite or /dashboard)         */}
+          {/*   *            → homeRoute (unknown paths fall here too)  */}
+          {/*   /dashboard   → if lite user, redirect to /lite          */}
+          {/*   /lite        → if full user, redirect to /dashboard      */}
+          <Route path="/" element={<ModeRedirect />} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <FeatureGuard requiredMode="full" redirect>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </FeatureGuard>
+            </ProtectedRoute>
+          } />
+          <Route path="*" element={<ModeRedirect />} />
+            </Routes>
+          </SetupGuard>
+          </ModeProvider>
+        </SetupStatusProvider>
       </Router>
     </ThemeProvider>
   );

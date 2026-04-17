@@ -68,7 +68,7 @@ const ClaudeSettings: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch('http://localhost:8080/api/settings/claude');
+      const response = await fetch('/api/settings/claude');
       const data = await response.json();
       
       if (data.success) {
@@ -97,7 +97,7 @@ const ClaudeSettings: React.FC = () => {
     setSuccess(null);
     
     try {
-      const response = await fetch('http://localhost:8080/api/settings/claude', {
+      const response = await fetch('/api/settings/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
@@ -131,7 +131,7 @@ const ClaudeSettings: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch('http://localhost:8080/api/settings/claude/test', {
+      const response = await fetch('/api/settings/claude/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: config.apiKey }),

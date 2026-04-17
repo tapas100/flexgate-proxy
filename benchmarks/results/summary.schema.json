@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FlexGate Benchmark Analysis Summary",
+  "description": "Written by benchmarks/scripts/analyse.js after a full run. Version 1.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "profile",
+    "git_sha",
+    "scenarios",
+    "comparisons",
+    "verdict"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "generated_at":   { "type": "string", "format": "date-time" },
+    "run_id":         { "type": "string" },
+    "run_label":      { "type": "string" },
+    "profile":        { "type": "string", "enum": ["ci", "full"] },
+    "git_sha":        { "type": "string" },
+    "hardware": {
+      "type": "object",
+      "properties": {
+        "os":   { "type": "string" },
+        "cpu":  { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+    "scenario_count": { "type": "integer" },
+
+    "scenarios": {
+      "type": "object",
+      "description": "Per-scenario computed stats keyed by scenario name",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "rps":           { "type": ["number", "null"] },
+          "avg_ms":        { "type": ["number", "null"] },
+          "p50_ms":        { "type": ["number", "null"] },
+          "p95_ms":        { "type": ["number", "null"] },
+          "p99_ms":        { "type": ["number", "null"] },
+          "p999_ms":       { "type": ["number", "null"] },
+          "max_ms":        { "type": ["number", "null"] },
+          "stddev_ms":     { "type": ["number", "null"] },
+          "error_pct":     { "type": ["number", "null"] },
+          "thresholds_ok": { "type": "boolean" },
+          "system": {
+            "type": ["object", "null"],
+            "properties": {
+              "proxy_cpu_pct_mean": { "type": ["number", "null"] },
+              "proxy_cpu_pct_max":  { "type": ["number", "null"] },
+              "proxy_rss_mb_mean":  { "type": ["number", "null"] },
+              "proxy_rss_mb_max":   { "type": ["number", "null"] },
+              "echo_cpu_pct_mean":  { "type": ["number", "null"] },
+              "loadavg_1min_mean":  { "type": ["number", "null"] },
+              "sample_count":       { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+
+    "comparisons": {
+      "type": "object",
+      "description": "Overhead deltas keyed by reference scenario",
+      "properties": {
+        "vs_baseline": { "$ref": "#/definitions/comparisonMap" },
+        "vs_haproxy":  { "$ref": "#/definitions/comparisonMap" },
+        "vs_nginx":    { "$ref": "#/definitions/comparisonMap" }
+      }
+    },
+
+    "verdict": {
+      "type": "object",
+      "required": ["overall", "flexgate_overhead_acceptable", "notes"],
+      "properties": {
+        "overall": {
+          "type": "string",
+          "enum": ["pass", "fail"]
+        },
+        "flexgate_overhead_acceptable": { "type": "boolean" },
+        "breaking_point": { "type": ["string", "null"] },
+        "scenario_pass_count":  { "type": "integer" },
+        "scenario_total_count": { "type": "integer" },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+
+  "definitions": {
+    "comparisonMap": {
+      "type": ["object", "null"],
+      "description": "Map of scenario name → overhead delta object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "p50_delta_ms":  { "type": "number" },
+          "p95_delta_ms":  { "type": "number" },
+          "p99_delta_ms":  { "type": "number" },
+          "rps_delta_pct": { "type": ["number", "null"] },
+          "within_limits": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

@@ -7,7 +7,15 @@
     "npm/packages/*"
   ],
   "scripts": {
-    "version-sync": "node npm/scripts/sync-versions.js"
+    "version-sync": "node npm/scripts/sync-versions.js",
+    "benchmark":          "BENCHMARK_API_URL=${BENCHMARK_API_URL:-http://localhost:8080} node benchmarks/run.js",
+    "benchmark:full":     "BENCHMARK_API_URL=${BENCHMARK_API_URL:-http://localhost:8080} node benchmarks/run.js --profile full",
+    "benchmark:scenario": "BENCHMARK_API_URL=${BENCHMARK_API_URL:-http://localhost:8080} node benchmarks/run.js --scenario",
+    "bench:rerun":        "./start.sh --rerun",
+    "bench:rerun:baseline":   "./start.sh --rerun --scenario baseline",
+    "bench:rerun:nginx":      "./start.sh --rerun --scenario nginx",
+    "bench:rerun:haproxy":    "./start.sh --rerun --scenario haproxy",
+    "bench:rerun:full":       "./start.sh --rerun --profile full"
   },
   "repository": {
     "type": "git",

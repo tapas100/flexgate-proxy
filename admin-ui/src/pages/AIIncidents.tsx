@@ -85,8 +85,11 @@ const AIIncidents: React.FC = () => {
       
       const result = await incidentService.listIncidents(params);
       
+      // Guard against malformed/stub responses
+      const allIncidents: AIIncident[] = Array.isArray(result?.incidents) ? result.incidents : [];
+      
       // Filter by search if provided
-      let filteredIncidents = result.incidents;
+      let filteredIncidents = allIncidents;
       if (search) {
         filteredIncidents = filteredIncidents.filter(inc =>
           inc.incident_id.toLowerCase().includes(search.toLowerCase()) ||
@@ -95,12 +98,12 @@ const AIIncidents: React.FC = () => {
       }
       
       setIncidents(filteredIncidents);
-      setTotal(result.total);
+      setTotal(result?.total ?? 0);
       
       // Calculate stats
-      const openCount = result.incidents.filter(i => i.status === 'open').length;
-      const resolvedCount = result.incidents.filter(i => i.status === 'resolved').length;
-      const avgTime = result.incidents
+      const openCount = allIncidents.filter(i => i.status === 'open').length;
+      const resolvedCount = allIncidents.filter(i => i.status === 'resolved').length;
+      const avgTime = allIncidents
         .filter(i => i.resolution_time_seconds)
         .reduce((sum, i) => sum + (i.resolution_time_seconds || 0), 0) / resolvedCount || 0;
       

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "scenario": "baseline",
+  "profile": "ci",
+  "target": "http://127.0.0.1:9000",
+  "timestamp": "2026-04-13T20:08:29.034Z",
+  "git_sha": "dev",
+  "hardware": {
+    "note": "single-node loopback — see ARCHITECTURE.md §3",
+    "os": "unknown",
+    "cpu": "unknown"
+  },
+  "metrics": {
+    "rps": {
+      "mean": 39968.62834555403
+    },
+    "latency_ms": {
+      "min": 0.051,
+      "med": 0.917,
+      "p95": 1.319,
+      "max": 98.676
+    },
+    "error_rate_pct": 0
+  },
+  "overhead_vs_baseline": null,
+  "thresholds_passed": {}
+}

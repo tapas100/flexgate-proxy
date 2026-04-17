@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -33,10 +34,81 @@ type RouteRecord struct {
 	UpdatedAt   time.Time         `json:"updated_at,omitempty"`
 }
 
+// RouteInjector is the subset of proxy.RouteCache used by the admin handler.
+// Passing the interface avoids an import cycle between admin/handlers and proxy.
+type RouteInjector interface {
+	InjectRouteParams(path, upstream, stripPath string, methods []string, enabled bool)
+}
+
+// ── In-memory store (used when Postgres is not configured) ───────────────────
+
+var memRoutes struct {
+	mu     sync.RWMutex
+	rows   []RouteRecord
+	nextID int
+}
+
+func init() { memRoutes.nextID = 1 }
+
+func memList() []RouteRecord {
+	memRoutes.mu.RLock()
+	defer memRoutes.mu.RUnlock()
+	out := make([]RouteRecord, len(memRoutes.rows))
+	copy(out, memRoutes.rows)
+	return out
+}
+
+func memCreate(rec RouteRecord) RouteRecord {
+	memRoutes.mu.Lock()
+	defer memRoutes.mu.Unlock()
+	now := time.Now().UTC()
+	id := fmt.Sprintf("mem-%d", memRoutes.nextID)
+	memRoutes.nextID++
+	rec.ID = id
+	if rec.RouteID == "" {
+		rec.RouteID = id
+	}
+	rec.CreatedAt = now
+	rec.UpdatedAt = now
+	memRoutes.rows = append(memRoutes.rows, rec)
+	return rec
+}
+
+func memUpdate(id string, req RouteRecord) (RouteRecord, bool) {
+	memRoutes.mu.Lock()
+	defer memRoutes.mu.Unlock()
+	for i, r := range memRoutes.rows {
+		if r.ID == id {
+			req.ID = id
+			req.RouteID = r.RouteID
+			req.CreatedAt = r.CreatedAt
+			req.UpdatedAt = time.Now().UTC()
+			memRoutes.rows[i] = req
+			return req, true
+		}
+	}
+	return RouteRecord{}, false
+}
+
+func memDelete(id string) bool {
+	memRoutes.mu.Lock()
+	defer memRoutes.mu.Unlock()
+	for i, r := range memRoutes.rows {
+		if r.ID == id {
+			memRoutes.rows = append(memRoutes.rows[:i], memRoutes.rows[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// ── RoutesHandler ─────────────────────────────────────────────────────────────
+
 // RoutesHandler handles all /api/routes endpoints.
 type RoutesHandler struct {
-	pool *pgxpool.Pool
-	log  zerolog.Logger
+	pool     *pgxpool.Pool
+	cache    RouteInjector // optional: proxy route cache for no-DB mode
+	log      zerolog.Logger
 }
 
 // NewRoutesHandler creates a RoutesHandler.
@@ -44,8 +116,22 @@ func NewRoutesHandler(pool *pgxpool.Pool, log zerolog.Logger) *RoutesHandler {
 	return &RoutesHandler{pool: pool, log: log}
 }
 
+// WithCache attaches a proxy RouteInjector so that routes created via the
+// admin API are immediately reflected in the proxy without a DB.
+func (h *RoutesHandler) WithCache(c RouteInjector) *RoutesHandler {
+	h.cache = c
+	return h
+}
+
 // List handles GET /api/routes
 func (h *RoutesHandler) List(w http.ResponseWriter, r *http.Request) {
+	// ── in-memory fallback ────────────────────────────────────────────────────
+	if h.pool == nil {
+		routes := memList()
+		JSON(w, http.StatusOK, map[string]any{"routes": routes, "total": len(routes), "storage": "memory"})
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
@@ -89,11 +175,29 @@ func (h *RoutesHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+
+	// Auto-generate route_id from path when the client omits it.
+	// e.g. "/api/*" → "api-wildcard", "/health" → "health"
+	if strings.TrimSpace(req.RouteID) == "" && strings.TrimSpace(req.Path) != "" {
+		req.RouteID = pathToSlug(req.Path)
+	}
+
 	if err := validateRoute(&req); err != nil {
 		Error(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 
+	// ── in-memory fallback ────────────────────────────────────────────────────
+	if h.pool == nil {
+		rec := memCreate(req)
+		// Also inject directly into the live proxy route cache so the proxy
+		// engine forwards traffic immediately without a DB round-trip.
+		if h.cache != nil {
+			h.cache.InjectRouteParams(rec.Path, rec.Upstream, rec.StripPath, rec.Methods, rec.Enabled)
+		}
+		JSON(w, http.StatusCreated, rec)
+		return
+	}
 	addHeadersJSON, _ := json.Marshal(req.AddHeaders)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -151,6 +255,17 @@ func (h *RoutesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ── in-memory fallback ────────────────────────────────────────────────────
+	if h.pool == nil {
+		rec, ok := memUpdate(id, req)
+		if !ok {
+			Error(w, http.StatusNotFound, "route not found")
+			return
+		}
+		JSON(w, http.StatusOK, rec)
+		return
+	}
+
 	addHeadersJSON, _ := json.Marshal(req.AddHeaders)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -199,6 +314,16 @@ func (h *RoutesHandler) Update(w http.ResponseWriter, r *http.Request) {
 // Delete handles DELETE /api/routes/:id  (soft delete)
 func (h *RoutesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+
+	// ── in-memory fallback ────────────────────────────────────────────────────
+	if h.pool == nil {
+		if !memDelete(id) {
+			Error(w, http.StatusNotFound, "route not found")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
@@ -264,4 +389,37 @@ func isUniqueViolation(err error) bool {
 		return pgErr.Code == "23505"
 	}
 	return false
+}
+
+// pathToSlug converts a URL path into a lowercase dash-separated identifier
+// suitable for use as a route_id when the caller doesn't supply one.
+//
+//	"/api/*"        → "api-wildcard"
+//	"/health"       → "health"
+//	"/v1/users/{id}" → "v1-users-id"
+func pathToSlug(path string) string {
+	s := strings.TrimLeft(path, "/")
+	// Replace path parameter braces and wildcards with readable words.
+	s = strings.NewReplacer(
+		"{", "", "}", "",
+		"*", "wildcard",
+		":", "",
+	).Replace(s)
+	// Collapse any non-alphanumeric run into a single dash.
+	var b strings.Builder
+	prevDash := false
+	for _, ch := range strings.ToLower(s) {
+		if (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') {
+			b.WriteRune(ch)
+			prevDash = false
+		} else if !prevDash {
+			b.WriteByte('-')
+			prevDash = true
+		}
+	}
+	slug := strings.Trim(b.String(), "-")
+	if slug == "" {
+		slug = "route"
+	}
+	return slug
 }

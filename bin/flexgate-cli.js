@@ -1033,6 +1033,233 @@ aiCmd
     });
   });
 
+// ── doctor helpers ────────────────────────────────────────────────────────────
+
+const ADMIN_PORT = parseInt(process.env.FLEXGATE_ADMIN_PORT || '9090', 10);
+
+/**
+ * Try GET /api/setup/detect on the admin server.
+ * Returns the parsed report on success, null if the server is not reachable.
+ */
+async function fetchDetectReport(port = ADMIN_PORT) {
+  try {
+    const res = await fetch(`http://localhost:${port}/api/setup/detect`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Run a single CLI tool locally and extract its version string.
+ * Returns { installed: boolean, version?: string, error?: string }.
+ */
+async function probeTool(cmd, args, patterns) {
+  const { execFile } = await import('child_process');
+  const { promisify } = await import('util');
+  const execFileAsync = promisify(execFile);
+
+  try {
+    // Some tools write to stderr (nginx -v), so capture both.
+    const { stdout, stderr } = await execFileAsync(cmd, args, { timeout: 3000 });
+    const raw = (stdout + stderr).toLowerCase();
+
+    for (const { re, group = 1 } of patterns) {
+      const m = raw.match(re);
+      if (m && m[group]) return { installed: true, version: m[group] };
+    }
+    return { installed: true }; // ran but no version pattern matched
+  } catch (err) {
+    const msg = err.code === 'ENOENT' ? 'not found' : String(err.message).split('\n')[0];
+    return { installed: false, error: msg };
+  }
+}
+
+/**
+ * Check whether a TCP port on localhost is in use.
+ * Returns 'free' | 'in_use' | 'unknown'.
+ */
+async function probePort(port) {
+  const { createConnection } = await import('net');
+  return new Promise((resolve) => {
+    const sock = createConnection({ host: '127.0.0.1', port });
+    const done = (status) => { sock.destroy(); resolve(status); };
+
+    sock.setTimeout(500);
+    sock.on('connect', () => done('in_use'));
+    sock.on('timeout', () => done('unknown'));
+    sock.on('error', (e) => done(e.code === 'ECONNREFUSED' ? 'free' : 'unknown'));
+  });
+}
+
+/**
+ * Run all probes locally (fallback when the backend isn't running).
+ */
+async function runLocalProbes() {
+  const [nginx, haproxy, docker, podman] = await Promise.all([
+    probeTool('nginx',   ['-v'], [{ re: /nginx\/(\S+)/ }, { re: /(\d+\.\d+[\.\d]*)/ }]),
+    probeTool('haproxy', ['-v'], [{ re: /haproxy version (\S+)/i }, { re: /(\d+\.\d+[\.\d]*)/ }]),
+    probeTool('docker',  ['--version'], [{ re: /docker version ([^,\s]+)/i }, { re: /(\d+\.\d+[\.\d]*)/ }]),
+    probeTool('podman',  ['--version'], [{ re: /podman version (\S+)/i }, { re: /(\d+\.\d+[\.\d]*)/ }]),
+  ]);
+
+  const portNums = [3000, 5432, 6379];
+  const portStatuses = await Promise.all(portNums.map(probePort));
+  const ports = {};
+  portNums.forEach((p, i) => { ports[String(p)] = { port: p, status: portStatuses[i] }; });
+
+  return { nginx, haproxy, docker, podman, ports, source: 'local' };
+}
+
+/**
+ * Render a single tool result line.
+ */
+function printTool(label, result) {
+  const tick  = chalk.green('✔');
+  const cross = chalk.red('✖');
+
+  if (result.installed) {
+    const ver = result.version ? chalk.dim(` v${result.version}`) : '';
+    console.log(`  ${tick}  ${chalk.bold(label)} installed${ver}`);
+  } else {
+    const why = result.error ? chalk.dim(` (${result.error})`) : '';
+    console.log(`  ${cross}  ${chalk.bold(label)} not found${why}`);
+  }
+}
+
+/**
+ * Render a single port result line.
+ */
+function printPort(port, result) {
+  const tick  = chalk.green('✔');
+  const cross = chalk.yellow('⚠');
+  const label = chalk.bold(`Port ${port}`);
+
+  if (result.status === 'free') {
+    console.log(`  ${tick}  ${label} is free`);
+  } else if (result.status === 'in_use') {
+    console.log(`  ${cross}  ${label} is ${chalk.yellow('in use')}`);
+  } else {
+    console.log(`  ${chalk.dim('?')}  ${label} status unknown`);
+  }
+}
+
+/**
+ * Print the full doctor report to stdout.
+ * @param {object} report  - { nginx, haproxy, docker, podman, ports }
+ * @param {string} source  - 'backend' | 'local'
+ * @param {number} elapsed - ms
+ */
+function printReport(report, source, elapsed) {
+  const sourceLabel = source === 'backend'
+    ? chalk.dim('(via FlexGate admin API)')
+    : chalk.dim('(local — admin server not running)');
+
+  console.log(chalk.bold.blue('\n  FlexGate Environment Check') + '  ' + sourceLabel);
+  console.log(chalk.dim('  ' + '─'.repeat(48)));
+
+  // ── Reverse proxies ──────────────────────────────────────────────────────
+  console.log(chalk.dim('\n  Reverse Proxies'));
+  printTool('Nginx',   report.nginx);
+  printTool('HAProxy', report.haproxy);
+
+  // ── Container runtimes ───────────────────────────────────────────────────
+  console.log(chalk.dim('\n  Container Runtimes'));
+  printTool('Docker', report.docker);
+  printTool('Podman', report.podman);
+
+  // ── Ports ────────────────────────────────────────────────────────────────
+  console.log(chalk.dim('\n  Ports'));
+  const portEntries = Object.entries(report.ports || {}).sort(
+    ([a], [b]) => parseInt(a, 10) - parseInt(b, 10)
+  );
+  if (portEntries.length === 0) {
+    console.log(chalk.dim('  No port data available'));
+  } else {
+    portEntries.forEach(([portStr, result]) => printPort(portStr, result));
+  }
+
+  // ── Summary ──────────────────────────────────────────────────────────────
+  const tools  = [report.nginx, report.haproxy, report.docker, report.podman];
+  const nOk    = tools.filter(t => t.installed).length;
+  const portsOk= portEntries.filter(([, r]) => r.status === 'free').length;
+
+  console.log(chalk.dim('\n  ' + '─'.repeat(48)));
+  console.log(
+    `  ${chalk.bold(nOk)} / ${tools.length} tools found` +
+    `  ·  ${chalk.bold(portsOk)} / ${portEntries.length} ports free` +
+    `  ·  ${chalk.dim(elapsed + ' ms')}\n`
+  );
+
+  // ── Hint when nothing is installed ──────────────────────────────────────
+  if (nOk === 0) {
+    console.log(
+      chalk.yellow('  ⚠  No optional dependencies found.') +
+      ' FlexGate can still run in Benchmark mode without them.\n'
+    );
+  }
+}
+
+// ── doctor command ────────────────────────────────────────────────────────────
+
+program
+  .command('doctor')
+  .description('Check host environment for FlexGate dependencies')
+  .option('--json', 'Output raw JSON report instead of formatted text')
+  .option('--local', 'Skip the backend and run checks locally (useful without a running server)')
+  .option('--admin-port <port>', 'Admin server port to query (default: 9090)', '9090')
+  .action(async (options) => {
+    const start = Date.now();
+
+    // Resolve admin port: CLI flag > env var > default 9090
+    const adminPort = parseInt(options.adminPort || process.env.FLEXGATE_ADMIN_PORT || '9090', 10);
+
+    let report;
+    let source;
+
+    if (options.local) {
+      // ── local mode — skip backend ──────────────────────────────────────────
+      if (!options.json) process.stdout.write(chalk.dim('  Running local checks…\r'));
+      report = await runLocalProbes();
+      source = 'local';
+    } else {
+      // ── try backend first ──────────────────────────────────────────────────
+      if (!options.json) process.stdout.write(chalk.dim('  Querying admin server…\r'));
+      const backendReport = await fetchDetectReport(adminPort);
+
+      if (backendReport) {
+        report  = backendReport;
+        source  = 'backend';
+      } else {
+        // Backend not reachable — fall back to local probes.
+        if (!options.json) process.stdout.write(chalk.dim('  Admin server offline — running local checks…\r'));
+        report = await runLocalProbes();
+        source = 'local';
+      }
+    }
+
+    const elapsed = Date.now() - start;
+
+    if (options.json) {
+      console.log(JSON.stringify({ ...report, source, elapsedMs: elapsed }, null, 2));
+      return;
+    }
+
+    // Clear the progress line.
+    process.stdout.write('\r' + ' '.repeat(50) + '\r');
+
+    printReport(report, source, elapsed);
+
+    // Exit 1 if every tool is missing (makes it useful in CI/scripts).
+    const tools = [report.nginx, report.haproxy, report.docker, report.podman];
+    if (tools.every(t => !t.installed)) {
+      process.exit(1);
+    }
+  });
+
 // Health check command
 program
   .command('health')

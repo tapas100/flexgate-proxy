@@ -1,7 +1,163 @@
-# Benchmarks
+# FlexGate Benchmark Suite
 
-## Overview
-Performance numbers for the proxy server under various conditions.
+Credible, reproducible performance proof for FlexGate.
+
+Five scenarios. One shared zero-logic upstream. All results written as
+structured JSON and diffed by `compare.js`.
+
+---
+
+## Quick Start
+
+```bash
+# 1. Install dependencies (macOS)
+brew install k6 haproxy nginx
+
+# 2. Build the echo server (zero-logic upstream)
+go build -o benchmarks/targets/echo-server/echo-server \
+         ./benchmarks/targets/echo-server/
+
+# 3. Build FlexGate (needed for Scenarios 3 + 4)
+go build -o flexgate ./cmd/flexgate/
+
+# 4. Run the full suite (~20 min)
+bash benchmarks/scripts/run-all.sh full
+
+# 5. Run CI-length suite (~5 min)
+bash benchmarks/scripts/run-all.sh ci
+```
+
+FlexGate Scenarios 3 + 4 require a running Postgres instance.
+The bench config is `config/flexgate.bench.json` (db: `flexgate_bench`, redis db: 1,
+rate limiting disabled, log level `warn` to reduce I/O noise).
+
+Results are written to `benchmarks/results/`.
+
+---
+
+## Scenarios
+
+| # | Name | Topology | Port |
+|---|------|----------|------|
+| 0 | Baseline | k6 → Echo | 9000 |
+| 1 | Nginx | k6 → Nginx → Echo | 9001 |
+| 2 | HAProxy | k6 → HAProxy → Echo | 9002 |
+| 3 | FlexGate inline | k6 → HAProxy → FlexGate → Echo | 9003 |
+| 4 | FlexGate mirror | k6 → HAProxy → Echo + mirror → FlexGate | 9004 |
+
+Full architecture description: [ARCHITECTURE.md](ARCHITECTURE.md)
+
+---
+
+## Metrics
+
+| Metric | Source | Why |
+|--------|--------|-----|
+| RPS | k6 `http_reqs` rate | throughput |
+| P50 / P95 / P99 / P99.9 latency | k6 `http_req_duration` | tail behaviour |
+| Max latency | k6 | worst-case spike |
+| StdDev | k6 | stability |
+| Error rate % | k6 `http_req_failed` | correctness |
+| CPU % (proxy) | `ps` sampled @ 1 Hz | cost |
+| RSS MB (proxy) | `ps` sampled @ 1 Hz | cost |
+
+---
+
+## Load Profile
+
+```
+Stage       VUs         Duration
+──────────────────────────────────────
+warmup      1 → 50      30 s
+ramp-up     50 → 200    60 s
+sustained   200         120 s   ← measurement window
+ramp-down   200 → 0     30 s
+──────────────────────────────────────
+Total                   ~4 min (full)
+
+CI profile: 1 → 50 VUs, 60 s total
+```
+
+---
+
+## Pass / Fail Thresholds
+
+| Metric | STRICT (full) | RELAXED (ci) |
+|--------|--------------|--------------|
+| Error rate | < 0.1 % | < 0.5 % |
+| P95 latency | < 50 ms | < 100 ms |
+| P99 latency | < 100 ms | < 250 ms |
+
+Overhead limits (vs baseline):
+
+| Delta | Limit |
+|-------|-------|
+| ΔP50 | ≤ 2 ms |
+| ΔP95 | ≤ 5 ms |
+| ΔP99 | ≤ 15 ms |
+
+---
+
+## Files
+
+```
+benchmarks/
+├── ARCHITECTURE.md          Full design rationale
+├── k6/
+│   ├── lib/
+│   │   ├── thresholds.js    Pass/fail assertions
+│   │   ├── metrics.js       Custom k6 metrics
+│   │   └── result.js        Shared result envelope builder
+│   ├── scenarios/
+│   │   ├── baseline.js      Scenario 0
+│   │   ├── nginx.js         Scenario 1
+│   │   ├── haproxy.js       Scenario 2
+│   │   ├── flexgate-inline.js  Scenario 3
+│   │   └── flexgate-mirror.js  Scenario 4
+│   └── options/
+│       └── profiles.json    Stage timing reference
+├── targets/
+│   ├── echo-server/
+│   │   ├── main.go          Zero-logic upstream
+│   │   └── Containerfile
+│   ├── nginx.conf           Nginx comparison config
+│   ├── haproxy-bench.cfg    HAProxy benchmark config
+│   └── podman-compose.yml   Full topology in containers
+├── results/
+│   └── schema.json          Result envelope schema (v1)
+└── scripts/
+    ├── run-all.sh           Orchestrate all scenarios
+    ├── collect-metrics.sh   System CPU/RSS sampler
+    └── compare.js           Diff results, print table
+```
+
+---
+
+## Reading Results
+
+```bash
+# Compare a specific run
+node benchmarks/scripts/compare.js benchmarks/results 1712345678
+
+# Compare two specific files
+node benchmarks/scripts/compare.js \
+     benchmarks/results/baseline-1712345678.json \
+     benchmarks/results/flexgate-inline-1712345678.json
+```
+
+Output: Markdown table of latency, overhead deltas, and threshold pass/fail.
+
+---
+
+## Honesty Constraints
+
+1. All five scenarios run sequentially in the same session under identical load
+2. StdDev is reported alongside every percentile
+3. CPU cost is measured — a faster proxy that burns 3× CPU is not a win
+4. Error rate > 0.1 % is flagged ⚠ in the comparison table
+5. All numbers are loopback measurements — delta (overhead) is the
+   meaningful number, not absolute RPS
+
 
 **Environment**:
 - **CPU**: Apple M1 Pro (8 cores)

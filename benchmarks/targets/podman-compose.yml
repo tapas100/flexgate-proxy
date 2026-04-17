@@ -1,0 +1,101 @@
+version: '3.8'
+# benchmarks/targets/podman-compose.yml
+#
+# Reproducible local benchmark topology.
+# Brings up all five scenario targets on fixed ports.
+#
+# Ports:
+#   9000 — echo server        (baseline / upstream)
+#   9001 — nginx              (Scenario 1)
+#   9002 — haproxy → echo     (Scenario 2)
+#   9003 — haproxy → flexgate → echo   (Scenario 3)
+#   9004 — haproxy → echo + mirror → flexgate   (Scenario 4)
+#   8080 — flexgate proxy     (Scenarios 3 + 4)
+#   9090 — flexgate admin     (health check)
+#   9005 — haproxy stats      (metrics collection)
+#
+# Usage:
+#   # Build echo server first
+#   go build -o benchmarks/targets/echo-server/echo-server \
+#            ./benchmarks/targets/echo-server/
+#
+#   # Start all targets
+#   podman-compose -f benchmarks/targets/podman-compose.yml up -d
+#
+#   # Run benchmarks
+#   bash benchmarks/scripts/run-all.sh
+#
+#   # Tear down
+#   podman-compose -f benchmarks/targets/podman-compose.yml down
+
+services:
+
+  # ── Echo server — shared upstream for all scenarios ──────────────────────
+  echo-server:
+    build:
+      context: ./echo-server
+      # Podman reads Containerfile by default; the 'dockerfile' key is the
+      # compose-spec field name — it accepts any filename, not just "Dockerfile"
+      dockerfile: Containerfile
+    container_name: bench-echo
+    ports:
+      - "9000:9000"
+    command: ["/echo-server", "-addr", ":9000"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1",
+             "--spider", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Nginx — Scenario 1 ───────────────────────────────────────────────────
+  nginx-bench:
+    image: docker.io/library/nginx:1.25-alpine
+    container_name: bench-nginx
+    ports:
+      - "9001:9001"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      echo-server:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1",
+             "--spider", "http://localhost:9001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── HAProxy — Scenarios 2, 3, 4 ─────────────────────────────────────────
+  # FlexGate must be running on the host at :8080 for Scenarios 3 and 4.
+  # In rootless Podman, use host.containers.internal to reach the host.
+  haproxy-bench:
+    image: docker.io/library/haproxy:2.8-alpine
+    container_name: bench-haproxy
+    ports:
+      - "9002:9002"   # Scenario 2
+      - "9003:9003"   # Scenario 3
+      - "9004:9004"   # Scenario 4
+      - "9005:9005"   # Stats
+    volumes:
+      - ./haproxy-bench.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      echo-server:
+        condition: service_healthy
+    restart: unless-stopped
+    extra_hosts:
+      # Rootless Podman: resolves to the host machine
+      - "host.containers.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f",
+             "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  default:
+    name: bench-network
+    driver: bridge

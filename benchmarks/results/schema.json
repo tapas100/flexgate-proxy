@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FlexGate Benchmark Result",
+  "description": "Envelope written by every k6 handleSummary() call. Version 1.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "scenario",
+    "profile",
+    "target",
+    "timestamp",
+    "git_sha",
+    "hardware",
+    "metrics",
+    "thresholds_passed"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "scenario": {
+      "type": "string",
+      "enum": [
+        "baseline",
+        "nginx",
+        "haproxy",
+        "flexgate-inline",
+        "flexgate-mirror",
+        "realistic",
+        "steady-load",
+        "spike",
+        "stress",
+        "soak-smoke",
+        "soak-1h",
+        "soak-6h",
+        "soak-24h",
+        "failure-backend-down",
+        "failure-slow-backend",
+        "failure-timeout",
+        "failure-redis-down"
+      ],
+      "description": "Which scenario produced this result"
+    },
+    "profile": {
+      "type": "string",
+      "enum": ["ci", "full", "smoke", "1h", "6h", "24h"],
+      "description": "Load profile used"
+    },
+    "target": {
+      "type": "string",
+      "description": "URL of the system under test, e.g. http://127.0.0.1:9001"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of run completion"
+    },
+    "git_sha": {
+      "type": "string",
+      "description": "Git commit SHA of the FlexGate binary under test"
+    },
+    "hardware": {
+      "type": "object",
+      "properties": {
+        "note": { "type": "string" },
+        "os":   { "type": "string" },
+        "cpu":  { "type": "string" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["rps", "latency_ms", "error_rate_pct"],
+      "properties": {
+        "rps": {
+          "type": "object",
+          "properties": {
+            "mean": { "type": ["number", "null"] }
+          }
+        },
+        "latency_ms": {
+          "type": "object",
+          "description": "All values in milliseconds",
+          "properties": {
+            "min":    { "type": ["number", "null"] },
+            "mean":   { "type": ["number", "null"] },
+            "med":    { "type": ["number", "null"] },
+            "p50":    { "type": ["number", "null"] },
+            "p95":    { "type": ["number", "null"] },
+            "p99":    { "type": ["number", "null"] },
+            "p999":   { "type": ["number", "null"] },
+            "max":    { "type": ["number", "null"] },
+            "stddev": { "type": ["number", "null"] }
+          }
+        },
+        "error_rate_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of requests that failed (0–100)"
+        },
+        "system": {
+          "type": "object",
+          "description": "Optional: collected by collect-metrics.sh and merged post-run",
+          "properties": {
+            "proxy_cpu_pct_mean":  { "type": ["number", "null"] },
+            "proxy_cpu_pct_max":   { "type": ["number", "null"] },
+            "proxy_rss_mb_mean":   { "type": ["number", "null"] },
+            "proxy_rss_mb_max":    { "type": ["number", "null"] },
+            "echo_cpu_pct_mean":   { "type": ["number", "null"] },
+            "loadavg_1min_mean":   { "type": ["number", "null"] }
+          }
+        }
+      }
+    },
+    "overhead_vs_baseline": {
+      "type": ["object", "null"],
+      "description": "Filled by compare.js — null in raw result files",
+      "properties": {
+        "baseline_file": { "type": "string" },
+        "p50_delta_ms":  { "type": "number" },
+        "p95_delta_ms":  { "type": "number" },
+        "p99_delta_ms":  { "type": "number" },
+        "rps_delta_pct": { "type": "number" },
+        "within_limits": { "type": "boolean" }
+      }
+    },
+    "thresholds_passed": {
+      "type": "object",
+      "description": "Map of threshold expression → boolean (passed/failed)",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Unique run identifier — unix timestamp set by run-benchmarks.sh"
+    },
+    "run_label": {
+      "type": "string",
+      "description": "Human-readable label, e.g. 'ci-20260413-143200' or 'full-release-v1.2.0'"
+    },
+    "stress_meta": {
+      "type": "object",
+      "description": "Present only in stress scenario results",
+      "properties": {
+        "profile":             { "type": "string" },
+        "steps":               { "type": "integer" },
+        "step_duration_s":     { "type": "integer" },
+        "peak_vus":            { "type": "integer" },
+        "breaking_step":       { "type": ["string", "null"] },
+        "breaking_point_note": { "type": "string" }
+      }
+    },
+    "spike_meta": {
+      "type": "object",
+      "description": "Present only in spike scenario results",
+      "properties": {
+        "peak_vus":            { "type": "integer" },
+        "burst_factor":        { "type": "integer" },
+        "recovery_budget_s":   { "type": "integer" },
+        "profile":             { "type": "string" }
+      }
+    },
+    "failure_meta": {
+      "type": "object",
+      "description": "Present only in Stage 7 failure scenario results",
+      "properties": {
+        "fault_scenario":  { "type": "string", "enum": ["backend-down","slow-backend","timeout","redis-down"] },
+        "description":     { "type": "string" },
+        "run_label":       { "type": "string" },
+        "all_checks_pass": { "type": "boolean" },
+        "crash_events":    { "type": "integer" },
+        "phases": {
+          "type": "object",
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "properties": {
+                "requests":  { "type": "number" },
+                "errors":    { "type": "number" },
+                "error_pct": { "type": "number" },
+                "p99_ms":    { "type": "number" }
+              }
+            },
+            "fault": {
+              "type": "object",
+              "properties": {
+                "requests":    { "type": "number" },
+                "errors":      { "type": "number" },
+                "error_pct":   { "type": "number" },
+                "p99_ms":      { "type": "number" },
+                "status_502":  { "type": "number" },
+                "status_504":  { "type": "number" },
+                "status_200":  { "type": "number" }
+              }
+            },
+            "recovery": {
+              "type": "object",
+              "properties": {
+                "requests":  { "type": "number" },
+                "errors":    { "type": "number" },
+                "error_pct": { "type": "number" },
+                "p99_ms":    { "type": "number" }
+              }
+            }
+          }
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

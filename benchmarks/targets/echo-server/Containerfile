@@ -1,0 +1,10 @@
+FROM docker.io/library/golang:1.22-alpine AS builder
+WORKDIR /src
+COPY main.go .
+RUN go mod init echo-server && \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /echo-server .
+
+FROM scratch
+COPY --from=builder /echo-server /echo-server
+EXPOSE 9000
+ENTRYPOINT ["/echo-server"]

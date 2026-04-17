@@ -114,7 +114,7 @@ const AIIncidentDetail: React.FC = () => {
   // Load AI provider configuration
   const loadAIProvider = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/settings/ai');
+      const response = await fetch('/api/settings/ai');
       const data = await response.json();
       if (data.success && data.config) {
         // Capitalize provider name for display
@@ -141,7 +141,7 @@ const AIIncidentDetail: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/ai-incidents/${id}/analyze`, {
+      const response = await fetch(`/api/ai-incidents/${id}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -173,7 +173,7 @@ const AIIncidentDetail: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/ai-incidents/${id}/prompt`);
+      const response = await fetch(`/api/ai-incidents/${id}/prompt`);
       const data = await response.json();
       
       if (data.success) {

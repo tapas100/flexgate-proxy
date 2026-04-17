@@ -59,6 +59,7 @@ interface NotificationSettings {
       port: number;
       secure: boolean;
       user: string;
+      pass?: string;
       from: string;
     };
     recipients: EmailRecipient[];
@@ -156,10 +157,11 @@ const NotificationsSettingsComponent: React.FC = () => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      // TODO: Fetch settings from API
-      // const response = await fetch('/api/settings/notifications');
-      // const data = await response.json();
-      // setSettings(data);
+      const response = await fetch('/api/settings/notifications');
+      const json = await response.json();
+      if (json?.data) {
+        setSettings((prev) => ({ ...prev, ...json.data }));
+      }
       setLoading(false);
     } catch (err) {
       setError('Failed to load notification settings');
@@ -172,99 +174,118 @@ const NotificationsSettingsComponent: React.FC = () => {
       setSaving(true);
       setError(null);
 
-      // TODO: Save settings to API
-      // await fetch('/api/settings/notifications', {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(settings),
-      // });
+      const res = await fetch('/api/settings/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       setSaving(false);
-    } catch (err) {
-      setError('Failed to save notification settings');
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to save notification settings');
       setSaving(false);
     }
   };
 
-  const handleAddWebhook = () => {
+  const handleAddWebhook = async () => {
     if (!newWebhook.url) {
       setError('Webhook URL is required');
       return;
     }
 
-    const webhook: WebhookConfig = {
-      id: Date.now().toString(),
-      url: newWebhook.url,
-      events: newWebhook.events || [],
-      enabled: newWebhook.enabled || true,
-      headers: {},
-    };
+    try {
+      const res = await fetch('/api/settings/notifications/webhooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newWebhook),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? 'Failed to add webhook');
 
-    setSettings({
-      ...settings,
-      webhooks: [...settings.webhooks, webhook],
-    });
+      const webhook: WebhookConfig = {
+        id: json.webhook?.id ?? Date.now().toString(),
+        url: newWebhook.url!,
+        events: newWebhook.events ?? [],
+        enabled: newWebhook.enabled ?? true,
+        headers: {},
+      };
 
-    setNewWebhook({ url: '', events: [], enabled: true });
-    setWebhookDialogOpen(false);
+      setSettings({ ...settings, webhooks: [...settings.webhooks, webhook] });
+      setNewWebhook({ url: '', events: [], enabled: true });
+      setWebhookDialogOpen(false);
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to add webhook');
+    }
   };
 
-  const handleDeleteWebhook = (id: string) => {
-    setSettings({
-      ...settings,
-      webhooks: settings.webhooks.filter((w) => w.id !== id),
-    });
+  const handleDeleteWebhook = async (id: string) => {
+    try {
+      await fetch(`/api/settings/notifications/webhooks/${id}`, { method: 'DELETE' });
+    } catch (_) {
+      // best-effort
+    }
+    setSettings({ ...settings, webhooks: settings.webhooks.filter((w) => w.id !== id) });
   };
 
-  const handleAddEmail = () => {
+  const handleAddEmail = async () => {
     if (!newEmail.email) {
       setError('Email address is required');
       return;
     }
 
-    const recipient: EmailRecipient = {
-      id: Date.now().toString(),
-      email: newEmail.email,
-      events: newEmail.events || [],
-      enabled: newEmail.enabled || true,
-    };
+    try {
+      const res = await fetch('/api/settings/notifications/recipients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEmail),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? 'Failed to add recipient');
 
-    setSettings({
-      ...settings,
-      email: {
-        ...settings.email,
-        recipients: [...settings.email.recipients, recipient],
-      },
-    });
+      const recipient: EmailRecipient = {
+        id: json.recipient?.id ?? Date.now().toString(),
+        email: newEmail.email!,
+        events: newEmail.events ?? [],
+        enabled: newEmail.enabled ?? true,
+      };
 
-    setNewEmail({ email: '', events: [], enabled: true });
-    setEmailDialogOpen(false);
+      setSettings({
+        ...settings,
+        email: { ...settings.email, recipients: [...settings.email.recipients, recipient] },
+      });
+      setNewEmail({ email: '', events: [], enabled: true });
+      setEmailDialogOpen(false);
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to add recipient');
+    }
   };
 
-  const handleDeleteEmail = (id: string) => {
+  const handleDeleteEmail = async (id: string) => {
+    try {
+      await fetch(`/api/settings/notifications/recipients/${id}`, { method: 'DELETE' });
+    } catch (_) {
+      // best-effort
+    }
     setSettings({
       ...settings,
-      email: {
-        ...settings.email,
-        recipients: settings.email.recipients.filter((r) => r.id !== id),
-      },
+      email: { ...settings.email, recipients: settings.email.recipients.filter((r) => r.id !== id) },
     });
   };
 
   const testWebhook = async (webhook: WebhookConfig) => {
     try {
       setTestingWebhook(webhook.id);
-      // TODO: Test webhook
-      // await fetch('/api/webhooks/test', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ url: webhook.url }),
-      // });
-      setTimeout(() => setTestingWebhook(null), 2000);
-    } catch (err) {
-      setError('Failed to test webhook');
+      const res = await fetch(`/api/settings/notifications/webhooks/${webhook.id}/test`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? 'Webhook test failed');
+      setTestingWebhook(null);
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to test webhook');
       setTestingWebhook(null);
     }
   };
@@ -404,6 +425,43 @@ const NotificationsSettingsComponent: React.FC = () => {
                   }
                   label="Use TLS/SSL"
                 />
+              </Box>
+              <Box sx={{ flex: { xs: "1 0 100%", md: "1 0 48%" } }}>
+                <TextField
+                  fullWidth
+                  label="SMTP Password"
+                  type="password"
+                  value={settings.email.smtp.pass ?? ''}
+                  placeholder="Leave blank to keep existing"
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      email: {
+                        ...settings.email,
+                        smtp: { ...settings.email.smtp, pass: e.target.value },
+                      },
+                    })
+                  }
+                />
+              </Box>
+              <Box sx={{ width: '100%' }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<SendIcon />}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/settings/notifications/test-email', { method: 'POST' });
+                      const json = await res.json();
+                      if (json.success) setSuccess(true);
+                      else setError(json.error ?? 'Test email failed');
+                    } catch (e: any) {
+                      setError(e?.message ?? 'Test email failed');
+                    }
+                  }}
+                >
+                  Send Test Email
+                </Button>
               </Box>
             </Stack>
 

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "scenario": "nginx",
+  "profile": "ci",
+  "target": "http://127.0.0.1:9001",
+  "timestamp": "2026-04-13T20:24:29.429Z",
+  "git_sha": "dev",
+  "hardware": {
+    "note": "single-node loopback — see ARCHITECTURE.md §3",
+    "os": "unknown",
+    "cpu": "unknown"
+  },
+  "metrics": {
+    "rps": {
+      "mean": 21615.84613709291
+    },
+    "latency_ms": {
+      "min": 0.097,
+      "med": 2.03,
+      "p95": 2.274,
+      "max": 18.576
+    },
+    "error_rate_pct": 0
+  },
+  "overhead_vs_baseline": null,
+  "thresholds_passed": {}
+}

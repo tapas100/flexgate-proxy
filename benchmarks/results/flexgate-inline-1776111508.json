@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "scenario": "flexgate-inline",
+  "profile": "ci",
+  "target": "http://127.0.0.1:9003",
+  "timestamp": "2026-04-13T20:18:28.142Z",
+  "git_sha": "dev",
+  "hardware": {
+    "note": "single-node loopback — see ARCHITECTURE.md §3",
+    "os": "unknown",
+    "cpu": "unknown"
+  },
+  "metrics": {
+    "rps": {
+      "mean": 7303.109788035024
+    },
+    "latency_ms": {
+      "min": 0.173,
+      "med": 6.126,
+      "p95": 6.913,
+      "max": 114.841
+    },
+    "error_rate_pct": 99.9998
+  },
+  "overhead_vs_baseline": null,
+  "thresholds_passed": {}
+}

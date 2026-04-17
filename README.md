@@ -434,28 +434,47 @@ Event-driven architecture for integrations:
 
 ---
 
-## Performance
+## Benchmarks
 
-| Metric | Value | Comparison |
-|--------|-------|------------|
-| **Throughput** | 4.7K req/sec | Nginx: 52K (11x faster) |
-| **P95 Latency** | 35ms | Nginx: 8ms (4x faster) |
-| **P99 Latency** | 52ms | Nginx: 12ms (4x faster) |
-| **Memory** | 78 MB | Nginx: 12 MB (6x smaller) |
-| **Proxy Overhead** | ~3ms | (14% of total latency) |
+FlexGate ships a reproducible k6 benchmark suite (Stages 1–7) covering
+overhead comparison, load tests, soak tests, and failure resilience.
+All numbers below are from loopback tests on development hardware —
+see the [full benchmark report](docs/benchmarks.md) for methodology and limitations.
 
-**Why slower than Nginx?**
-- Node.js (interpreted) vs C (compiled)
-- Single-threaded vs multi-threaded
-- GC pauses
+### Overhead vs direct backend (loopback, 200 VUs sustained)
 
-**Why use it anyway?**
-- Custom logic in JavaScript (not Nginx config)
-- Better observability
-- Shared code with backend
-- Faster development
+| Scenario | P99 ms | ΔP99 vs baseline | Error % |
+|----------|--------|-----------------|---------|
+| Baseline (echo, no proxy) | 0.8 | — | 0.00 |
+| HAProxy only | 1.2 | +0.4 ms | 0.00 |
+| Nginx | 1.9 | +1.1 ms | 0.00 |
+| **FlexGate inline** | **3.4** | **+2.6 ms** | **0.00** |
 
-[**See full benchmarks →**](benchmarks/README.md)
+FlexGate adds approximately **2–3 ms** at P99 on loopback.
+Against a real backend with 10–50 ms round-trip time, this is 4–20 % of
+total latency.
+
+### Load and resilience summary
+
+| Test | Result |
+|------|--------|
+| Steady load (10 → 100 VUs, 4 min) | ✅ 0.00 % errors, P99 < 5 ms |
+| Spike test (50 → 500 VUs, 10× burst) | ✅ 0.07 % errors at peak, full recovery in < 30 s |
+| Stress breaking point | ~500 VUs / ~4 000 RPS before error rate > 1 % |
+| 24-hour soak (30 VUs) | ✅ No crashes, +17 MiB RSS over 24 h, no FD leak |
+| Backend down | ✅ 502 returned in < 50 ms (fast-fail) |
+| Upstream timeout (30 s) | ✅ 504 at exactly 30 s, no hang |
+| Redis down | ✅ Fail-open — 100 % 200 OK, no request failures |
+
+### Honest limits
+
+- **Not for edge / CDN traffic**: breaking point is ~4 000 RPS on loopback —
+  use HAProxy or Nginx for high-volume public-facing routes.
+- **Not for P99 < 5 ms requirements**: FlexGate adds ~2–3 ms overhead.
+- **GC-visible tail**: P99.9 and Max latency vary due to Go GC pauses at
+  high concurrency.
+
+[**→ Full benchmark report with methodology, graphs, and reproduction steps**](docs/benchmarks.md)
 
 ---
 
@@ -975,7 +994,8 @@ Alert fires → Engineer fixes config
 - [**Observability**](docs/observability.md) - Logging, metrics, tracing
 - [**Traffic Control**](docs/traffic-control.md) - Rate limiting, circuit breakers, retries
 - [**Trade-offs**](docs/trade-offs.md) - Architectural decisions
-- [**Benchmarks**](benchmarks/README.md) - Performance numbers
+- [**Benchmarks**](docs/benchmarks.md) - Performance report (methodology, results, honest conclusions)
+- [**Benchmark Suite**](benchmarks/README.md) - How to run the benchmarks yourself
 
 ---
 

@@ -105,3 +105,12 @@ func (r *loggingWriter) Write(b []byte) (int, error) {
 	r.bytesOut += int64(n)
 	return n, err
 }
+
+// Flush implements http.Flusher so that SSE / streaming endpoints work through
+// this middleware wrapper.  Delegates to the underlying ResponseWriter if it
+// also implements http.Flusher; no-ops otherwise.
+func (r *loggingWriter) Flush() {
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}

@@ -58,7 +58,23 @@ func NewRouteCache(pool PgPool, log zerolog.Logger) *RouteCache {
 // InjectRoute stores a route directly into the cache without touching
 // Postgres. Intended for use in benchmarks and integration tests only.
 func (c *RouteCache) InjectRoute(r *Route) {
-	c.routes.Store(r.Path, r)
+	path := strings.TrimSuffix(r.Path, "/*")
+	c.routes.Store(path, r)
+	c.size.Add(1)
+}
+
+// InjectRouteParams is the admin-handler–friendly variant of InjectRoute that
+// satisfies the handlers.RouteInjector interface without importing proxy types
+// into the admin package.
+func (c *RouteCache) InjectRouteParams(path, upstream, stripPrefix string, methods []string, enabled bool) {
+	path = strings.TrimSuffix(path, "/*")
+	c.routes.Store(path, &Route{
+		Path:        path,
+		Upstream:    upstream,
+		StripPrefix: stripPrefix,
+		Methods:     methods,
+		Enabled:     enabled,
+	})
 	c.size.Add(1)
 }
 
