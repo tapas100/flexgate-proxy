@@ -19,11 +19,10 @@ Run `flexgate init` to generate a starter config file.
 | `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` |
 | `ANTHROPIC_API_KEY` | — | Claude API key for AI features |
 
-!!! tip "`.env` file"
-    Copy `.env.example` to `.env` and fill in your values:
-    ```bash
-    cp .env.example .env
-    ```
+> **💡 Tip:** Copy `.env.example` to `.env` and fill in your values:
+> ```bash
+> cp .env.example .env
+> ```
 
 ---
 
@@ -78,20 +77,17 @@ Run `flexgate init` to generate a starter config file.
 
 Set allowed origins via the `ALLOWED_ORIGINS` environment variable:
 
-=== "Development"
+**Development:**
+```bash
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+```
 
-    ```bash
-    ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
-    ```
+**Production:**
+```bash
+ALLOWED_ORIGINS=https://app.yourdomain.com,https://admin.yourdomain.com
+```
 
-=== "Production"
-
-    ```bash
-    ALLOWED_ORIGINS=https://app.yourdomain.com,https://admin.yourdomain.com
-    ```
-
-!!! warning
-    Do **not** leave `ALLOWED_ORIGINS` unset in production — it defaults to localhost origins only.
+> **⚠️ Warning:** Do **not** leave `ALLOWED_ORIGINS` unset in production — it defaults to localhost origins only.
 
 ---
 

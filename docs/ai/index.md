@@ -39,39 +39,15 @@ Metrics / Logs       Auto-Recovery Actions
 
 ## Sections
 
-<div class="feature-grid" markdown>
+## Sections
 
-<div class="feature-card" markdown>
-<div class="icon">🎯</div>
-**[Use Cases](use-cases.md)**  
-Real scenarios where FlexGate AI saves the day.
-</div>
-
-<div class="feature-card" markdown>
-<div class="icon">🚨</div>
-**[Incident Response](playbooks/incident-response.md)**  
-Step-by-step AI-assisted incident resolution.
-</div>
-
-<div class="feature-card" markdown>
-<div class="icon">🔄</div>
-**[Auto-Recovery](playbooks/auto-recovery.md)**  
-Automated healing playbooks for common failures.
-</div>
-
-<div class="feature-card" markdown>
-<div class="icon">💰</div>
-**[Cost Optimization](playbooks/cost-optimization.md)**  
-Keep AI analysis costs under $5/day.
-</div>
-
-<div class="feature-card" markdown>
-<div class="icon">🧪</div>
-**[Testing Guide](TESTING_GUIDE.md)**  
-Test AI features without live incidents.
-</div>
-
-</div>
+| | |
+|---|---|
+| 🎯 [Use Cases](use-cases.md) | Real scenarios where FlexGate AI saves the day |
+| 🚨 [Incident Response](playbooks/incident-response.md) | Step-by-step AI-assisted incident resolution |
+| 🔄 [Auto-Recovery](playbooks/auto-recovery.md) | Automated healing playbooks for common failures |
+| 💰 [Cost Optimization](playbooks/cost-optimization.md) | Keep AI analysis costs under $5/day |
+| 🧪 [Testing Guide](TESTING_GUIDE.md) | Test AI features without live incidents |
 
 ---
 
@@ -88,6 +64,4 @@ npm start
 curl http://localhost:3001/api/ai/health
 ```
 
-!!! info "Free Providers"
-    Don't have a Claude API key? FlexGate also supports **Gemini** and free open-source models.  
-    See [AI Provider Configuration](../getting-started/configuration.md).
+> **💡 Free Providers:** Don't have a Claude API key? FlexGate also supports **Gemini** and free open-source models. See [AI Provider Configuration](../getting-started/configuration.md).

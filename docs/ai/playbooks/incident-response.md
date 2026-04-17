@@ -1,11 +1,5 @@
 # AI-Assisted Incident Response Playbook
 
-**Implementation Time:** 25 minutes  
-**Difficulty:** Beginner  
-**ROI:** $274,500/year (reduce MTTR by 82%)
-
----
-
 ## Overview
 
 Transform your incident response from manual dashboard-watching to AI-powered automatic diagnosis. This playbook walks you through setting up FlexGate's AI incident response system that detects, analyzes, and recommends fixes for production incidents in under 2 minutes.

@@ -108,5 +108,4 @@ curl http://localhost:3001/health
 {"status":"healthy","uptime":12.3,"version":"0.1.0-beta.2"}
 ```
 
-!!! tip "Admin UI"
-    Open **http://localhost:3000** in your browser to access the Admin UI dashboard.
+> **💡 Admin UI:** Open **http://localhost:3000** in your browser to access the Admin UI dashboard.

@@ -541,7 +541,7 @@ Benchmark:
 
 ### DigitalOcean → AWS
 
-**Difficulty:** Medium
+**Complexity:** Medium
 
 **Steps:**
 1. Export database: `pg_dump`
@@ -556,7 +556,7 @@ Benchmark:
 
 ### AWS → Google Cloud
 
-**Difficulty:** Medium
+**Complexity:** Medium
 
 **Steps:**
 1. Use Database Migration Service
@@ -571,7 +571,7 @@ Benchmark:
 
 ### Any → Multi-Cloud
 
-**Difficulty:** High
+**Complexity:** High
 
 **Requires:**
 - Load balancer in front
